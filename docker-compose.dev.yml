@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:16.14
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: root_dev
+      POSTGRES_PASSWORD: root_dev_pass
+      POSTGRES_DB: mza-agrotours-bd
+      TZ: America/Argentina/Buenos_Aires
+      PGTZ: America/Argentina/Buenos_Aires
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  # TODO: Añadir Redis al implementar módulo actividades
+
+volumes:
+  pgdata:
