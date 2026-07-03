@@ -38,5 +38,6 @@ public class FirebaseTokenFilter extends OncePerRequestFilter {
                 SecurityContextHolder.clearContext();
             }
         }
+        filterChain.doFilter(request, response);
     }
 }
