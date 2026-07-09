@@ -1,6 +1,7 @@
-package com.mza_agrotours.backend.entities;
+package com.mza_agrotours.backend.entities.actividad;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.mza_agrotours.backend.entities.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -14,7 +15,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 
-public class ActividadFAQ extends BaseEntity{
+public class ActividadFAQ extends BaseEntity {
     @Column(nullable = false, length = 200)
     private String pregunta;
 

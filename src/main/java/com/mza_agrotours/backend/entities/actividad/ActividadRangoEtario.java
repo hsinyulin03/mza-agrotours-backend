@@ -1,9 +1,11 @@
-package com.mza_agrotours.backend.entities;
+package com.mza_agrotours.backend.entities.actividad;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.mza_agrotours.backend.entities.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -13,9 +15,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 
-public class ActividadRangoEtario extends BaseEntity{
-    @Column(nullable = false)
-    private Float precio;
+public class ActividadRangoEtario extends BaseEntity {
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal precio;
 
     @Column(name = "fecha_valida_desde")
     private LocalDateTime fechaValidaDesde;
@@ -24,14 +26,13 @@ public class ActividadRangoEtario extends BaseEntity{
     private LocalDateTime fechaValidaHasta;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "actividad_id")
+    @JoinColumn(name = "actividad_id", nullable = false)
     @JsonIgnore
     private Actividad actividad;
 
-    //TODO-Agregar Rango Etario
-    /*@ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "rango_etario_id")
-    private RangoEtario rangoEtario;*/
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "rango_etario_id", nullable = false)
+    private RangoEtario rangoEtario;
 
 }
 

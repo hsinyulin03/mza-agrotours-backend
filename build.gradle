@@ -23,6 +23,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'com.google.firebase:firebase-admin:9.9.0'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'org.postgresql:postgresql'
 	annotationProcessor 'org.projectlombok:lombok'
@@ -32,6 +33,7 @@ dependencies {
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
+
 }
 
 tasks.named('test') {

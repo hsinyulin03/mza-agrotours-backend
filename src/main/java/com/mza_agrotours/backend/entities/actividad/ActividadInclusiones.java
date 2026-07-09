@@ -1,6 +1,7 @@
-package com.mza_agrotours.backend.entities;
+package com.mza_agrotours.backend.entities.actividad;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.mza_agrotours.backend.entities.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

@@ -1,6 +1,7 @@
-package com.mza_agrotours.backend.entities;
+package com.mza_agrotours.backend.entities.actividad;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.mza_agrotours.backend.entities.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -17,26 +18,39 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class ActividadDia extends BaseEntity{
+public class ActividadDia extends BaseEntity {
+
     private LocalDateTime fechaHoraInicio;
     private LocalDateTime fechaHoraFin;
     private LocalDateTime fechaHoraBaja;
-    private Integer cuposMax;
+    private int cuposMax;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "actividad_id")
     @JsonIgnore
     private Actividad actividad;
 
+    @ManyToOne
+    @JoinColumn(name = "log_altas_dia_id")
+    private ActividadLogAltasDia logAltasDia;
+
+    //Relación "estados"
     @OneToMany(mappedBy = "actividadDia", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ActividadDiaEstado> estados = new ArrayList<>();
 
-    public void addEstado(ActividadDiaEstado estado) {
+    //Relación "estadoActual"
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "estado_actual_id", referencedColumnName = "id")
+    private ActividadDiaEstado estadoActual;
+
+    public void registrarNuevoEstado(ActividadDiaEstado nuevoEstado) {
         if (this.estados == null) {
             this.estados = new ArrayList<>();
         }
-        this.estados.add(estado);
-        estado.setActividadDia(this); // Seteamos la FK en la base de datos
+
+        this.estados.add(nuevoEstado);
+        nuevoEstado.setActividadDia(this);
+        this.estadoActual = nuevoEstado;
     }
 
 

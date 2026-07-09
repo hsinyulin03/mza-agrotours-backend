@@ -1,5 +1,6 @@
-package com.mza_agrotours.backend.entities;
+package com.mza_agrotours.backend.entities.actividad;
 
+import com.mza_agrotours.backend.entities.*;
 import com.mza_agrotours.backend.enums.EstadoActividad;
 import jakarta.persistence.*;
 import lombok.*;
@@ -15,7 +16,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 
-public class Actividad extends BaseEntity{
+public class Actividad extends BaseEntity {
     @Column(nullable = false, length = 80)
     private String nombre;
 
@@ -55,7 +56,7 @@ public class Actividad extends BaseEntity{
 
 
     @OneToMany(mappedBy = "actividad", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ActividadDia> actividadesDia = new ArrayList<>();
+    private List<ActividadDia> actividadesDias = new ArrayList<>();
 
 
 
@@ -75,6 +76,15 @@ public class Actividad extends BaseEntity{
         this.inclusiones.add(inclusion);
         inclusion.setActividad(this);
     }
+
+    public void addActividadRangoEtario(ActividadRangoEtario actividadRangoEtarios) {
+        if (this.actividadRangoEtarios == null) {
+            this.actividadRangoEtarios = new ArrayList<>();
+        }
+        this.actividadRangoEtarios.add(actividadRangoEtarios);
+        actividadRangoEtarios.setActividad(this);
+    }
+
     public void addLogAlta(ActividadLogAltas logAlta) {
         if (this.logAltas == null) {
             this.logAltas = new ArrayList<>();
@@ -83,20 +93,13 @@ public class Actividad extends BaseEntity{
         logAlta.setActividad(this);
     }
 
-    public void addActividadDia(ActividadDia actividadDia) {
-        if (this.actividadesDia == null) {
-            this.actividadesDia = new ArrayList<>();
+    public void addActividadDia(ActividadDia actividadDias) {
+        if (this.actividadesDias == null) {
+            this.actividadesDias = new ArrayList<>();
         }
-        this.actividadesDia.add(actividadDia);
-        actividadDia.setActividad(this);
+        this.actividadesDias.add(actividadDias);
+        actividadDias.setActividad(this);
     }
 
-    /*public void addTarifa(ActividadRangoEtario tarifa) {
-        if (this.tarifas == null) {
-            this.tarifas = new ArrayList<>();
-        }
-        this.tarifas.add(tarifa);
-        tarifa.setActividad(this);
-    }*/
-    //TODO-Falta relacion con fotos, con actividad log alta, calificacion, actividad dia, Tipocultivos
+    //TODO: Falta relacion con fotos, calificacion, Tipocultivo
 }

@@ -15,6 +15,6 @@ import java.io.Serializable;
 @AllArgsConstructor
 public abstract class BaseEntity implements Serializable {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 }

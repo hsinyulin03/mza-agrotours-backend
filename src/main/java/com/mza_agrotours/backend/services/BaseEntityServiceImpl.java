@@ -58,7 +58,7 @@ public abstract class BaseEntityServiceImpl<E extends BaseEntity, ID extends Ser
         }
     }
 
-    //TODO- Revisar, parece que no hace update correctamente
+    //TODO- Revisar, parece que no hace update correctamente, genera una nueva instancia
     @Override
     @Transactional
     public E update(ID id, E entity) throws Exception {

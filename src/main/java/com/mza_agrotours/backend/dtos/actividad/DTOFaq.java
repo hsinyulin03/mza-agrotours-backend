@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
-public class FaqDTO {
+public class DTOFaq {
     @NotBlank(message = "La pregunta no puede estar vacía")
     @Size(min = 5, max = 200, message = "La pregunta debe tener entre 5 y 200 caracteres")
     private String pregunta;

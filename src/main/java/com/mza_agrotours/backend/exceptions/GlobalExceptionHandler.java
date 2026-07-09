@@ -1,6 +1,5 @@
 package com.mza_agrotours.backend.exceptions;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -11,32 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.HashMap;
 import java.util.Map;
 
-@RestControllerAdvice
-public class GlobalExecptionHandler {
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException e) {
 
-        Map<String, String> errores = new HashMap<>();
-
-        // Recorremos todos los errores de validación
-        for (FieldError error : e.getBindingResult().getFieldErrors()) {
-            // Guardamos el nombre del campo y su mensaje de error ("El nombre es obligatorio")
-            errores.put(error.getField(), error.getDefaultMessage());
-        }
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errores);
-    }
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<Map<String, String>> handleDatabaseExceptions(DataIntegrityViolationException ex) {
-        Map<String, String> error = new HashMap<>();
-
-        // La base de datos lanza un error complejo, así que le ponemos un mensaje amigable
-        error.put("error", "Ya existe un registro con ese dato en el sistema.");
-
-        // Usamos el código 409 (Conflict) porque hay un conflicto con los datos existentes
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
-    }
-}
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
