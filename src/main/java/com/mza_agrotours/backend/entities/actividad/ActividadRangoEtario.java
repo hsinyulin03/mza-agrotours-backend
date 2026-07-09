@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.entities.actividad;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.mza_agrotours.backend.entities.BaseEntity;
+import com.mza_agrotours.backend.entities.RangoEtario;
 import jakarta.persistence.*;
 import lombok.*;
 
