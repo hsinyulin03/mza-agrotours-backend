@@ -18,7 +18,7 @@ public class EstablecimientoController extends BaseEntityControllerImpl<Establec
     public ResponseEntity<?> altaEstablecimiento(@Valid @RequestBody DTOEstablecimientoAlta dto) {
         try {
             service.altaEstablecimiento(dto);
-            return ResponseEntity.status(HttpStatus.CREATED).body("{\" Actividad añadido correctamente }\"");
+            return ResponseEntity.status(HttpStatus.CREATED).body("{\" Establecimiento añadido correctamente }\"");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("{\"error\":\"" + e.getMessage() + "\"}");
