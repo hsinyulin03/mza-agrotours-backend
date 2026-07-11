@@ -17,7 +17,7 @@ public class ReservaEstado extends BaseEntity {
     private LocalDateTime fechaHoraInicio;
     private LocalDateTime fechaHoraFin;
 
-    // Relaciones TODO - Cascade types
+    // Relaciones
     @Enumerated
     private EstadoReserva estadoReserva;
     @ManyToOne(optional = false)

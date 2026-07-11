@@ -29,10 +29,11 @@ public class ReservaService {
     private final DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("hh:ss");
 
     public ConsultarReservaDTO getConsultarReserva(UUID id){
+        // TODO - Habría que checkear al usuario antes de hacer las cosas de esta función
         // Iniciamos los DTO
         ConsultarReservaDTO dtoReserva;
         List<ConsultarReservaDetalleDTO> dtoReservaDetalles = new ArrayList<>();
-        List<Pair<String, String>> pairFotos = new ArrayList<>();
+        List<Pair<String, String>> pairFotos = new ArrayList<>(); // TODO - No usar Pair para las fotos
 
         // Obtenemos las entidades que vamos a usar repetidamente
         Reserva reserva = reservaRepository.getReferenceById(id);
@@ -67,7 +68,7 @@ public class ReservaService {
             pairFotos.add(pairFoto);
         }
 
-        // Armamos el DTO final
+        // Armamos el DTO final TODO- Cómo obtener bien la URL
         dtoReserva = new ConsultarReservaDTO(
                 reserva.getTotalReserva(),
                 reserva.getId(),
