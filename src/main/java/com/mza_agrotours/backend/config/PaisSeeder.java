@@ -36,7 +36,7 @@ public class PaisSeeder implements CommandLineRunner {
         List<Pais> paisesToSave = new ArrayList<>();
 
         List<PaisSeed> paisSeeds = this.readPaises();
-
+        //TODO: obtener un dataset traducido al español
         List<Pais> paises = this.paisRepository.findAll();
         Set<String> paisesCode = new HashSet<>(paises.stream().map(Pais::getIso2).toList());
 
