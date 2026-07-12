@@ -5,13 +5,12 @@ import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
 import com.mza_agrotours.backend.dtos.UsuarioCreateReq;
 import com.mza_agrotours.backend.dtos.UsuarioGetDTO;
-import com.mza_agrotours.backend.entities.TipoIdentificacion;
-import com.mza_agrotours.backend.entities.TipoIdentificacionNombre;
-import com.mza_agrotours.backend.entities.Usuario;
+import com.mza_agrotours.backend.entities.*;
 import com.mza_agrotours.backend.exceptions.TipoIdentificacionInvalidoException;
 import com.mza_agrotours.backend.exceptions.UsuarioAlreadyExistsException;
 import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
 import com.mza_agrotours.backend.mappers.UsuarioMapper;
+import com.mza_agrotours.backend.repositories.PaisRepository;
 import com.mza_agrotours.backend.repositories.TipoIdentificacionRepository;
 import com.mza_agrotours.backend.repositories.UsuarioRepository;
 import jakarta.transaction.Transactional;
@@ -19,42 +18,49 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
 @Service
 public class UsuarioService {
     private static final Logger log = LoggerFactory.getLogger(UsuarioService.class);
 
+    private final UsuarioPersistenceService usuarioPersistenceService;
+
     private final UsuarioRepository usuarioRepository;
     private final TipoIdentificacionRepository tipoIdentificacionRepository;
+    private final PaisRepository paisRepository;
+
     private final UsuarioMapper usuarioMapper;
 
-    public UsuarioService(UsuarioRepository usuarioRepository,
-                          TipoIdentificacionRepository tipoIdentificacionRepository,
-                          UsuarioMapper usuarioMapper) {
+    public UsuarioService( UsuarioPersistenceService usuarioPersistenceService,
+                        UsuarioRepository usuarioRepository,
+                        TipoIdentificacionRepository tipoIdentificacionRepository,
+                        UsuarioMapper usuarioMapper,
+                        PaisRepository paisRepository) {
+        this.usuarioPersistenceService = usuarioPersistenceService;
         this.usuarioRepository = usuarioRepository;
         this.tipoIdentificacionRepository = tipoIdentificacionRepository;
         this.usuarioMapper = usuarioMapper;
+        this.paisRepository = paisRepository;
     }
 
     public UsuarioGetDTO createUsuario(UsuarioCreateReq usuarioCreateReq) throws Exception {
         UserRecord record = null;
 
         try {
-            List<Usuario> usuariosConEmail = usuarioRepository.findByEmailAndFechaHoraBajaIsNull(usuarioCreateReq.getEmail());
+            usuarioCreateReq.setEmail(usuarioCreateReq.getEmail().trim());
 
-            if (!usuariosConEmail.isEmpty()) {
+            if (usuarioRepository.findActiveByEmail(usuarioCreateReq.getEmail()).isPresent()) {
                 throw new UsuarioAlreadyExistsException("Ya existe un usuario con ese email");
             }
 
             TipoIdentificacion tipoIdentificacion = resolveTipoIdentificacion(usuarioCreateReq.getTipoIdentificacion());
+            Pais pais = this.paisRepository.findByNombre(usuarioCreateReq.getPais()).orElseThrow();
 
             record = FirebaseAuth.getInstance().createUser(usuarioMapper.usuarioCreateReqToFirebaseCreateRequest(usuarioCreateReq));
 
             Usuario nuevoUsuario = usuarioMapper.usuarioCreateReqToUsuario(usuarioCreateReq);
             nuevoUsuario.setFirebaseUID(record.getUid());
             nuevoUsuario.setTipoIdentificacion(tipoIdentificacion);
-            Usuario usuario = usuarioRepository.saveAndFlush(nuevoUsuario);
+            Usuario usuario = usuarioPersistenceService.saveUsuarioConVisitante(nuevoUsuario, pais);
 
             return usuarioMapper.usuarioToUsuarioGetDTO(usuario);
         } catch (Exception e) {
@@ -94,10 +100,9 @@ public class UsuarioService {
 
     @Transactional
     public UsuarioGetDTO getUsuarioByEmail(String email) {
-        Usuario usuario = usuarioRepository.getByEmail(email);
-        if (usuario == null) {
-            throw new UsuarioNotFound("Usuario no encontrado");
-        }
+        String normalizedEmail = email == null ? null : email.trim();
+        Usuario usuario = usuarioRepository.findActiveByEmail(normalizedEmail)
+                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
 
         return usuarioMapper.usuarioToUsuarioGetDTO(usuario);
     }
