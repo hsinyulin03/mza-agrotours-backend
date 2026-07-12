@@ -5,6 +5,7 @@ import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.UsuarioCreateReq;
 import com.mza_agrotours.backend.dtos.UsuarioGetDTO;
 import com.mza_agrotours.backend.services.UsuarioService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +20,7 @@ public class UsuarioController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<?> create(@RequestBody UsuarioCreateReq usuarioCreateReq) throws Exception {
+    public ResponseEntity<?> create(@Valid @RequestBody UsuarioCreateReq usuarioCreateReq) throws Exception {
         UsuarioGetDTO usuarioGetDTO = this.usuarioService.createUsuario(usuarioCreateReq);
         ApiResponse<UsuarioGetDTO> response = ApiResponse.ok(usuarioGetDTO);
         return ResponseEntity.ok(response);
@@ -27,7 +28,6 @@ public class UsuarioController {
 
     @GetMapping("/me")
     public ResponseEntity<?> getUsuarioMeByEmail(@RequestHeader("Authorization") String authorizationHeader) throws Exception {
-        System.out.println(authorizationHeader);
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             throw new Exception("Invalid token format. Expected 'Bearer <token>'");
         }
