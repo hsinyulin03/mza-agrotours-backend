@@ -1,6 +1,6 @@
 package com.mza_agrotours.backend.controllers;
 
-import com.mza_agrotours.backend.dtos.DTOEstablecimientoAlta;
+import com.mza_agrotours.backend.dtos.establecimiento.DTOEstablecimientoAlta;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.services.EstablecimientoService;
 import jakarta.validation.Valid;

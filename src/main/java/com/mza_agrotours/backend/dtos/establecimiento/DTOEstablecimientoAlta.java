@@ -1,4 +1,4 @@
-package com.mza_agrotours.backend.dtos;
+package com.mza_agrotours.backend.dtos.establecimiento;
 
 import jakarta.validation.constraints.Email;
 import lombok.*;

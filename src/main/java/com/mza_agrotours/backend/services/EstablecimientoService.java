@@ -1,6 +1,6 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.dtos.DTOEstablecimientoAlta;
+import com.mza_agrotours.backend.dtos.establecimiento.DTOEstablecimientoAlta;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;

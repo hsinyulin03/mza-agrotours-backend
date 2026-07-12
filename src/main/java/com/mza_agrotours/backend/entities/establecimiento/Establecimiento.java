@@ -9,6 +9,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,11 +29,23 @@ import java.util.List;
 @AllArgsConstructor
 public class Establecimiento extends BaseEntity {
 
+    @NotBlank
     private String razonSocial;
+
+    @NotNull
     private Long cuit;
+
     private LocalDateTime fechaHoraBaja;
+
+    @NotBlank
+    @Size(max = 2000)
     private String descripcion;
+
+
     private String telefono;
+
+    @NotBlank
+    @Email
     private String email;
     private String ubicacion;
     private String cvu;
