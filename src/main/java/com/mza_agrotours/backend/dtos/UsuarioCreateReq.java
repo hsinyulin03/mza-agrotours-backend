@@ -24,8 +24,8 @@ public class UsuarioCreateReq {
     @NotNull
     private LocalDate fechaNacimiento;
 
-//    @NotNull
-//    private String pais;
+    @NotNull
+    private String pais;
 
     @NotNull
     @Size(min = 10, max = 10)
