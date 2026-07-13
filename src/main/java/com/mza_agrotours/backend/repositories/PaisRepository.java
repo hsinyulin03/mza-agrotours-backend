@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface PaisRepository extends JpaRepository<Pais, UUID> {
     Optional<Pais> findByNombre(String nombre);
+    Optional<Pais> findByIso2(String iso2);
 }
