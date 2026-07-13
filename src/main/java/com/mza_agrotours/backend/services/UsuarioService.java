@@ -13,6 +13,7 @@ import com.mza_agrotours.backend.mappers.UsuarioMapper;
 import com.mza_agrotours.backend.repositories.PaisRepository;
 import com.mza_agrotours.backend.repositories.TipoIdentificacionRepository;
 import com.mza_agrotours.backend.repositories.UsuarioRepository;
+import com.mza_agrotours.backend.repositories.VisitanteRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,24 +28,26 @@ public class UsuarioService {
     private final UsuarioRepository usuarioRepository;
     private final TipoIdentificacionRepository tipoIdentificacionRepository;
     private final PaisRepository paisRepository;
+    private final VisitanteRepository visitanteRepository;
 
     private final UsuarioMapper usuarioMapper;
 
     public UsuarioService( UsuarioPersistenceService usuarioPersistenceService,
                         UsuarioRepository usuarioRepository,
                         TipoIdentificacionRepository tipoIdentificacionRepository,
+                        VisitanteRepository visitanteRepository,
                         UsuarioMapper usuarioMapper,
                         PaisRepository paisRepository) {
         this.usuarioPersistenceService = usuarioPersistenceService;
         this.usuarioRepository = usuarioRepository;
         this.tipoIdentificacionRepository = tipoIdentificacionRepository;
+        this.visitanteRepository = visitanteRepository;
         this.usuarioMapper = usuarioMapper;
         this.paisRepository = paisRepository;
     }
 
     public UsuarioGetDTO createUsuario(UsuarioCreateReq usuarioCreateReq) throws Exception {
         UserRecord record = null;
-
         try {
             usuarioCreateReq.setEmail(usuarioCreateReq.getEmail().trim());
 
@@ -53,7 +56,7 @@ public class UsuarioService {
             }
 
             TipoIdentificacion tipoIdentificacion = resolveTipoIdentificacion(usuarioCreateReq.getTipoIdentificacion());
-            Pais pais = this.paisRepository.findByNombre(usuarioCreateReq.getPais()).orElseThrow();
+            Pais pais = this.paisRepository.findByIso2(usuarioCreateReq.getPaisIso2()).orElseThrow();
 
             record = FirebaseAuth.getInstance().createUser(usuarioMapper.usuarioCreateReqToFirebaseCreateRequest(usuarioCreateReq));
 
@@ -104,6 +107,12 @@ public class UsuarioService {
         Usuario usuario = usuarioRepository.findActiveByEmail(normalizedEmail)
                 .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
 
-        return usuarioMapper.usuarioToUsuarioGetDTO(usuario);
+        UsuarioGetDTO usuarioGetDTO = usuarioMapper.usuarioToUsuarioGetDTO(usuario);
+        Visitante visitante = visitanteRepository.findByUsuario(usuario)
+                .orElseThrow(() -> new IllegalStateException(
+                        "El usuario no tiene un visitante asociado: " + usuario.getId()));
+        usuarioGetDTO.setPaisIso2(visitante.getPais().getIso2());
+
+        return usuarioGetDTO;
     }
 }

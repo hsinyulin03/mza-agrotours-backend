@@ -13,6 +13,7 @@ public interface UsuarioMapper {
     Usuario usuarioCreateReqToUsuario(UsuarioCreateReq usuarioCreateReq);
 
     @Mapping(target = "tipoIdentificacion", source = "tipoIdentificacion.nombre")
+    @Mapping(target = "paisIso2", ignore = true)
     UsuarioGetDTO usuarioToUsuarioGetDTO(Usuario usuario);
 
     default CreateRequest usuarioCreateReqToFirebaseCreateRequest(UsuarioCreateReq usuarioCreateReq) {

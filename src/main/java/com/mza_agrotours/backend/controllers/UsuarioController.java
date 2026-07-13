@@ -21,6 +21,7 @@ public class UsuarioController {
 
     @PostMapping("/create")
     public ResponseEntity<?> create(@Valid @RequestBody UsuarioCreateReq usuarioCreateReq) throws Exception {
+
         UsuarioGetDTO usuarioGetDTO = this.usuarioService.createUsuario(usuarioCreateReq);
         ApiResponse<UsuarioGetDTO> response = ApiResponse.ok(usuarioGetDTO);
         return ResponseEntity.ok(response);

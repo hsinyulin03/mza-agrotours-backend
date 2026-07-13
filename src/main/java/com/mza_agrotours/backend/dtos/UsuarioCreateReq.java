@@ -25,10 +25,10 @@ public class UsuarioCreateReq {
     private LocalDate fechaNacimiento;
 
     @NotNull
-    private String pais;
+    private String paisIso2;
 
     @NotNull
-    @Size(min = 10, max = 10)
+    @Size(min = 7, max = 15)
     private String telefono;
 
     @NotNull

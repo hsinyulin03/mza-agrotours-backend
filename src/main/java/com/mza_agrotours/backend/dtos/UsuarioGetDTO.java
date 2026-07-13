@@ -11,6 +11,8 @@ public class UsuarioGetDTO {
     private String nombre;
     private String email;
     private String telefono;
+    private String paisIso2;
+    private String fechaNacimiento;
     private String identificacion;
     private String tipoIdentificacion;
 }
