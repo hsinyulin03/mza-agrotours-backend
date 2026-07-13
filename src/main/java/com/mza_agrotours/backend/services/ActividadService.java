@@ -1,12 +1,11 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.dtos.actividad.DTOActividadAlta;
-import com.mza_agrotours.backend.dtos.actividad.DTODiaDisponibilidad;
-import com.mza_agrotours.backend.dtos.actividad.DTOTarifa;
+import com.mza_agrotours.backend.dtos.actividad.*;
 import com.mza_agrotours.backend.entities.RangoEtario;
 import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.enums.Dia;
 import com.mza_agrotours.backend.enums.EstadoActividadDia;
+import com.mza_agrotours.backend.mappers.ActividadMapper;
 import com.mza_agrotours.backend.repositories.ActividadRespository;
 import com.mza_agrotours.backend.repositories.RangoEtarioRepository;
 import jakarta.transaction.Transactional;
@@ -15,6 +14,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -29,10 +31,12 @@ public class ActividadService extends BaseEntityServiceImpl<Actividad, Long> {
     @Autowired
     private ActividadValidaciones actividadValidaciones;
 
+    @Autowired
+    private ActividadMapper actividadMapper;
 
-
+    //US-ACT-03 Alta de actividad
     @Transactional
-    public void AltaActividad(DTOActividadAlta dto) {
+    public void altaActividad(DTOActividadAlta dto) {
 
         try {
 
@@ -99,7 +103,7 @@ public class ActividadService extends BaseEntityServiceImpl<Actividad, Long> {
     //Paso 3: Participanetes y taridas
     private void agregarTarifas(Actividad actividad, DTOActividadAlta dto) {
 
-        boolean tieneAdulto = false;
+        boolean tieneTarifaBase = false;
 
         if (dto.getTarifas() != null) {
             for (DTOTarifa tarifaDto : dto.getTarifas()) {
@@ -107,19 +111,19 @@ public class ActividadService extends BaseEntityServiceImpl<Actividad, Long> {
                         .orElseThrow(() -> new RuntimeException("El rango etario con ID " + tarifaDto.getRangoEtarioId() + " no existe"));
 
                 //La tarifa para adultos es obligatorio
-                if (rango.getNombre().toLowerCase().contains("adulto")) {
-                    tieneAdulto = true;
+                if (rango.isEsTarifaBase()) {
+                    tieneTarifaBase = true;
                 }
 
                 ActividadRangoEtario tarifa = new ActividadRangoEtario();
                 tarifa.setPrecio(tarifaDto.getPrecio());
                 tarifa.setRangoEtario(rango);
-                tarifa.setFechaValidaDesde(LocalDateTime.now());
+                tarifa.setFechaValidaDesde(LocalDate.now());
                 actividad.addActividadRangoEtario(tarifa);
             }
         }
 
-        if (!tieneAdulto) {
+        if (!tieneTarifaBase) {
             throw new RuntimeException("La tarifa para Adultos es obligatoria.");
         }
     }
@@ -201,7 +205,76 @@ public class ActividadService extends BaseEntityServiceImpl<Actividad, Long> {
         };
     }
 
+    //US-ACT-02:  Consultar detalle de una actividad
+    @Transactional
+    public DTOActividadDetalle obtenerDetallePorId(Long id) {
+        Actividad actividad = actividadRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Actividad no encontrada con ID: " + id));
+
+        if (actividad.getFechaHoraBaja() != null) {
+            throw new RuntimeException("La actividad se encuentra dada de baja");
+        }
+        return actividadMapper.actividadToDetalleDto(actividad);
+    }
+
+    //US-ACT-06: US-ACT-06: Listado de actividades de un establecimiento - Vista productor
+    public List<DTOActividades> obtenerListadoActividades() {
+        // TODO- Se debe filtrar por establecimiento
+        List<Actividad> actividades = actividadRepository.findAll();
+
+        return actividades.stream()
+                .map(actividadMapper::actividadToActividadesDto)
+                .toList();
+    }
+
+    //US-ACT-07: Consultar todos los días disponibles para una actividad
+    public DTOCalendarioActividadDia obtenerDetalleCalendario(Long actividadId, int mes, int anio) throws Exception {
+
+        Actividad actividad = actividadRepository.findById(actividadId)
+                .orElseThrow(() -> new RuntimeException("Actividad no encontrada"));
+
+        DTOCalendarioActividadDia dto = actividadMapper.actividadToDTOCalendarioActividadDia(actividad);
+
+        List<DTOActividadDia> diasDelMesDto = new java.util.ArrayList<>();
+
+        for (ActividadDia dia : actividad.getActividadesDias()) {
+
+            // Filtramos los días que corresponden al mes y al año que el usuario desea ver
+            if (dia.getFechaHoraInicio().getYear() == anio && dia.getFechaHoraInicio().getMonthValue() == mes) {
+
+                DTOActividadDia diaDto = new DTOActividadDia();
+                diaDto.setFecha(dia.getFechaHoraInicio().toLocalDate());
+                diaDto.setCuposMaximos(dia.getCuposMax());
+
+                if (dia.getEstadoActual() != null) {
+                    diaDto.setEstadoActual(dia.getEstadoActual().getEstado().name());
+                }
+
+                diasDelMesDto.add(diaDto);
+            }
+        }
+
+        dto.setDiasDelMes(diasDelMesDto);
+
+        return dto;
+    }
+
+    //US-ACT-12: Listado de actividades de la plataforma - vista del visitante
+    public List<DTOListadoActividadVisitante> explorarActividades() {
+
+        // TODO: Falta implementar filtro por cultivo y por departamento
+        // TODO: Falta implementar paginación
+
+        //Traemos todas las actividades publicadas y activas (temporalmente ignoramos los filtros)
+        List<Actividad> actividades = actividadRepository.explorarActividadesPublicadas();
+
+        return actividades.stream()
+                .map(actividadMapper::actividadToDTOListadoActividadVisitante)
+                .toList();
+    }
 }
+
+
 
 
 

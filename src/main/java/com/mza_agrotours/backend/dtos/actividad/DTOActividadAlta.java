@@ -12,6 +12,7 @@ import java.util.List;
 
 @Data
 
+//US-ACT-03 AltaActividad
 public class DTOActividadAlta {
     // PASO 1: Información general
     @NotBlank(message = "El nombre es requerido")

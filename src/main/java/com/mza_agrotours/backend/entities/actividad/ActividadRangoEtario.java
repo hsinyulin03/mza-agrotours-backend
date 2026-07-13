@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -21,10 +22,10 @@ public class ActividadRangoEtario extends BaseEntity {
     private BigDecimal precio;
 
     @Column(name = "fecha_valida_desde")
-    private LocalDateTime fechaValidaDesde;
+    private LocalDate fechaValidaDesde;
 
     @Column(name = "fecha_valida_hasta")
-    private LocalDateTime fechaValidaHasta;
+    private LocalDate fechaValidaHasta;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "actividad_id", nullable = false)
@@ -33,6 +34,7 @@ public class ActividadRangoEtario extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "rango_etario_id", nullable = false)
+    @JsonIgnore
     private RangoEtario rangoEtario;
 
 }

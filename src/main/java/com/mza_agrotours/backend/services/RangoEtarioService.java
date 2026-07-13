@@ -27,10 +27,16 @@ public class RangoEtarioService extends BaseEntityServiceImpl<RangoEtario, Long>
             throw new IllegalArgumentException("La edad máxima debe ser mayor que la edad mínima ingresada.");
         }
 
+        //Asegura que siempre haya solo una categoría de rango etario como tarifa base
+        if (dto.isEsTarifaBase()) {
+            rangoEtarioRepository.desmarcarTarifasBaseExistentes();
+        }
+
         RangoEtario rangoEtario = new RangoEtario();
         rangoEtario.setNombre(dto.getNombre());
         rangoEtario.setEdadMinima(dto.getEdadMinima());
         rangoEtario.setEdadMaxima(dto.getEdadMaxima());
+        rangoEtario.setEsTarifaBase(dto.isEsTarifaBase());
         rangoEtario.setFechaHoraBaja(null);
 
         rangoEtarioRepository.save(rangoEtario);

@@ -17,4 +17,7 @@ public class DTORangoEtarioAlta {
     @NotNull(message = "Este campo es obligatorio")
     @Max(value = 120, message = "La edad máxima debe ser menor a 120")
     private Integer edadMaxima;
+
+    //Para indicar cuál es el rango que se mostrará en precio base
+    private boolean esTarifaBase;
 }

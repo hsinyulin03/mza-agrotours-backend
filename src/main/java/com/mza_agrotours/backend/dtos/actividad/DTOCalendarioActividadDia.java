@@ -1,0 +1,18 @@
+package com.mza_agrotours.backend.dtos.actividad;
+
+import lombok.Data;
+
+import java.util.List;
+
+//US-ACT-07: Consultar todos los días disponibles para una actividad
+@Data
+public class DTOCalendarioActividadDia {
+    private String nombre;
+    private String estado;
+    private List<String> diasYHorasDisponibles;
+
+    // Para armar el Calendario (Solo los días del mes solicitado)
+    private List<DTOActividadDia> diasDelMes;
+
+    //TODO- Falta agregar las metricas globales y barras sobre reservas
+}

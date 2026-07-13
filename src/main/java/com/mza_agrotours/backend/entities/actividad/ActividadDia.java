@@ -32,6 +32,7 @@ public class ActividadDia extends BaseEntity {
 
     @ManyToOne
     @JoinColumn(name = "log_altas_dia_id")
+    @JsonIgnore
     private ActividadLogAltasDia logAltasDia;
 
     //Relación "estados"

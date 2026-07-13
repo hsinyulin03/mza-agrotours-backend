@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 import java.time.temporal.ChronoUnit;
 
 @Component
-@RequiredArgsConstructor
+
 public class ActividadValidaciones {
 
     @Autowired
