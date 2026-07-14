@@ -1,41 +1,59 @@
 package com.mza_agrotours.backend.exceptions;
 
+import com.mza_agrotours.backend.dtos.ApiResponse;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.HashMap;
 import java.util.Map;
 
-
-@RestControllerAdvice
+@ControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException e) {
-
-        Map<String, String> errores = new HashMap<>();
-
-        for (FieldError error : e.getBindingResult().getFieldErrors()) {
-            String campo = error.getField();
-            String mensaje = error.getDefaultMessage();
-            String tipoValidacion = error.getCode(); // Nos dice si falló un NotBlank, Size, Pattern, etc.
-
-            // Si el campo AÚN NO tiene un error guardado, lo guardamos
-            if (!errores.containsKey(campo)) {
-                errores.put(campo, mensaje);
-            } else {
-                // Si ya había un error, pero el NUEVO error es porque el campo está vacío,
-                // lo "pisamos" porque decirle que es requerido es más importante.
-                if ("NotBlank".equals(tipoValidacion) || "NotNull".equals(tipoValidacion)) {
-                    errores.put(campo, mensaje);
-                }
-            }
-        }
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errores);
+    @ExceptionHandler(UsuarioNotFound.class)
+    public ResponseEntity<?> handleUserNotFoundException(UsuarioNotFound ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("badCreds", ex.getMessage()));
     }
+
+    @ExceptionHandler(UsuarioAlreadyExistsException.class)
+    public ResponseEntity<?> handleUserAlreadyExistsException(UsuarioAlreadyExistsException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("userAlreadyExists", ex.getMessage()));
+    }
+
+    @ExceptionHandler(TipoIdentificacionInvalidoException.class)
+    public ResponseEntity<?> handleTipoIdentificacionInvalido(TipoIdentificacionInvalidoException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.fail("tipoIdentificacionInvalido", ex.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<?> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+            errors.put(fieldError.getField(), fieldError.getDefaultMessage());
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.fail("validationError", "Datos de entrada invalidos", errors));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<?> handleConstraintViolationException(ConstraintViolationException ex) {
+        Map<String, String> errors = new HashMap<>();
+        for (ConstraintViolation<?> violation : ex.getConstraintViolations()) {
+            errors.put(violation.getPropertyPath().toString(), violation.getMessage());
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.fail("badRequest", "Parametros invalidos", errors));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<?> handleAllExceptions(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.fail("internalServerError", ex.getMessage()));
+    }
+
 }
