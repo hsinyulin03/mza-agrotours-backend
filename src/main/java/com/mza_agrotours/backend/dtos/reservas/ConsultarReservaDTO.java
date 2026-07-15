@@ -3,11 +3,10 @@ package com.mza_agrotours.backend.dtos.reservas;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 public record ConsultarReservaDTO(
         // Reserva - total, idReserva(?)
-        BigDecimal totalReserva, UUID idReserva,
+        BigDecimal totalReserva, String idReserva,
 
         // ReservaEstado - estado
         String estadoReserva,
@@ -20,10 +19,10 @@ public record ConsultarReservaDTO(
         LocalDateTime fechaHoraInicio, LocalDateTime fechaHoraFin,
 
         // Actividad - nombre, ubicación, id
-        String nombreActividad, UUID idActividad,
+        String nombreActividad, String idActividad,
 
         // Establecimiento - nombre, id, ubicación
-        String nombreEstablecimiento, UUID idEstablecimiento, String ubicacionEstablecimiento,
+        String nombreEstablecimiento, String idEstablecimiento, String ubicacionEstablecimiento,
 
         // Fotos - [url, nombre]
         List<FotoDTO> fotos
