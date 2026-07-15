@@ -1,7 +1,7 @@
 package com.mza_agrotours.backend.repositories;
 
-import com.mza_agrotours.backend.entities.TipoIdentificacion;
-import com.mza_agrotours.backend.entities.TipoIdentificacionNombre;
+import com.mza_agrotours.backend.entities.cuenta.TipoIdentificacion;
+import com.mza_agrotours.backend.entities.cuenta.TipoIdentificacionNombre;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

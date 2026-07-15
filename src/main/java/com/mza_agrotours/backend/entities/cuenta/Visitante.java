@@ -1,5 +1,6 @@
-package com.mza_agrotours.backend.entities;
+package com.mza_agrotours.backend.entities.cuenta;
 
+import com.mza_agrotours.backend.entities.BaseEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;

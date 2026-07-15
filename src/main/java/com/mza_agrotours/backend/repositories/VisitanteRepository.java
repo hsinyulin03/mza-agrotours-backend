@@ -1,7 +1,7 @@
 package com.mza_agrotours.backend.repositories;
 
-import com.mza_agrotours.backend.entities.Usuario;
-import com.mza_agrotours.backend.entities.Visitante;
+import com.mza_agrotours.backend.entities.cuenta.Usuario;
+import com.mza_agrotours.backend.entities.cuenta.Visitante;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

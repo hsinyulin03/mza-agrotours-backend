@@ -1,12 +1,13 @@
 package com.mza_agrotours.backend.dtos.reservas;
 
-import org.springframework.data.util.Pair;
-
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 public record ConsultarReservaDTO(
         // Reserva - total, idReserva(?)
-        Float totalReserva, java.util.UUID idReserva,
+        BigDecimal totalReserva, UUID idReserva,
 
         // ReservaEstado - estado
         String estadoReserva,
@@ -15,17 +16,17 @@ public record ConsultarReservaDTO(
         Integer cantPersonas,
         List<ConsultarReservaDetalleDTO> detalleDTOs,
 
-        // ActividadDia - día, hInicio, hFin
-        String diaActividad, String horaInicio, String HoraFin,
+        // ActividadDia - fechaHoraInicio, fechaHoraFin
+        LocalDateTime fechaHoraInicio, LocalDateTime fechaHoraFin,
 
-        // Actividad - nombre, ubicación, URL A LA ACTIVIDAD    TODO - ubicación es la del establecimiento?. BTW cómo guardamos la ubi para que aparezca en el mapa?
-        String nombreActividad, String urlActividad, String ubicacionActividad,
+        // Actividad - nombre, ubicación, id
+        String nombreActividad, UUID idActividad,
 
-        // Establecimiento - nombre, URL AL ESTABLECIMIENTO
-        String nombreEstablecimiento, String urlEstablecimiento,
+        // Establecimiento - nombre, id, ubicación
+        String nombreEstablecimiento, UUID idEstablecimiento, String ubicacionEstablecimiento,
 
-        // Fotos - [url, nombre]    TODO - TEMPORAL. Poner PAIR acá es una mugre
-        List<Pair<String, String>> fotos
+        // Fotos - [url, nombre]
+        List<FotoDTO> fotos
 ) {
 
 }
