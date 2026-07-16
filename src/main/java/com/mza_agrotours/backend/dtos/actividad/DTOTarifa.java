@@ -6,11 +6,12 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Data
 public class DTOTarifa {
     @NotNull(message = "El rango etario es requerido")
-    private Long rangoEtarioId; //  (Ej: 1 para Adultos, 2 para Menores)
+    private UUID rangoEtarioId;
 
     @NotNull(message = "Este campo es requerido")
     @DecimalMin(value = "0.1" ,message = "El precio debe ser mayor a 0")
