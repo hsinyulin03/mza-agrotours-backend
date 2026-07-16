@@ -14,12 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/establecimientos")
 public class EstablecimientoController {
-    private final EstablecimientoService service;
-
-    public EstablecimientoController(EstablecimientoService service) {
-        this.service = service;
-    }
-
+    @Autowired
+    private EstablecimientoService establecimientoService;
     @PostMapping("/alta")
     public ResponseEntity<ApiResponse<Void>> altaEstablecimiento(@Valid @RequestBody DTOEstablecimientoAlta dto) throws Exception {
         service.altaEstablecimiento(dto);
