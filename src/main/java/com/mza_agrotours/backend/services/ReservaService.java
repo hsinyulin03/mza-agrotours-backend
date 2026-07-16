@@ -20,6 +20,15 @@ public class ReservaService {
         this.reservaMapper = reservaMapper;
     }
 
+    /**
+     * Devuelve todos los datos necesarios para que un visitante consulte una reserva específica<p></p>
+     *
+     * @param id UUID de la Reserva
+     * @param firebaseUID UID del usuario en firebase
+     * @return <code>ConsultarReservaDTO</code> con los datos de una reserva
+     * @throws ReservaNotFoundException si la reserva no existe o no pertenece al usuario autenticado
+     * @throws UsuarioDeactivatedException si el usuario dueño de la reserva está dado de baja
+     */
     @Transactional
     public ConsultarReservaDTO getConsultarReserva(UUID id, String firebaseUID){
         // Obtenemos la reserva, si no existe error.

@@ -64,16 +64,30 @@ public class Reserva extends BaseEntity {
 
     // Métodos
 
-    public void addDetalle(ReservaDetalle rd){
-        reservaDetalles.add(rd);
-        rd.setReserva(this);
+    public void addDetalle(ReservaDetalle reservaDetalle){
+        reservaDetalles.add(reservaDetalle);
+        reservaDetalle.setReserva(this);
     }
 
+    /**
+     * Realiza un cambio de estado de una reserva. <p></p>
+     * Incluye la creación de nuevas instancias, relaciones y cambios en los atributos de las clases involucradas.
+     * @param estado Estado al que se quiere cambiar la reserva
+     * @param tiempoCambio Fecha y hora a la que se realizó el cambio
+     */
     public void cambiarEstado(EstadoReserva estado, LocalDateTime tiempoCambio){
-        estadoActual.setFechaHoraFin(tiempoCambio);
+        // Al último estado le damos FechaHoraFin
+        this.estadoActual.setFechaHoraFin(tiempoCambio);
+
+        // Creamos la nueva ReservaEstado
         ReservaEstado nuevoRE = new ReservaEstado(tiempoCambio, null, estado, this);
 
-        estadoActual = nuevoRE;
-        estados.add(nuevoRE);
+        // Si es estado final le ponemos FechaHoraFin
+        if (estado.getNombre().isEsFinal())
+            this.fechaHoraFin = tiempoCambio;
+
+        // Agregamos la nueva ReservaEstado a las relaciones
+        this.estadoActual = nuevoRE;
+        this.estados.add(nuevoRE);
     }
 }
