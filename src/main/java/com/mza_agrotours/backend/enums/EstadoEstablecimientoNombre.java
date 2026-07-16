@@ -1,6 +1,6 @@
 package com.mza_agrotours.backend.enums;
 
-public enum EstadoEstablecimiento {
+public enum EstadoEstablecimientoNombre {
     ACTIVO,
     SUSPENDIDO
 }
