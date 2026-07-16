@@ -25,7 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 @Service
-public class EstablecimientoService extends BaseEntityServiceImpl<Establecimiento, UUID> {
+public class EstablecimientoService  {
     @Autowired
     private EstablecimientoRepository establecimientoRepository;
 

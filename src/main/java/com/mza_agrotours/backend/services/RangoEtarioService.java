@@ -8,9 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
-public class RangoEtarioService extends BaseEntityServiceImpl<RangoEtario, Long> {
+public class RangoEtarioService{
     @Autowired
     private RangoEtarioRepository rangoEtarioRepository;
 
@@ -37,7 +38,7 @@ public class RangoEtarioService extends BaseEntityServiceImpl<RangoEtario, Long>
     }
 
     @Transactional
-    public void darDeBaja(Long id) {
+    public void darDeBaja(UUID id) {
         RangoEtario rango = rangoEtarioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Rango etario no encontrado"));
 

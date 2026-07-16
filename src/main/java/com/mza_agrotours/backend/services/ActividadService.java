@@ -15,10 +15,11 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 
 @Service
-public class ActividadService extends BaseEntityServiceImpl<Actividad, Long> {
+public class ActividadService  {
 
     @Autowired
     private ActividadRespository actividadRepository;
