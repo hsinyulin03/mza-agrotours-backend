@@ -1,4 +1,4 @@
-package com.mza_agrotours.backend.dtos;
+package com.mza_agrotours.backend.dtos.rangoEtario;
 
 import jakarta.validation.constraints.*;
 import lombok.Data;
@@ -11,13 +11,11 @@ public class DTORangoEtarioAlta {
     private String nombre;
 
     @NotNull(message = "Este campo es obligatorio")
-    @Min(value = 1, message = "La edad mínima debe ser mayor a 0")
+    @Min(value = 0, message = "La edad mínima no puede ser un número negativo")
     private Integer edadMinima;
 
     @NotNull(message = "Este campo es obligatorio")
     @Max(value = 120, message = "La edad máxima debe ser menor a 120")
     private Integer edadMaxima;
 
-    //Para indicar cuál es el rango que se mostrará en precio base
-    private boolean esTarifaBase;
 }

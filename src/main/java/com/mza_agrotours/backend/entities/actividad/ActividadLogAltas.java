@@ -26,19 +26,11 @@ public class ActividadLogAltas extends BaseEntity {
     private LocalDate fechaValidaDesde;
     private LocalDate fechaValidaHasta;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "actividad_id")
-    @JsonIgnore
-    private Actividad actividad;
-
-    @OneToMany(mappedBy = "actividadLogAltas", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "actividad_log_altas_id")
     private List<ActividadLogAltasDia> dias = new ArrayList<>();
 
     public void addDia(ActividadLogAltasDia dia) {
-        if (this.dias == null) {
-            this.dias = new ArrayList<>();
-        }
         this.dias.add(dia);
-        dia.setActividadLogAltas(this);
     }
 }

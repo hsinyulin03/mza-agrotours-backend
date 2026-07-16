@@ -4,6 +4,7 @@ import com.mza_agrotours.backend.dtos.actividad.*;
 import com.mza_agrotours.backend.entities.actividad.*;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
 import java.math.BigDecimal;
@@ -15,15 +16,30 @@ import java.util.Optional;
 @Mapper(componentModel = "spring")
 public abstract class ActividadMapper {
     // US-ACT-02
+    @Mapping(target = "incluye", ignore = true)
+    @Mapping(target = "noIncluye", ignore = true)
+    @Mapping(target = "preguntasFrecuentes", ignore = true)
     public abstract DTOActividadDetalle actividadToDetalleDto(Actividad actividad);
 
     //US-ACT-06
-    public abstract DTOActividades actividadToActividadesDto(Actividad actividad);
+    @Mapping(target = "estado", ignore = true)
+    @Mapping(target = "diasYHorasDisponibles", ignore = true)
+    @Mapping(target = "precioRegular", ignore = true)
+    public abstract DTOActividades actividadToDTOActividades(Actividad actividad);
 
     //US-ACT-07
+    @Mapping(target = "estado", ignore = true)
+    @Mapping(target = "diasYHorasDisponibles", ignore = true)
+    @Mapping(target = "diasDelMes", ignore = true)
     public abstract DTOCalendarioActividadDia actividadToDTOCalendarioActividadDia(Actividad actividad);
 
+    @Mapping(source = "cuposMax", target = "cuposMaximos")
+    @Mapping(source = "estadoActual.estado.nombre", target = "estadoActual")
+    @Mapping(target = "fecha", expression = "java(dia.getFechaHoraInicio() != null ? dia.getFechaHoraInicio().toLocalDate() : null)")
+    public abstract DTOActividadDia actividadDiatoDTOActividadDia(ActividadDia dia);
+
     //US-ACT-12
+    @Mapping(target = "precioRegular", ignore = true)
     public abstract DTOListadoActividadVisitante actividadToDTOListadoActividadVisitante(Actividad actividad);
 
     @AfterMapping
@@ -58,7 +74,9 @@ public abstract class ActividadMapper {
 
         //Obtener el Precio Regular
         dto.setPrecioRegular(obtenerPrecioBaseVigente(actividad));
-
+        if (actividad.getEstado() != null && actividad.getEstado().getNombre() != null) {
+            dto.setEstado(actividad.getEstado().getNombre().name());
+        }
         // Armar los textos de Días y Horas Disponibles ("LUNES 09:00 - 13:00")
         List<String> diasDisponibles = obtenerDiasYHorasDisponibles(actividad);
         dto.setDiasYHorasDisponibles(diasDisponibles);
@@ -68,12 +86,15 @@ public abstract class ActividadMapper {
     @AfterMapping
     public void llenarDatosCalendarioDetalle(Actividad actividad, @MappingTarget DTOCalendarioActividadDia dto) {
         dto.setDiasYHorasDisponibles(obtenerDiasYHorasDisponibles(actividad));
+        if (actividad.getEstado() != null && actividad.getEstado().getNombre() != null) {
+            dto.setEstado(actividad.getEstado().getNombre().name());
+        }
     }
 
 
     @AfterMapping
     public void llenarDatosTarjetaVisitante(Actividad actividad, @MappingTarget DTOListadoActividadVisitante dto) {
-        dto.setPrecioDesde(obtenerPrecioBaseVigente(actividad));
+        dto.setPrecioRegular(obtenerPrecioBaseVigente(actividad));
     }
 
     //Métodos auxiliares
@@ -82,24 +103,26 @@ public abstract class ActividadMapper {
         LocalDate hoy = LocalDate.now();
 
         if (actividad.getActividadRangoEtarios() == null) {
-            return BigDecimal.ZERO;
+            return null;
         }
 
         return actividad.getActividadRangoEtarios().stream()
-                .filter(tarifa -> tarifa.getRangoEtario() != null && tarifa.getRangoEtario().isEsTarifaBase())
+                .filter(tarifa -> tarifa.getRangoEtario() != null && tarifa.isEsTarifaBase())
                 .filter(r -> (r.getFechaValidaDesde() == null || !r.getFechaValidaDesde().isAfter(hoy)) &&
                         (r.getFechaValidaHasta() == null || !r.getFechaValidaHasta().isBefore(hoy)))
                 .findFirst()
                 .map(ActividadRangoEtario::getPrecio)
-                .orElse(BigDecimal.ZERO);
+                .orElse(null);
     }
 
     //Armar los textos de Días y Horas Disponibles ("LUNES 09:00 - 13:00")
     private List<String> obtenerDiasYHorasDisponibles(Actividad actividad) {
         LocalDate hoy = LocalDate.now();
+
         if (actividad.getLogAltas() == null) {
             return List.of();
         }
+
         // Buscamos la configuración que esté vigente actualmente
         Optional<ActividadLogAltas> configuracionActual = actividad.getLogAltas().stream()
                     // Filtramos la ventana de inicio: que ya haya empezado (Desde <= hoy)
@@ -111,27 +134,14 @@ public abstract class ActividadMapper {
         if (configuracionActual.isEmpty() || configuracionActual.get().getDias() == null) {
             return List.of();
         }
+
         List<String> diasDisponibles = configuracionActual.get().getDias().stream()
                 //Ordenamos la lista usando el orden natural del Enum Dia
                 .sorted(java.util.Comparator.comparing(ActividadLogAltasDia::getDia))
-                //Formateamos el output
-                .map(this::formatearDiaYHora)
+                .map(logDia -> String.format("%s %s - %s", logDia.getDia().getNombre(), logDia.getHoraInicio(),logDia.getHoraFin()))
                 .toList();
         return diasDisponibles;
 
-    }
-
-    private String capitalizarPrimerLetra(String texto) {
-        if (texto == null || texto.isEmpty()) return texto;
-        return texto.substring(0, 1).toUpperCase() + texto.substring(1).toLowerCase();
-    }
-
-    private String formatearDiaYHora(ActividadLogAltasDia dia) {
-        String horaInicio = dia.getHoraInicio().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
-        String horaFin = dia.getHoraFin().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
-        String nombreDia = capitalizarPrimerLetra(dia.getDia().name());
-
-        return nombreDia + " " + horaInicio + " - " + horaFin;
     }
 
 }

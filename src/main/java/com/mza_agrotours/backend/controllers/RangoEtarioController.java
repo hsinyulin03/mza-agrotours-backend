@@ -1,7 +1,8 @@
 package com.mza_agrotours.backend.controllers;
 
-import com.mza_agrotours.backend.dtos.DTORangoEtarioAlta;
-import com.mza_agrotours.backend.entities.RangoEtario;
+import com.mza_agrotours.backend.dtos.ApiResponse;
+import com.mza_agrotours.backend.dtos.rangoEtario.DTORangoEtarioAlta;
+import com.mza_agrotours.backend.dtos.rangoEtario.DTORangoEtarioGet;
 import com.mza_agrotours.backend.services.RangoEtarioService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,33 +10,35 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.UUID;
+
 @RestController
-@CrossOrigin(origins = "")
-@RequestMapping("/rango_etario")
-public class RangoEtarioController extends BaseEntityControllerImpl<RangoEtario, RangoEtarioService>{
+@RequestMapping("/rango-etarios")
+
+public class RangoEtarioController {
     @Autowired
     private RangoEtarioService rangoEtarioService;
 
     @PostMapping("/alta")
-    public ResponseEntity<?> crearRangoEtario(@Valid @RequestBody DTORangoEtarioAlta dto) {
-        try {
-            rangoEtarioService.crearRangoEtario(dto);
-            return ResponseEntity.status(HttpStatus.CREATED).body("{\" Rango Etario creado correctamente }\"");
-    } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("{\"error\":\"" + e.getMessage() + "\"}");
+    public ResponseEntity<?> crearRangoEtario(@Valid @RequestBody DTORangoEtarioAlta dto) throws Exception {
+
+            DTORangoEtarioGet nuevoRango =rangoEtarioService.crearRangoEtario(dto);
+            //Está bien devolver un dto?
+            return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(nuevoRango));
     }
-}
 
-@DeleteMapping("dar_de_baja/{id}")
-public ResponseEntity<?> darDeBaja(@PathVariable Long id) {
-    try {
-
-        rangoEtarioService.delete(id);
-        return ResponseEntity.status(HttpStatus.CREATED).body("{\"mensaje\":\"Rango Etario " + id + " dado de baja correctamente\"}");
-
-    } catch (Exception e) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("{\"error\":\"" + e.getMessage() + "\"}");
+    @GetMapping("/all")
+    public ResponseEntity<?> listarRangos() throws Exception{
+        List<DTORangoEtarioGet> lista = rangoEtarioService.listarRangosActivos();
+        return ResponseEntity.ok(ApiResponse.ok(lista));
     }
-}
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> darDeBaja(@PathVariable UUID id) throws Exception {
+            rangoEtarioService.darDeBaja(id);
+            ApiResponse<String> response = ApiResponse.ok("Rango Etario " + id + " dado de baja correctamente");
+            return ResponseEntity.ok(response);
+    }
 
 }

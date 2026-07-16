@@ -1,89 +1,75 @@
 package com.mza_agrotours.backend.controllers;
 
+import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.actividad.*;
-import com.mza_agrotours.backend.entities.actividad.Actividad;
+import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.services.ActividadService;
+import com.mza_agrotours.backend.services.RangoEtarioService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
-@CrossOrigin(origins = "*")
-@RequestMapping("/actividad")
-public class ActividadController extends BaseEntityControllerImpl<Actividad, ActividadService>{
+@RequestMapping("/actividades")
+@Validated
+public class ActividadController {
+
     @Autowired
     private ActividadService servicio;
 
-    //US-ACT-03
+    // US-ACT-03: Dar de alta una actividad
     @PostMapping("/alta")
-    public ResponseEntity<?> crearActividadConDetalles(@Valid @RequestBody DTOActividadAlta dto) {
-
-        try {
-            servicio.altaActividad(dto);
-            return ResponseEntity.status(HttpStatus.CREATED).body("{\" Actividad añadida correctamente }\"");
-
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("{\"error\":\"" + e.getMessage() + "\"}");
-        }
-
+    public ResponseEntity<?> crearActividadConDetalles(@Valid @RequestBody DTOActividadAlta dto) throws Exception{
+        //Está bien devolver un dto?
+        DTOActividadDetalle nuevaActividad = servicio.altaActividad(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(nuevaActividad));
     }
 
     //US-ACT-02: Consultar detalle de una actividad
-    @GetMapping("/getDetalles/{id}")
-    public ResponseEntity<?> obtenerDetalleActividad(@PathVariable Long id) {
+    @GetMapping("/{id}")
+    public ResponseEntity<?> obtenerDetalleActividad(@PathVariable UUID id) throws Exception {
 
-        try{
-            return ResponseEntity.status(HttpStatus.OK).body(servicio.obtenerDetallePorId(id));
-
-        }catch(Exception e){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("{\"error\":\"" + e.getMessage() + "\"}");
-        }
-
+        DTOActividadDetalle detalle = servicio.obtenerDetallePorId(id);
+        return ResponseEntity.ok(ApiResponse.ok(detalle));
     }
 
     //US-ACT-06: Listado de actividades de un establecimiento - Vista productor
-    @GetMapping("/listado-actividades-productor")
-    public ResponseEntity<?> obtenerListadoProductor() throws Exception {
+    @GetMapping
+    //busqueda es lo que ingresa en el search bar y estado es para filtrar actividad por estado
+    public ResponseEntity<?> obtenerListadoProductor(@RequestParam(required = false) String busqueda,
+                                                     @RequestParam(required = false) EstadoActividadNombre estado) throws Exception {
 
-        try {
-            List<DTOActividades> listado = servicio.obtenerListadoActividades();
-            return ResponseEntity.status(HttpStatus.OK).body(listado);
 
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("{\"error\":\"" + e.getMessage() + "\"}");
-        }
+        List<DTOActividades> listado = servicio.obtenerListadoActividades(busqueda, estado);
+        return ResponseEntity.ok(ApiResponse.ok(listado));
 
     }
 
     //US-ACT-07: Consultar todos los días disponibles para una actividad
-    @GetMapping("/actividaDia/{id}")
+    @GetMapping("/{id}/dias")
     public ResponseEntity<?> obtenerCalendarioInteractvo(
-            @PathVariable Long id,
-            @RequestParam int mes,
+            @PathVariable UUID id,
+            @RequestParam @Min(value = 1, message = "El mes debe ser mayor o igual a 1")
+                          @Max(value = 12, message = "El mes debe ser menor o igual a 12") int mes,
             @RequestParam int anio) throws Exception {
-        try {
-            DTOCalendarioActividadDia detalle = servicio.obtenerDetalleCalendario(id, mes, anio);
-            return ResponseEntity.status(HttpStatus.OK).body(detalle);
 
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("{\"error\":\"" + e.getMessage() + "\"}");
-        }
+        DTOCalendarioActividadDia detalle = servicio.obtenerDetalleCalendario(id, mes, anio);
+        return ResponseEntity.ok(ApiResponse.ok(detalle));
 
     }
 
     //US-ACT-12: Listado de actividades de la plataforma - vista del visitante
     @GetMapping("/explorar")
     public ResponseEntity <?> explorarActividades() throws Exception {
-        try {
-            List<DTOListadoActividadVisitante> listado = servicio.explorarActividades();
-            return ResponseEntity.status(HttpStatus.OK).body(listado);
-
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("{\"error\":\"" + e.getMessage() + "\"}");
-        }
+        List<DTOListadoActividadVisitante> listado = servicio.explorarActividades();
+        return ResponseEntity.ok(ApiResponse.ok(listado));
     }
 }

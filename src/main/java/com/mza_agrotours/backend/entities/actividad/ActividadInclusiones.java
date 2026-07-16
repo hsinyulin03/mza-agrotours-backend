@@ -21,9 +21,4 @@ public class ActividadInclusiones extends BaseEntity {
 
     @Column(nullable = false)
     private Boolean incluye; // true = Qué incluye, false = Qué NO incluye
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "actividad_id")
-    @JsonIgnore
-    private Actividad actividad;
 }

@@ -27,15 +27,12 @@ public class ActividadRangoEtario extends BaseEntity {
     @Column(name = "fecha_valida_hasta")
     private LocalDate fechaValidaHasta;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "actividad_id", nullable = false)
-    @JsonIgnore
-    private Actividad actividad;
-
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "rango_etario_id", nullable = false)
-    @JsonIgnore
     private RangoEtario rangoEtario;
+
+    //Para indicar cuál es el rango que se mostrará en precio base
+    private boolean esTarifaBase;
 
 }
 

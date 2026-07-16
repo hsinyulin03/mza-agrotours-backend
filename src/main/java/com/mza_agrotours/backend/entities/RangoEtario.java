@@ -32,7 +32,5 @@ public class RangoEtario extends BaseEntity {
         @Column(name = "fecha_hora_baja")
         private LocalDateTime fechaHoraBaja;
 
-        //Para indicar cuál es el rango que se mostrará en precio base
-        private boolean esTarifaBase;
 }
 

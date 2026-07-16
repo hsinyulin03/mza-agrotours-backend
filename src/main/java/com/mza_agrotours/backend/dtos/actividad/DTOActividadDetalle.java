@@ -3,21 +3,17 @@ package com.mza_agrotours.backend.dtos.actividad;
 import lombok.Data;
 
 import java.util.List;
+import java.util.UUID;
 
 @Data
 
 //US-ACT-02: Consultar detalle de una actividad
 
 public class DTOActividadDetalle {
+    private UUID id;
     //Informacion General
     private String nombre;
-    /* No se si incluir porque puede tener actividadDia con distintas duraciones
-    private Integer duracionEstimadaHoras;*/
-
     private Integer cuposMax;
-
-    /*Y con respecto a esto también no lo veo muy necesario incluir
-    private Integer edadMinima;*/
 
     //Sobre la experiencia
     private String descripcion;

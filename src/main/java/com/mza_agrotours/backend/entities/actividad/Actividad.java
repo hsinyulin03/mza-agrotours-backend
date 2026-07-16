@@ -1,7 +1,7 @@
 package com.mza_agrotours.backend.entities.actividad;
 
 import com.mza_agrotours.backend.entities.*;
-import com.mza_agrotours.backend.enums.EstadoActividad;
+import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -29,9 +29,11 @@ public class Actividad extends BaseEntity {
     @Column(name = "fecha_hora_baja_act")
     private LocalDateTime fechaHoraBaja;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    //TODO: No estoy segura de esta relación, por cómo está no guardo un historial, solo sé el estado que está actualmente
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "estado_id", nullable = false)
     private EstadoActividad estado;
+
 
     //TODO: Agregar relación con establecimiento
     /*@ManyToOne(fetch = FetchType.LAZY)
@@ -39,67 +41,49 @@ public class Actividad extends BaseEntity {
     private Establecimiento establecimiento;*/
 
     // Paso 2: Inclusiones y FAQs
-    @OneToMany(mappedBy = "actividad", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "actividad_id")
     private List<ActividadInclusiones> inclusiones = new ArrayList<>();
 
-    @OneToMany(mappedBy = "actividad", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "actividad_id")
     private List<ActividadFAQ> faqs = new ArrayList<>();
 
     // Paso 3: Tarifas por Rango Etario
-    @OneToMany(mappedBy = "actividad", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "actividad_id")
     private List<ActividadRangoEtario> actividadRangoEtarios = new ArrayList<>();
 
 
     // Paso 4: Disponibilidad
-    @OneToMany(mappedBy = "actividad", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "actividad_id")
     private List<ActividadLogAltas> logAltas = new ArrayList<>();
 
-
-    @OneToMany(mappedBy = "actividad", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "actividad_id")
     private List<ActividadDia> actividadesDias = new ArrayList<>();
 
 
-
     public void addFaq(ActividadFAQ faq) {
-        if (this.faqs == null) {
-            this.faqs = new ArrayList<>();
-        }
         this.faqs.add(faq);
-        // Indicamos a faq quién es su "padre"
-        faq.setActividad(this);
     }
 
     public void addInclusion(ActividadInclusiones inclusion) {
-        if (this.inclusiones == null) {
-            this.inclusiones = new ArrayList<>();
-        }
         this.inclusiones.add(inclusion);
-        inclusion.setActividad(this);
     }
 
     public void addActividadRangoEtario(ActividadRangoEtario actividadRangoEtarios) {
-        if (this.actividadRangoEtarios == null) {
-            this.actividadRangoEtarios = new ArrayList<>();
-        }
         this.actividadRangoEtarios.add(actividadRangoEtarios);
-        actividadRangoEtarios.setActividad(this);
     }
 
     public void addLogAlta(ActividadLogAltas logAlta) {
-        if (this.logAltas == null) {
-            this.logAltas = new ArrayList<>();
-        }
         this.logAltas.add(logAlta);
-        logAlta.setActividad(this);
     }
 
     public void addActividadDia(ActividadDia actividadDias) {
-        if (this.actividadesDias == null) {
-            this.actividadesDias = new ArrayList<>();
-        }
         this.actividadesDias.add(actividadDias);
-        actividadDias.setActividad(this);
-    }
 
+    }
     //TODO: Falta relacion con fotos, calificacion, Tipocultivo
 }
