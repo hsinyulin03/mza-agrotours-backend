@@ -6,5 +6,5 @@ import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
 public interface EstablecimientoMapper {
-    Establecimiento toEntity(DTOEstablecimientoAlta dto);
+    Establecimiento dtoEstablecimientoAltaToEstablecimiento(DTOEstablecimientoAlta dto);
 }
