@@ -2,7 +2,6 @@ package com.mza_agrotours.backend.entities.actividad;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
-import com.mza_agrotours.backend.entities.establecimiento.Foto;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ManyToOne;
@@ -27,7 +26,4 @@ public class Actividad extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     private Establecimiento establecimiento;
-
-    @OneToMany(mappedBy = "actividad")
-    private List<Foto> fotos;
 }

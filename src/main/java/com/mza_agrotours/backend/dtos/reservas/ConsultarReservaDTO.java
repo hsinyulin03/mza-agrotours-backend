@@ -22,10 +22,10 @@ public record ConsultarReservaDTO(
         String nombreActividad, String idActividad,
 
         // Establecimiento - nombre, id, ubicación
-        String nombreEstablecimiento, String idEstablecimiento, String ubicacionEstablecimiento,
+        String nombreEstablecimiento, String idEstablecimiento, String ubicacionEstablecimiento
 
-        // Fotos - [url, nombre]
-        List<FotoDTO> fotos
+        // TODO Fotos - [url, nombre]
+        // List<FotoDTO> fotos
 ) {
 
 }

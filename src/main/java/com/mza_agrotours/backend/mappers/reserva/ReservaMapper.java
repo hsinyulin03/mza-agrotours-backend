@@ -18,7 +18,6 @@ public interface ReservaMapper {
     @Mapping(target = "nombreActividad", source = "actividad.nombre")
     @Mapping(target = "ubicacionEstablecimiento", source = "actividad.establecimiento.ubicacion")
     @Mapping(target = "nombreEstablecimiento", source = "actividad.establecimiento.razonSocial")
-    @Mapping(target = "fotos", source = "actividad.fotos")
     @Mapping(target = "idActividad", source = "actividad.id")
     @Mapping(target = "idEstablecimiento", source = "actividad.establecimiento.id")
     ConsultarReservaDTO reservaToConsultarReservaDTO(Reserva reserva);
