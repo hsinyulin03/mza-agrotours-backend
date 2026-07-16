@@ -1,7 +1,7 @@
 package com.mza_agrotours.backend.entities.reservas;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
-import com.mza_agrotours.backend.entities.cuenta.TipoIdentificacion;
+import com.mza_agrotours.backend.entities.TipoIdentificacion;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

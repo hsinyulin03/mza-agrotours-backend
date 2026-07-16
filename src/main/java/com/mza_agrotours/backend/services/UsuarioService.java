@@ -5,7 +5,7 @@ import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
 import com.mza_agrotours.backend.dtos.UsuarioCreateReq;
 import com.mza_agrotours.backend.dtos.UsuarioGetDTO;
-import com.mza_agrotours.backend.entities.cuenta.*;
+import com.mza_agrotours.backend.entities.*;
 import com.mza_agrotours.backend.exceptions.TipoIdentificacionInvalidoException;
 import com.mza_agrotours.backend.exceptions.UsuarioAlreadyExistsException;
 import com.mza_agrotours.backend.exceptions.UsuarioNotFound;

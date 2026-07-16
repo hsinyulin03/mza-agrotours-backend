@@ -1,7 +1,7 @@
 package com.mza_agrotours.backend.config;
 
-import com.mza_agrotours.backend.entities.cuenta.TipoIdentificacion;
-import com.mza_agrotours.backend.entities.cuenta.TipoIdentificacionNombre;
+import com.mza_agrotours.backend.entities.TipoIdentificacion;
+import com.mza_agrotours.backend.entities.TipoIdentificacionNombre;
 import com.mza_agrotours.backend.repositories.TipoIdentificacionRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;

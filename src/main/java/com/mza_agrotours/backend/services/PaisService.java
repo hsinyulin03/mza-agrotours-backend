@@ -1,7 +1,7 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.PaisGetDTO;
-import com.mza_agrotours.backend.entities.cuenta.Pais;
+import com.mza_agrotours.backend.entities.Pais;
 import com.mza_agrotours.backend.mappers.PaisMapper;
 import com.mza_agrotours.backend.repositories.PaisRepository;
 import org.springframework.stereotype.Service;

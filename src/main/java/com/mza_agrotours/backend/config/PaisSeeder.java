@@ -3,7 +3,7 @@ package com.mza_agrotours.backend.config;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mza_agrotours.backend.dtos.PaisSeed;
-import com.mza_agrotours.backend.entities.cuenta.Pais;
+import com.mza_agrotours.backend.entities.Pais;
 import com.mza_agrotours.backend.repositories.PaisRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;

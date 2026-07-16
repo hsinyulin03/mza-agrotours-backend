@@ -1,8 +1,8 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.entities.cuenta.Pais;
-import com.mza_agrotours.backend.entities.cuenta.Usuario;
-import com.mza_agrotours.backend.entities.cuenta.Visitante;
+import com.mza_agrotours.backend.entities.Pais;
+import com.mza_agrotours.backend.entities.Usuario;
+import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.repositories.UsuarioRepository;
 import com.mza_agrotours.backend.repositories.VisitanteRepository;
 import jakarta.transaction.Transactional;

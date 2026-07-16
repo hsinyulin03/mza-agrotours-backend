@@ -1,7 +1,6 @@
-package com.mza_agrotours.backend.entities.cuenta;
+package com.mza_agrotours.backend.entities;
 
 
-import com.mza_agrotours.backend.entities.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import lombok.AllArgsConstructor;

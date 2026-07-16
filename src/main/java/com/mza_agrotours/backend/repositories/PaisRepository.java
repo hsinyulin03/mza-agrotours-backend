@@ -1,6 +1,6 @@
 package com.mza_agrotours.backend.repositories;
 
-import com.mza_agrotours.backend.entities.cuenta.Pais;
+import com.mza_agrotours.backend.entities.Pais;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
