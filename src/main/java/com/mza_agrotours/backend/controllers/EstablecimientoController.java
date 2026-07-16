@@ -15,13 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/establecimientos")
 public class EstablecimientoController extends BaseEntityControllerImpl<Establecimiento, EstablecimientoService> {
     @PostMapping("/alta")
-    public ResponseEntity<?> altaEstablecimiento(@Valid @RequestBody DTOEstablecimientoAlta dto) {
-        try {
-            service.altaEstablecimiento(dto);
-            return ResponseEntity.status(HttpStatus.CREATED).body("{\" Establecimiento añadido correctamente }\"");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("{\"error\":\"" + e.getMessage() + "\"}");
-        }
+    public ResponseEntity<ApiResponse<Void>> altaEstablecimiento(@Valid @RequestBody DTOEstablecimientoAlta dto) throws Exception {
+        service.altaEstablecimiento(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(null));
     }
 }
