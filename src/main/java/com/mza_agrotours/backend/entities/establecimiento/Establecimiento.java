@@ -65,7 +65,12 @@ public class Establecimiento extends BaseEntity {
 //    @JoinColumn(name = "productor_titular_id")
 //    private Productor titular;
 
-    @OneToMany(cascade = CascadeType.ALL)
-    @JoinColumn(name = "establecimiento_id")
+    // En Establecimiento
+    @ManyToMany
+    @JoinTable(
+            name = "establecimiento_tipo_cultivo",
+            joinColumns = @JoinColumn(name = "establecimiento_id"),
+            inverseJoinColumns = @JoinColumn(name = "tipo_cultivo_id")
+    )
     private List<TipoCultivo> tiposCultivos = new ArrayList<>();
 }
