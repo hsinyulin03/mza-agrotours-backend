@@ -5,15 +5,11 @@ import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.TipoCultivo;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -29,29 +25,32 @@ import java.util.List;
 @AllArgsConstructor
 public class Establecimiento extends BaseEntity {
 
-    @NotBlank
+    @Column(nullable = false, length = 100)
+    private String nombre;
+
+    @Column(nullable = false, length = 100)
     private String razonSocial;
 
-    @NotNull
-    private Long cuit;
+    @Column(nullable = false, length = 11)
+    private String cuit;
 
     private LocalDateTime fechaHoraBaja;
 
-    @NotBlank
-    @Size(max = 2000)
+    @Column(nullable = false, length = 2000)
     private String descripcion;
 
-
+    @Column(nullable = false, length = 16)
     private String telefono;
 
-    @NotBlank
-    @Email
+    @Column(nullable = false, length = 100)
     private String email;
     private String ubicacion;
+
+    @Column(nullable = false, length = 22)
     private String cvu;
 
     @ManyToOne
-    @JoinColumn(name = "departamento_id")
+    @JoinColumn(name = "departamento_id", nullable = false)
     private Departamento departamento;
 
     @OneToMany(cascade = CascadeType.ALL)
