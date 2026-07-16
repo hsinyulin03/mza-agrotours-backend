@@ -3,11 +3,16 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.dtos.establecimiento.DTOEstablecimientoAlta;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.TipoCultivo;
+import com.mza_agrotours.backend.entities.establecimiento.EstadoEstablecimiento;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.establecimiento.EstablecimientoEstado;
-import com.mza_agrotours.backend.enums.EstadoEstablecimiento;
+import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
+import com.mza_agrotours.backend.exceptions.BusinessException;
+import com.mza_agrotours.backend.exceptions.EntityAlreadyExistsException;
+import com.mza_agrotours.backend.exceptions.EntityNotFoundException;
 import com.mza_agrotours.backend.mappers.EstablecimientoMapper;
 import com.mza_agrotours.backend.repositories.DepartamentoRepository;
+import com.mza_agrotours.backend.repositories.EstadoEstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.EstablecimientoEstadoRepository;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivoRepository;
@@ -18,13 +23,17 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 @Service
-public class EstablecimientoService extends BaseEntityServiceImpl<Establecimiento, Long> {
+public class EstablecimientoService extends BaseEntityServiceImpl<Establecimiento, UUID> {
     @Autowired
     private EstablecimientoRepository establecimientoRepository;
 
     @Autowired
     private EstablecimientoEstadoRepository establecimientoEstadoRepository;
+
+    @Autowired
+    private EstadoEstablecimientoRepository estadoEstablecimientoRepository;
 
     @Autowired
     private DepartamentoRepository departamentoRepository;
@@ -38,19 +47,11 @@ public class EstablecimientoService extends BaseEntityServiceImpl<Establecimient
     private EstablecimientoMapper establecimientoMapper;
 
     @Transactional
-    public void altaEstablecimiento(DTOEstablecimientoAlta dto) throws Exception {
-            // Validaciones
-            if (dto.getCuit() != null && establecimientoRepository.existsByCuit(dto.getCuit())) {
-                throw new Exception("Ya existe un establecimiento registrado con ese CUIT");
-            }
+    public void altaEstablecimiento(DTOEstablecimientoAlta dto) {
+        validarCuitDisponible(dto.getCuit());
 
-            // Validaciones entidades relacionadas
-            Departamento departamento = departamentoRepository.findById(dto.getDepartamentoId())
-                    .orElseThrow(() -> new RuntimeException("No se encuentra el departamento indicado"));
-
-            List<TipoCultivo> cultivos = (dto.getCultivos() == null || dto.getCultivos().isEmpty())
-                    ? new ArrayList<>()
-                    : tipoCultivoRepository.findAllById(dto.getCultivos());
+        Departamento departamento = obtenerDepartamento(dto.getDepartamentoId());
+        List<TipoCultivo> cultivos = obtenerCultivos(dto.getCultivos());
 
         Establecimiento establecimiento = establecimientoMapper.dtoEstablecimientoAltaToEstablecimiento(dto);
         establecimiento.setDepartamento(departamento);
