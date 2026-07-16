@@ -37,6 +37,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("usuarioDeBaja", ex.getMessage()));
     }
 
+    @ExceptionHandler(EstablecimientoNotFoundException.class)
+    public ResponseEntity<?> handleEstablecimientoNotFound(EstablecimientoNotFoundException ex){
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("entityNonExistent", ex.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();

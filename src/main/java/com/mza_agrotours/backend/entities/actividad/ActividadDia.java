@@ -18,7 +18,4 @@ import java.time.LocalDateTime;
 public class ActividadDia extends BaseEntity {
     private LocalDateTime fechaHoraInicio;
     private LocalDateTime fechaHoraFin;
-
-    @ManyToOne
-    private Actividad actividad;
 }

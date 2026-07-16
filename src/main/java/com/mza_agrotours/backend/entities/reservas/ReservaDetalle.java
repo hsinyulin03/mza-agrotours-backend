@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.entities.reservas;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
+import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -36,7 +37,7 @@ public class ReservaDetalle extends BaseEntity {
     @JoinColumn(nullable = false)
     private TipoIdentificacion tipoIdentificacion;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    private Reserva reserva;
-    //TODO relación ActividadRangoEtario
+    @ManyToOne (fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(nullable = false)
+    private ActividadRangoEtario actividadRangoEtario;
 }

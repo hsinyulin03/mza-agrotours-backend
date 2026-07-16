@@ -24,16 +24,12 @@ public class Reserva extends BaseEntity {
     @Column (nullable = false)
     private LocalDateTime fechaHoraInicio;          // FH cuando se inicia el camino de Reserva
 
-    @Column (nullable = false)
     private LocalDateTime fechaHoraFin;             // FH cuando la Reserva llega a un estado final
 
-    @Column (nullable = false)
     private BigDecimal subtotalComisionTransaccion;      // Comisión al servicio de pagos
 
-    @Column (nullable = false)
     private BigDecimal subTotalComisionPropia;           // Comisión que nos quedamos
 
-    @Column (nullable = false)
     private BigDecimal subTotalProductor;                // Lo que queda al productor
 
     @Column (nullable = false)
@@ -41,13 +37,14 @@ public class Reserva extends BaseEntity {
 
     //TODO relaciones - Visitante, Calificacion, Pago, Reembolso
     @OneToOne(fetch = FetchType.EAGER)
-    @JoinColumn(nullable = false)
     private ReservaEstado estadoActual;
 
-    @OneToMany(mappedBy = "reserva", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @JoinColumn(name = "reserva_id", nullable = false)
     private List<ReservaEstado> estados = new ArrayList<>();
 
-    @OneToMany(mappedBy = "reserva", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JoinColumn(name = "reserva_id", nullable = false)
     private List<ReservaDetalle> reservaDetalles = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -64,11 +61,6 @@ public class Reserva extends BaseEntity {
 
     // Métodos
 
-    public void addDetalle(ReservaDetalle reservaDetalle){
-        reservaDetalles.add(reservaDetalle);
-        reservaDetalle.setReserva(this);
-    }
-
     /**
      * Realiza un cambio de estado de una reserva. <p></p>
      * Incluye la creación de nuevas instancias, relaciones y cambios en los atributos de las clases involucradas.
@@ -80,7 +72,7 @@ public class Reserva extends BaseEntity {
         this.estadoActual.setFechaHoraFin(tiempoCambio);
 
         // Creamos la nueva ReservaEstado
-        ReservaEstado nuevoRE = new ReservaEstado(tiempoCambio, null, estado, this);
+        ReservaEstado nuevoRE = new ReservaEstado(tiempoCambio, null, estado);
 
         // Si es estado final le ponemos FechaHoraFin
         if (estado.getNombre().isEsFinal())

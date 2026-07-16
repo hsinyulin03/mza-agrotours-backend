@@ -1,10 +1,13 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDTO;
+import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
+import com.mza_agrotours.backend.exceptions.EstablecimientoNotFoundException;
 import com.mza_agrotours.backend.exceptions.UsuarioDeactivatedException;
 import com.mza_agrotours.backend.exceptions.reservas.ReservaNotFoundException;
 import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
+import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.ReservaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,10 +17,12 @@ import java.util.UUID;
 public class ReservaService {
     private final ReservaRepository reservaRepository;
     private final ReservaMapper reservaMapper;
+    private final EstablecimientoRepository establecimientoRepository;
 
-    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper) {
+    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, EstablecimientoRepository establecimientoRepository) {
         this.reservaRepository = reservaRepository;
         this.reservaMapper = reservaMapper;
+        this.establecimientoRepository = establecimientoRepository;
     }
 
     /**
@@ -32,7 +37,11 @@ public class ReservaService {
     @Transactional
     public ConsultarReservaDTO getConsultarReserva(UUID id, String firebaseUID){
         // Obtenemos la reserva, si no existe error.
-        Reserva reserva = reservaRepository.findById(id).orElseThrow(ReservaNotFoundException::new);
+        Reserva reserva = reservaRepository.findById(id)
+                .orElseThrow(ReservaNotFoundException::new);
+
+        Establecimiento establecimiento = establecimientoRepository.findEstablecimientoByActividadId(reserva.getActividad().getId())
+                .orElseThrow(EstablecimientoNotFoundException::new);
 
         // Verificar que la reserva sea del usuario. Si no lo es, NOT FOUND para evitar dar información a no autorizados
          if (!reserva.getVisitante().getUsuario().getFirebaseUID().equals(firebaseUID))
@@ -43,6 +52,6 @@ public class ReservaService {
             throw new UsuarioDeactivatedException();
 
         // Armamos el DTO
-        return reservaMapper.reservaToConsultarReservaDTO(reserva);
+        return reservaMapper.reservaToConsultarReservaDTO(reserva, establecimiento);
     }
 }

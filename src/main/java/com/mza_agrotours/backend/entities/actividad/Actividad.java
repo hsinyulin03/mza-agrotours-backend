@@ -2,10 +2,7 @@ package com.mza_agrotours.backend.entities.actividad;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -21,9 +18,7 @@ import java.util.List;
 public class Actividad extends BaseEntity {
     private String nombre;
 
-    @OneToMany(mappedBy = "actividad")
+    @OneToMany
+    @JoinColumn(name = "actividad_id")
     private List<ActividadDia> actividadDias;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    private Establecimiento establecimiento;
 }

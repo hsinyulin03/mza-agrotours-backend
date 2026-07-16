@@ -24,7 +24,4 @@ public class ReservaEstado extends BaseEntity {
     @ManyToOne(optional = false)
     @JoinColumn(name = "estado_reserva_id", nullable = false)
     private EstadoReserva estadoReserva;
-
-    @ManyToOne(optional = false)
-    private Reserva reserva;
 }
