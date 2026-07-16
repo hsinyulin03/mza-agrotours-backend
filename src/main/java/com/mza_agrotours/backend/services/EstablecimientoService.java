@@ -1,5 +1,7 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.dtos.establecimiento.DTODatosEstablecimiento;
+import com.mza_agrotours.backend.dtos.establecimiento.DTODatosEstablecimientoCultivos;
 import com.mza_agrotours.backend.dtos.establecimiento.DTOEstablecimientoAlta;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.TipoCultivo;
@@ -40,12 +42,11 @@ public class EstablecimientoService  {
 
 //    @Autowired
 //    private ProductorRepository productorRepository;
-
     @Autowired
     private TipoCultivoRepository tipoCultivoRepository;
     @Autowired
     private EstablecimientoMapper establecimientoMapper;
-
+// ALTA ESTABLECIMIENTO
     @Transactional
     public void altaEstablecimiento(DTOEstablecimientoAlta dto) {
         validarCuitDisponible(dto.getCuit());
@@ -60,7 +61,21 @@ public class EstablecimientoService  {
         establecimiento.getEstados().add(estadoInicial);
         establecimientoRepository.save(establecimiento);
     }
+    // Obtener datos establecimiento (panel productor)
+    public DTODatosEstablecimiento obtenerDatosEstablecimiento(UUID id) {
+        Establecimiento establecimiento = obtenerEstablecimiento(id);
+        // Mapear a DTODatosEstablecimiento
+        DTODatosEstablecimiento dto = establecimientoMapper.establecimientoToDtoDatosEstablecimiento(establecimiento);
+        // Se obtienen los cultivos del establecimiento
+        // y se verfica si tienen actividades activas
+        dto.setCultivos(obtenerCultivosDelEstablecimiento(establecimiento));
+        return dto;
+    }
 
+    /**
+     * METODOS AUXILIARES
+     */
+    // ALTA ESTABLECIMIENTO
     private void validarCuitDisponible(String cuit) {
         if (cuit != null && establecimientoRepository.existsByCuit(cuit)) {
             throw new EntityAlreadyExistsException("Ya existe un establecimiento registrado con ese CUIT");
@@ -96,5 +111,24 @@ public class EstablecimientoService  {
         estadoInicial.setMotivo("Alta de establecimiento");
         estadoInicial.setEstadoEstablecimiento(estadoActivo);
         return estadoInicial;
+    }
+    // OBTENER DATOS ESTABLECIMIENTO
+    private Establecimiento obtenerEstablecimiento(UUID id) {
+        return establecimientoRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("No se encuentra el establecimiento indicado"));
+    }
+    private List<DTODatosEstablecimientoCultivos> obtenerCultivosDelEstablecimiento(
+            Establecimiento establecimiento) {
+        // TODO falta implementar validación cultivos del establecimiento con actividades activas
+        return establecimiento.getTiposCultivos()
+                .stream()
+                .map(c -> {
+                    DTODatosEstablecimientoCultivos dto = new DTODatosEstablecimientoCultivos();
+                    dto.setId(c.getId().toString());
+                    dto.setNombre(c.getNombre());
+                    dto.setTieneActividadesActivas(false);
+                    return dto;
+                })
+                .toList();
     }
 }
