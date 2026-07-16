@@ -52,28 +52,48 @@ public class EstablecimientoService extends BaseEntityServiceImpl<Establecimient
                     ? new ArrayList<>()
                     : tipoCultivoRepository.findAllById(dto.getCultivos());
 
-            if (cultivos.size() != dto.getCultivos().size()) {
-                throw new Exception("Uno o más tipos de cultivo no existen");
-            }
+        Establecimiento establecimiento = establecimientoMapper.dtoEstablecimientoAltaToEstablecimiento(dto);
+        establecimiento.setDepartamento(departamento);
+        establecimiento.setTiposCultivos(cultivos);
+        EstablecimientoEstado estadoInicial = crearEstadoInicial();
+        establecimiento.getEstados().add(estadoInicial);
+        establecimientoRepository.save(establecimiento);
+    }
 
-            // Mapeo
-            Establecimiento establecimiento = establecimientoMapper.toEntity(dto);
+    private void validarCuitDisponible(String cuit) {
+        if (cuit != null && establecimientoRepository.existsByCuit(cuit)) {
+            throw new EntityAlreadyExistsException("Ya existe un establecimiento registrado con ese CUIT");
+        }
+    }
 
-            // Completar las relaciones
-            establecimiento.setDepartamento(departamento);
-            establecimiento.setTiposCultivos(cultivos);
-            establecimiento = establecimientoRepository.save(establecimiento);
-            // Estado inicial
-            EstablecimientoEstado estadoInicial = new EstablecimientoEstado();
-            estadoInicial.setFechaInicio(LocalDateTime.now());
-            estadoInicial.setFechaFin(null);
-            estadoInicial.setMotivo("Alta de establecimiento");
-            estadoInicial.setEstado(EstadoEstablecimiento.ACTIVO);
-            estadoInicial.setEstablecimiento(establecimiento);
+    private Departamento obtenerDepartamento(UUID departamentoId) {
+        return departamentoRepository.findById(departamentoId)
+                .orElseThrow(() -> new EntityNotFoundException("No se encuentra el departamento indicado"));
+    }
 
-            establecimientoEstadoRepository.save(estadoInicial);
+    private List<TipoCultivo> obtenerCultivos(List<UUID> cultivosIds) {
+        if (cultivosIds == null || cultivosIds.isEmpty()) {
+            return new ArrayList<>();
+        }
 
-            establecimiento.getEstados().add(estadoInicial);
+        List<TipoCultivo> cultivos = tipoCultivoRepository.findAllById(cultivosIds);
+        if (cultivos.size() != cultivosIds.size()) {
+            throw new EntityNotFoundException("Uno o más tipos de cultivo no existen");
+        }
 
+        return cultivos;
+    }
+
+    private EstablecimientoEstado crearEstadoInicial() {
+        EstadoEstablecimiento estadoActivo = estadoEstablecimientoRepository
+                .findByNombreAndFechaBajaIsNull(EstadoEstablecimientoNombre.ACTIVO)
+                .orElseThrow(() -> new BusinessException("No se encuentra configurado el estado ACTIVO"));
+
+        EstablecimientoEstado estadoInicial = new EstablecimientoEstado();
+        estadoInicial.setFechaInicio(LocalDateTime.now());
+        estadoInicial.setFechaFin(null);
+        estadoInicial.setMotivo("Alta de establecimiento");
+        estadoInicial.setEstadoEstablecimiento(estadoActivo);
+        return estadoInicial;
     }
 }
