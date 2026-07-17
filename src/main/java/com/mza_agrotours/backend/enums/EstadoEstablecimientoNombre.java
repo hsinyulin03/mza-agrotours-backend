@@ -1,7 +1,14 @@
 package com.mza_agrotours.backend.enums;
 
-public enum EstadoEstablecimientoNombre {
-    ACTIVO,
-    SUSPENDIDO
-}
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
+@Getter
+@AllArgsConstructor
+public enum EstadoEstablecimientoNombre {
+    ACTIVO("Activo"),
+    SUSPENDIDO("Suspendido");
+
+    private final String nombre;
+
+}

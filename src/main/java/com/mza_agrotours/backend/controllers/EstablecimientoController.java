@@ -1,11 +1,7 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
-import com.mza_agrotours.backend.dtos.establecimiento.DTODatosEstablecimiento;
-import com.mza_agrotours.backend.dtos.establecimiento.DTOEstablecimientoAlta;
-import com.mza_agrotours.backend.dtos.establecimiento.DTOEstablecimientoContactoUpd;
-import com.mza_agrotours.backend.dtos.establecimiento.DTOEstablecimientoCultivosUpd;
-import com.mza_agrotours.backend.dtos.establecimiento.DTOEstablecimientoDescripcionUpd;
+import com.mza_agrotours.backend.dtos.establecimiento.*;
 import com.mza_agrotours.backend.services.EstablecimientoService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -66,4 +63,11 @@ public class EstablecimientoController {
 
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(null));
     }
+    //US-EST-01 Consultar establecimientos
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<DTOConsultarEstablecimientoSVisitante>>> consultarEstablecimientosVisitantes() {
+        List<DTOConsultarEstablecimientoSVisitante> establecimientos = establecimientoService.consultarEstablecimientosVisitantes();
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(establecimientos));
+    }
+
 }

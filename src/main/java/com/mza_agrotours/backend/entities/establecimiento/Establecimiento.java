@@ -60,7 +60,7 @@ public class Establecimiento extends BaseEntity {
 //    @JoinColumn(name = "productor_titular_id")
 //    private Productor titular;
 
-    // En Establecimiento
+    // Cultivos del establecimento
     @ManyToMany
     @JoinTable(
             name = "establecimiento_tipo_cultivo",

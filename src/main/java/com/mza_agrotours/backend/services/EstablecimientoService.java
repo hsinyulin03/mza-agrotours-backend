@@ -6,6 +6,7 @@ import com.mza_agrotours.backend.entities.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.EstadoEstablecimiento;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.establecimiento.EstablecimientoEstado;
+import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
 import com.mza_agrotours.backend.exceptions.BusinessException;
 import com.mza_agrotours.backend.exceptions.EntityAlreadyExistsException;
@@ -147,6 +148,22 @@ public class EstablecimientoService  {
 
         establecimientoRepository.save(establecimiento);
     }
+    // CONSULTAR ESTABLECIMIENTOS (listado de visitantes)
+    public List<DTOConsultarEstablecimientoSVisitante> consultarEstablecimientosVisitantes() {
+        // buscar establecimientos
+        List<Establecimiento> establecimientos = establecimientoRepository.obtenerEstablecimientosActivos();
+        return establecimientos.stream()
+                .map(establecimiento -> {
+                    DTOConsultarEstablecimientoSVisitante dto = establecimientoMapper.establecimientoToDtoConsultarEstableciminetoS(establecimiento);
+                    dto.setCultivos(obtenerNombresCultivosActivos(establecimiento));
+                    dto.setCantidadActividades(contarActividadesPublicadas(establecimiento));
+
+                    return dto;
+                })
+                .toList();
+    }
+
+
 
 
     /**
@@ -168,7 +185,7 @@ public class EstablecimientoService  {
         if (cultivosIds == null || cultivosIds.isEmpty()) {
             return new ArrayList<>();
         }
-
+        // TODO FALTA VALIDAR CULTIVOS ACTIVOS
         List<TipoCultivo> cultivos = tipoCultivoRepository.findAllById(cultivosIds);
         if (cultivos.size() != cultivosIds.size()) {
             throw new EntityNotFoundException("Uno o más tipos de cultivo no existen");
@@ -207,6 +224,7 @@ public class EstablecimientoService  {
         // TODO falta implementar validación cultivos del establecimiento con actividades activas
         return establecimiento.getTiposCultivos()
                 .stream()
+                .filter(c -> c.getFechaHoraBaja() == null)
                 .map(c -> {
                     DTODatosEstablecimientoCultivos dto = new DTODatosEstablecimientoCultivos();
                     dto.setId(c.getId().toString());
@@ -216,4 +234,18 @@ public class EstablecimientoService  {
                 })
                 .toList();
     }
+    private List<String> obtenerNombresCultivosActivos(Establecimiento establecimiento) {
+        return establecimiento.getTiposCultivos().stream()
+                .filter(cultivo -> cultivo.getFechaHoraBaja() == null)
+                .map(TipoCultivo::getNombre)
+                .toList();
+    }
+    private Integer contarActividadesPublicadas(Establecimiento establecimiento) {
+        return (int) establecimiento.getActividades().stream()
+                .filter(actividad ->
+                        actividad.getFechaHoraBaja() == null &&
+                                actividad.getEstado().getNombre() == EstadoActividadNombre.PUBLICADO)
+                .count();
+    }
+
 }
