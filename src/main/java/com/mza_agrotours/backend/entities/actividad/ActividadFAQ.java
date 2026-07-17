@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "actividad_faq")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,8 +21,4 @@ public class ActividadFAQ extends BaseEntity {
     @Column(nullable = false, length = 200)
     private String respuesta;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "actividad_id")
-    @JsonIgnore
-    private Actividad actividad;
 }

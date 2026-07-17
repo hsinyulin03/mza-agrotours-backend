@@ -1,11 +1,19 @@
 package com.mza_agrotours.backend.enums;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+@Getter
+@AllArgsConstructor
 public enum Dia {
-    LUNES,
-    MARTES,
-    MIERCOLES,
-    JUEVES,
-    VIERNES,
-    SABADO,
-    DOMINGO
+    LUNES("Lunes"),
+    MARTES("Martes"),
+    MIERCOLES("Miércoles"),
+    JUEVES("Jueves"),
+    VIERNES("Viernes"),
+    SABADO("Sábado"),
+    DOMINGO("Domingo");
+
+    private final String nombre;
+
 }

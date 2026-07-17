@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "actividad_dia")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -25,33 +24,20 @@ public class ActividadDia extends BaseEntity {
     private LocalDateTime fechaHoraBaja;
     private int cuposMax;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "actividad_id")
-    @JsonIgnore
-    private Actividad actividad;
-
-    @ManyToOne
-    @JoinColumn(name = "log_altas_dia_id")
-    private ActividadLogAltasDia logAltasDia;
 
     //Relación "estados"
-    @OneToMany(mappedBy = "actividadDia", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "actividad_dia_id")
     private List<ActividadDiaEstado> estados = new ArrayList<>();
 
     //Relación "estadoActual"
     @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "estado_actual_id", referencedColumnName = "id")
+    @JoinColumn(name = "estado_actual_id")
     private ActividadDiaEstado estadoActual;
 
     public void registrarNuevoEstado(ActividadDiaEstado nuevoEstado) {
-        if (this.estados == null) {
-            this.estados = new ArrayList<>();
-        }
-
         this.estados.add(nuevoEstado);
-        nuevoEstado.setActividadDia(this);
         this.estadoActual = nuevoEstado;
     }
-
 
 }

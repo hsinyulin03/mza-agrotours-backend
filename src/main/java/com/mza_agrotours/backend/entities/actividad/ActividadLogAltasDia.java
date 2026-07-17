@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "actividad_log_altas_dia")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -30,17 +29,11 @@ public class ActividadLogAltasDia extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private Dia dia;
 
-    @OneToMany(mappedBy = "logAltasDia", cascade = CascadeType.ALL)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "log_altas_dia_id")
     private List<ActividadDia> actividadesDias = new ArrayList<>();
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "actividad_log_altas_id")
-    @JsonIgnore
-    private ActividadLogAltas actividadLogAltas;
-
-
     public void addActividadDia(ActividadDia dia) {
-        actividadesDias.add(dia);
-        dia.setLogAltasDia(this); // Relación bidireccional
+        this.actividadesDias.add(dia);
     }
 }

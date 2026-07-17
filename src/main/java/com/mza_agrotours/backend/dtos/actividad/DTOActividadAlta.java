@@ -1,7 +1,7 @@
 package com.mza_agrotours.backend.dtos.actividad;
 
 
-import com.mza_agrotours.backend.enums.EstadoActividad;
+import com.mza_agrotours.backend.entities.actividad.EstadoActividad;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Data;
@@ -12,6 +12,7 @@ import java.util.List;
 
 @Data
 
+//US-ACT-03 AltaActividad
 public class DTOActividadAlta {
     // PASO 1: Información general
     @NotBlank(message = "El nombre es requerido")
@@ -24,7 +25,7 @@ public class DTOActividadAlta {
     private String descripcion;
 
     @NotNull(message = "El estado de la actividad es requerido")
-    private EstadoActividad estado; // Enum: BORRADOR o PUBLICADO
+    private String estado; // Enum: BORRADOR o PUBLICADO
 
     //  PASO 2: Detalles de la experiencia
     private List<@Size(min = 5, max = 200, message = "El ítem debe tener entre 5 y 200 caracteres") String> incluye;
@@ -40,7 +41,7 @@ public class DTOActividadAlta {
     private int cuposMax;
 
     @Valid
-    @NotEmpty(message = "Debe configurar al menos la tarifa de Adultos")
+    @NotEmpty(message = "Debe configurar al menos la tarifa base")
     private List<DTOTarifa> tarifas;
 
     // PASO 4: Disponibilidad

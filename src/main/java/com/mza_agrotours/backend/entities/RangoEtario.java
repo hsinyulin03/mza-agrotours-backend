@@ -31,5 +31,6 @@ public class RangoEtario extends BaseEntity {
 
         @Column(name = "fecha_hora_baja")
         private LocalDateTime fechaHoraBaja;
+
 }
 
