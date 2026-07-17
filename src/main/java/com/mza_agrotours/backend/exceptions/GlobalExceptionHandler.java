@@ -1,6 +1,9 @@
 package com.mza_agrotours.backend.exceptions;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
+import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
+import com.mza_agrotours.backend.exceptions.rangoEtario.RangoEtarioAlreadyExistsException;
+import com.mza_agrotours.backend.exceptions.rangoEtario.RangoEtarioInvalidoException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
@@ -11,7 +14,9 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @ControllerAdvice
@@ -52,6 +57,56 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail("validationError", "Datos de entrada invalidos", errors));
     }
 
+    //Actividad
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<?> handleResourceNotFoundException(ResourceNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.fail("resourceNotFound", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ValidacionNegocioException.class)
+    public ResponseEntity<?> handleValidacionNegocioException(ValidacionNegocioException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.fail("validacionNegocio", ex.getMessage()));
+    }
+
+    @ExceptionHandler(DatoInvalidoException.class)
+    public ResponseEntity<?> handleDatoInvalidoException(DatoInvalidoException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.fail("datoInvalido", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ValidacionMultipleException.class)
+    public ResponseEntity<ApiResponse<List<String>>> handleValidacionMultiple(ValidacionMultipleException ex) {
+        // Extraemos lista de errores que viajó adentro de la excepción
+        List<String> listaDeErrores = ex.getErrores();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.fail(
+                        "validacionMultiple",
+                        "Por favor, revisa los datos ingresados.",
+                        listaDeErrores
+                ));
+
+    }
+
+    //Rango Etario
+    @ExceptionHandler(RangoEtarioAlreadyExistsException.class)
+    public ResponseEntity<?> handleRangoEtarioAlreadyExistsException(RangoEtarioAlreadyExistsException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ApiResponse.fail("rangoEtarioAlreadyExists", ex.getMessage()));
+    }
+
+    @ExceptionHandler(RangoEtarioInvalidoException.class)
+    public ResponseEntity<?> handleEdadRangoInvalidoException(RangoEtarioInvalidoException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.fail("rangoEtarioInvalido", ex.getMessage()));
+    }
+
+
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<?> handleConstraintViolationException(ConstraintViolationException ex) {
         Map<String, String> errors = new HashMap<>();
@@ -74,4 +129,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.fail("internalServerError", ex.getMessage()));
     }
 
+    /**
+     * Maneja los errores cuando un @RequestParam recibe un valor inválido,
+     * como un valor distinto de los permitidos para un enum. Devuelve una
+     * respuesta HTTP 400 con un mensaje indicando el parámetro y el valor recibido.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String nombreParametro = ex.getName();
+        String tipoEsperado = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "desconocido";
+        String valorRecibido = ex.getValue() != null ? ex.getValue().toString() : "null";
+
+        String mensajeDetallado = String.format(
+                "El valor '%s' no es válido para el parámetro '%s'. Se esperaba un tipo '%s'.",
+                valorRecibido, nombreParametro, tipoEsperado
+        );
+
+        ApiResponse<Void> apiResponse = ApiResponse.fail("badRequest", mensajeDetallado);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
+    }
 }
