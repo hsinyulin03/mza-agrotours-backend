@@ -9,7 +9,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface TipoIdentificacionRepository extends JpaRepository<TipoIdentificacion, UUID> {
+public interface TipoIdentificacionRepository extends BaseEntityRepository<TipoIdentificacion, UUID> {
     Optional<TipoIdentificacion> findByNombre(TipoIdentificacionNombre nombre);
     boolean existsByNombre(TipoIdentificacionNombre nombre);
 }
