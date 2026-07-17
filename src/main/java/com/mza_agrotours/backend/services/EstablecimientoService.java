@@ -1,8 +1,6 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.dtos.establecimiento.DTODatosEstablecimiento;
-import com.mza_agrotours.backend.dtos.establecimiento.DTODatosEstablecimientoCultivos;
-import com.mza_agrotours.backend.dtos.establecimiento.DTOEstablecimientoAlta;
+import com.mza_agrotours.backend.dtos.establecimiento.*;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.EstadoEstablecimiento;
@@ -25,7 +23,10 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
 @Service
 public class EstablecimientoService  {
     @Autowired
@@ -64,13 +65,77 @@ public class EstablecimientoService  {
     // Obtener datos establecimiento (panel productor)
     public DTODatosEstablecimiento obtenerDatosEstablecimiento(UUID id) {
         Establecimiento establecimiento = obtenerEstablecimiento(id);
-        // Mapear a DTODatosEstablecimiento
-        DTODatosEstablecimiento dto = establecimientoMapper.establecimientoToDtoDatosEstablecimiento(establecimiento);
-        // Se obtienen los cultivos del establecimiento
-        // y se verfica si tienen actividades activas
-        dto.setCultivos(obtenerCultivosDelEstablecimiento(establecimiento));
-        return dto;
+        return mapearADatosEstablecimiento(establecimiento);
     }
+    //MODIFICAR
+    // IDENTIDAD
+    @Transactional
+    public DTODatosEstablecimiento modificarDescripcion( UUID id, DTOEstablecimientoDescripcionUpd dto) throws Exception {
+        // buscar establecimiento
+        Establecimiento establecimiento = obtenerEstablecimiento(id);
+        // actualizar únicamente la descripción
+        establecimiento.setDescripcion(dto.getDescripcion());
+        establecimientoRepository.save(establecimiento);
+        return mapearADatosEstablecimiento(establecimiento);
+    }
+   // MODIFICAR CONTACTO
+    @Transactional
+    public DTODatosEstablecimiento modificarContacto(UUID id, DTOEstablecimientoContactoUpd dto) throws Exception {
+        // buscar establecimiento
+        Establecimiento establecimiento = obtenerEstablecimiento(id);
+        establecimiento.setTelefono(dto.getTelefono());
+        establecimiento.setEmail(dto.getEmail());
+        establecimientoRepository.save(establecimiento);
+        return mapearADatosEstablecimiento(establecimiento);
+    }
+    // MODIFICAR CULTIVOS
+    @Transactional
+    public DTODatosEstablecimiento actualizarCultivos(UUID id, DTOEstablecimientoCultivosUpd dto) {
+
+        // Busca el establecimiento por id
+        Establecimiento establecimiento = obtenerEstablecimiento(id);
+
+        // Lista de cultivos que el establecimiento tiene ASIGNADOS actualmente en la base
+        List<TipoCultivo> cultivosActuales = establecimiento.getTiposCultivos();
+
+        // Busca en la base los TipoCultivo correspondientes a los ids que mandó el frontend.
+        // obtenerCultivos ya valida que todos los ids existan
+        List<TipoCultivo> cultivosNuevos = obtenerCultivos(dto.getCultivosIds());
+
+        // Se pasan ambas listas a Set<UUID> para poder comparar por id
+        Set<UUID> idsActuales = cultivosActuales.stream()
+                .map(TipoCultivo::getId)
+                .collect(Collectors.toSet());
+        Set<UUID> idsNuevos = cultivosNuevos.stream()
+                .map(TipoCultivo::getId)
+                .collect(Collectors.toSet());
+
+        // "A agregar" = cultivos que vinieron del frontend (cultivosNuevos)
+        // y que el establecimiento TODAVÍA NO tiene (su id no está en idsActuales)
+        List<TipoCultivo> cultivosAAgregar = cultivosNuevos.stream()
+                .filter(c -> !idsActuales.contains(c.getId()))
+                .toList();
+
+        // "A eliminar" = cultivos que el establecimiento tiene actualmente (cultivosActuales)
+        // pero que  NO vinieron en la lista del frontend (su id no está en idsNuevos)
+        List<TipoCultivo> cultivosAEliminar = cultivosActuales.stream()
+                .filter(c -> !idsNuevos.contains(c.getId()))
+                .toList();
+
+        // Se recorren los cultivos a eliminar y se sacan
+        for (TipoCultivo cultivo : cultivosAEliminar) {
+            // TODO: Validar si este cultivo posee actividades activas asociadas al establecimiento antes de eliminar la relación.
+            cultivosActuales.remove(cultivo);
+        }
+
+        // Se agregan a la colección actual los cultivos nuevos que faltaban
+        cultivosActuales.addAll(cultivosAAgregar);
+
+        // Persiste los cambios de la relación establecimiento-cultivos
+        establecimientoRepository.save(establecimiento);
+        return mapearADatosEstablecimiento(establecimiento);
+    }
+
 
     /**
      * METODOS AUXILIARES
@@ -117,6 +182,14 @@ public class EstablecimientoService  {
         return establecimientoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("No se encuentra el establecimiento indicado"));
     }
+    private DTODatosEstablecimiento mapearADatosEstablecimiento(Establecimiento establecimiento) {
+        DTODatosEstablecimiento dto = establecimientoMapper.establecimientoToDtoDatosEstablecimiento(establecimiento);
+        // Se obtienen los cultivos del establecimiento
+        // y se verfica si tienen actividades activas
+        dto.setCultivos(obtenerCultivosDelEstablecimiento(establecimiento));
+        return dto;
+    }
+
     private List<DTODatosEstablecimientoCultivos> obtenerCultivosDelEstablecimiento(
             Establecimiento establecimiento) {
         // TODO falta implementar validación cultivos del establecimiento con actividades activas
