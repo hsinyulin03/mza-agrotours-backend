@@ -1,7 +1,7 @@
 package com.mza_agrotours.backend.exceptions;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
-import com.mza_agrotours.backend.exceptions.actividad.ActividadAlreadyExistsException;
+import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
 import com.mza_agrotours.backend.exceptions.rangoEtario.RangoEtarioAlreadyExistsException;
 import com.mza_agrotours.backend.exceptions.rangoEtario.RangoEtarioInvalidoException;
 import jakarta.validation.ConstraintViolation;
@@ -16,6 +16,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @ControllerAdvice
@@ -59,15 +60,25 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail("validacionNegocio", ex.getMessage()));
     }
 
-    @ExceptionHandler(ActividadAlreadyExistsException.class)
-    public ResponseEntity<?> handleActividadAlreadyExistsException(ActividadAlreadyExistsException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.fail("actividadAlreadyExists", ex.getMessage()));
-    }
     @ExceptionHandler(DatoInvalidoException.class)
     public ResponseEntity<?> handleDatoInvalidoException(DatoInvalidoException ex) {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.fail("datoInvalido", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ValidacionMultipleException.class)
+    public ResponseEntity<ApiResponse<List<String>>> handleValidacionMultiple(ValidacionMultipleException ex) {
+        // Extraemos lista de errores que viajó adentro de la excepción
+        List<String> listaDeErrores = ex.getErrores();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.fail(
+                        "validacionMultiple",
+                        "Por favor, revisa los datos ingresados.",
+                        listaDeErrores
+                ));
+
     }
 
     //Rango Etario

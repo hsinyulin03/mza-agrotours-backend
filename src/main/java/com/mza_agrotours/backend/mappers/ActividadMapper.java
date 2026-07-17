@@ -9,7 +9,6 @@ import org.mapstruct.MappingTarget;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,31 +18,31 @@ public abstract class ActividadMapper {
     @Mapping(target = "incluye", ignore = true)
     @Mapping(target = "noIncluye", ignore = true)
     @Mapping(target = "preguntasFrecuentes", ignore = true)
-    public abstract DTOActividadDetalle actividadToDetalleDto(Actividad actividad);
+    public abstract DTOActividadDetalleResponse actividadToDTOActividadDetalle(Actividad actividad);
 
     //US-ACT-06
-    @Mapping(target = "estado", ignore = true)
+    @Mapping(target = "estado", source = "estado.nombre")
     @Mapping(target = "diasYHorasDisponibles", ignore = true)
     @Mapping(target = "precioRegular", ignore = true)
-    public abstract DTOActividades actividadToDTOActividades(Actividad actividad);
+    public abstract DTOActividadesResponse actividadToDTOActividades(Actividad actividad);
 
     //US-ACT-07
-    @Mapping(target = "estado", ignore = true)
+    @Mapping(target = "estado", source = "estado.nombre")
     @Mapping(target = "diasYHorasDisponibles", ignore = true)
     @Mapping(target = "diasDelMes", ignore = true)
-    public abstract DTOCalendarioActividadDia actividadToDTOCalendarioActividadDia(Actividad actividad);
+    public abstract DTOCalendarioActividadDiaResponse actividadToDTOCalendarioActividadDia(Actividad actividad);
 
     @Mapping(source = "cuposMax", target = "cuposMaximos")
     @Mapping(source = "estadoActual.estado.nombre", target = "estadoActual")
     @Mapping(target = "fecha", expression = "java(dia.getFechaHoraInicio() != null ? dia.getFechaHoraInicio().toLocalDate() : null)")
-    public abstract DTOActividadDia actividadDiatoDTOActividadDia(ActividadDia dia);
+    public abstract DTOActividadDiaResponse actividadDiatoDTOActividadDia(ActividadDia dia);
 
     //US-ACT-12
     @Mapping(target = "precioRegular", ignore = true)
-    public abstract DTOListadoActividadVisitante actividadToDTOListadoActividadVisitante(Actividad actividad);
+    public abstract DTOListadoActividadVisitanteResponse actividadToDTOListadoActividadVisitante(Actividad actividad);
 
     @AfterMapping
-    public void llenarListasComplejas(Actividad actividad, @MappingTarget DTOActividadDetalle dto) {
+    public void llenarListasComplejas(Actividad actividad, @MappingTarget DTOActividadDetalleResponse dto) {
         List<String> incluye = actividad.getInclusiones().stream()
                 .filter(ActividadInclusiones::getIncluye)
                 .map(ActividadInclusiones::getDescripcion)
@@ -69,7 +68,7 @@ public abstract class ActividadMapper {
 
 
     @AfterMapping
-    public void llenarDatosTarjetaActividades(Actividad actividad, @MappingTarget DTOActividades dto) {
+    public void llenarDatosTarjetaActividades(Actividad actividad, @MappingTarget DTOActividadesResponse dto) {
         java.time.LocalDate ahora = java.time.LocalDate.now();
 
         //Obtener el Precio Regular
@@ -84,7 +83,7 @@ public abstract class ActividadMapper {
 
 
     @AfterMapping
-    public void llenarDatosCalendarioDetalle(Actividad actividad, @MappingTarget DTOCalendarioActividadDia dto) {
+    public void llenarDatosCalendarioDetalle(Actividad actividad, @MappingTarget DTOCalendarioActividadDiaResponse dto) {
         dto.setDiasYHorasDisponibles(obtenerDiasYHorasDisponibles(actividad));
         if (actividad.getEstado() != null && actividad.getEstado().getNombre() != null) {
             dto.setEstado(actividad.getEstado().getNombre().name());
@@ -93,7 +92,7 @@ public abstract class ActividadMapper {
 
 
     @AfterMapping
-    public void llenarDatosTarjetaVisitante(Actividad actividad, @MappingTarget DTOListadoActividadVisitante dto) {
+    public void llenarDatosTarjetaVisitante(Actividad actividad, @MappingTarget DTOListadoActividadVisitanteResponse dto) {
         dto.setPrecioRegular(obtenerPrecioBaseVigente(actividad));
     }
 

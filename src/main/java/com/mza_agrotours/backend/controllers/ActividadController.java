@@ -4,7 +4,6 @@ import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.actividad.*;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.services.ActividadService;
-import com.mza_agrotours.backend.services.RangoEtarioService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -29,7 +28,7 @@ public class ActividadController {
     @PostMapping("/alta")
     public ResponseEntity<?> crearActividadConDetalles(@Valid @RequestBody DTOActividadAlta dto) throws Exception{
         //Está bien devolver un dto?
-        DTOActividadDetalle nuevaActividad = servicio.altaActividad(dto);
+        DTOActividadDetalleResponse nuevaActividad = servicio.altaActividad(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(nuevaActividad));
     }
 
@@ -37,7 +36,7 @@ public class ActividadController {
     @GetMapping("/{id}")
     public ResponseEntity<?> obtenerDetalleActividad(@PathVariable UUID id) throws Exception {
 
-        DTOActividadDetalle detalle = servicio.obtenerDetallePorId(id);
+        DTOActividadDetalleResponse detalle = servicio.obtenerDetallePorId(id);
         return ResponseEntity.ok(ApiResponse.ok(detalle));
     }
 
@@ -48,7 +47,7 @@ public class ActividadController {
                                                      @RequestParam(required = false) EstadoActividadNombre estado) throws Exception {
 
 
-        List<DTOActividades> listado = servicio.obtenerListadoActividades(busqueda, estado);
+        List<DTOActividadesResponse> listado = servicio.obtenerListadoActividades(busqueda, estado);
         return ResponseEntity.ok(ApiResponse.ok(listado));
 
     }
@@ -61,7 +60,7 @@ public class ActividadController {
                           @Max(value = 12, message = "El mes debe ser menor o igual a 12") int mes,
             @RequestParam int anio) throws Exception {
 
-        DTOCalendarioActividadDia detalle = servicio.obtenerDetalleCalendario(id, mes, anio);
+        DTOCalendarioActividadDiaResponse detalle = servicio.obtenerDetalleCalendario(id, mes, anio);
         return ResponseEntity.ok(ApiResponse.ok(detalle));
 
     }
@@ -69,7 +68,7 @@ public class ActividadController {
     //US-ACT-12: Listado de actividades de la plataforma - vista del visitante
     @GetMapping("/explorar")
     public ResponseEntity <?> explorarActividades() throws Exception {
-        List<DTOListadoActividadVisitante> listado = servicio.explorarActividades();
+        List<DTOListadoActividadVisitanteResponse> listado = servicio.explorarActividades();
         return ResponseEntity.ok(ApiResponse.ok(listado));
     }
 }

@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
-public class DTOActividadDia {
+public class DTOActividadDiaResponse {
         private UUID id;
         private LocalDate fecha;
         private String estadoActual;

@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "actividad_dia")
 @Getter
 @Setter
 @NoArgsConstructor

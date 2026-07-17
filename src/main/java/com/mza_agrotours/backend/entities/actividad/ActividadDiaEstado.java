@@ -12,7 +12,6 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "actividad_dia_estado")
 @Getter
 @Setter
 @NoArgsConstructor

@@ -11,7 +11,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "actividad_rango_etario")
 @Getter
 @Setter
 @NoArgsConstructor

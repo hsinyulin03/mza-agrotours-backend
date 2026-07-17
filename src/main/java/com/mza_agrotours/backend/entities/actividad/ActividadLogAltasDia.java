@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "actividad_log_altas_dia")
 @Getter
 @Setter
 @NoArgsConstructor

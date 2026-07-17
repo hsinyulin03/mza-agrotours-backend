@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "actividad")
 @Getter
 @Setter
 @NoArgsConstructor

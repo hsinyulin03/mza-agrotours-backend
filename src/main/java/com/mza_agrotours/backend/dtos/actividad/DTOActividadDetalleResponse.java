@@ -9,7 +9,7 @@ import java.util.UUID;
 
 //US-ACT-02: Consultar detalle de una actividad
 
-public class DTOActividadDetalle {
+public class DTOActividadDetalleResponse {
     private UUID id;
     //Informacion General
     private String nombre;

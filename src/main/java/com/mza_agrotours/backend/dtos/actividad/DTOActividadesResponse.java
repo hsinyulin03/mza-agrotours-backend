@@ -8,7 +8,7 @@ import java.util.UUID;
 
 //US-ACT-06: Listado de actividades de un establecimiento - Vista productor
 @Data
-public class DTOActividades {
+public class DTOActividadesResponse {
 
     private UUID id;
     private String nombre;
