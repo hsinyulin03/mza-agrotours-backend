@@ -18,6 +18,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/establecimientos")
 public class EstablecimientoController {
+
     @Autowired
     private EstablecimientoService establecimientoService;
     @PostMapping("/alta")
@@ -25,7 +26,7 @@ public class EstablecimientoController {
         establecimientoService.altaEstablecimiento(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(null));
     }
-
+    //US-EST-05 BM establecimiento (modificar)
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<DTODatosEstablecimiento>> obtenerDatosEstablecimiento(
             @PathVariable UUID id) throws Exception {
@@ -55,5 +56,14 @@ public class EstablecimientoController {
             @Valid @RequestBody DTOEstablecimientoCultivosUpd dto) {
         DTODatosEstablecimiento resultado = establecimientoService.actualizarCultivos(id, dto);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(resultado));
+    }
+    // US-EST-06 BM establecimiento (baja)
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> bajaEstablecimiento(
+            @PathVariable UUID id) {
+
+        establecimientoService.bajaEstablecimiento(id);
+
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(null));
     }
 }

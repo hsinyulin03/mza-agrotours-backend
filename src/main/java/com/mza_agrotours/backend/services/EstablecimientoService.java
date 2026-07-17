@@ -135,6 +135,18 @@ public class EstablecimientoService  {
         establecimientoRepository.save(establecimiento);
         return mapearADatosEstablecimiento(establecimiento);
     }
+    // BAJA ESTABLECIMIENTO
+    @Transactional
+    public void bajaEstablecimiento(UUID id) {
+
+        Establecimiento establecimiento = obtenerEstablecimiento(id);
+
+        // TODO:  validar actividades en alta implementar metodo auxiliar
+        // validarQueNoPoseaActividadesPublicadas(establecimiento);
+        establecimiento.setFechaHoraBaja(LocalDateTime.now());
+
+        establecimientoRepository.save(establecimiento);
+    }
 
 
     /**
