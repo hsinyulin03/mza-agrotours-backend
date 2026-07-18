@@ -189,10 +189,11 @@ public class EstablecimientoService  {
         if (cultivosIds == null || cultivosIds.isEmpty()) {
             return new ArrayList<>();
         }
-        // TODO FALTA VALIDAR CULTIVOS ACTIVOS
-        List<TipoCultivo> cultivos = tipoCultivoRepository.findAllById(cultivosIds);
+
+        List<TipoCultivo> cultivos = tipoCultivoRepository.findActivosByIds(cultivosIds);
+
         if (cultivos.size() != cultivosIds.size()) {
-            throw new EntityNotFoundException("Uno o más tipos de cultivo no existen");
+            throw new EntityNotFoundException("Uno o más tipos de cultivo no existen o se encuentran dados de baja");
         }
 
         return cultivos;
