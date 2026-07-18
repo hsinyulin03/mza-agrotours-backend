@@ -142,8 +142,7 @@ public class EstablecimientoService  {
 
         Establecimiento establecimiento = obtenerEstablecimiento(id);
 
-        // TODO:  validar actividades en alta implementar metodo auxiliar
-        // validarQueNoPoseaActividadesPublicadas(establecimiento);
+        validarQueNoPoseaActividadesPublicadas(establecimiento);
         establecimiento.setFechaHoraBaja(LocalDateTime.now());
 
         establecimientoRepository.save(establecimiento);
@@ -246,6 +245,16 @@ public class EstablecimientoService  {
                         actividad.getFechaHoraBaja() == null &&
                                 actividad.getEstado().getNombre() == EstadoActividadNombre.PUBLICADO)
                 .count();
+    }
+    private void validarQueNoPoseaActividadesPublicadas(Establecimiento establecimiento) {
+        boolean tieneActividadesPublicadas = establecimiento.getActividades().stream()
+                .anyMatch(actividad ->
+                        actividad.getFechaHoraBaja() == null &&
+                                actividad.getEstado().getNombre() == EstadoActividadNombre.PUBLICADO);
+
+        if (tieneActividadesPublicadas) {
+            throw new BusinessException("No se puede dar de baja el establecimiento porque posee actividades publicadas");
+        }
     }
 
 }
