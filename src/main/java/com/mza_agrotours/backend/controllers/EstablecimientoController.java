@@ -69,5 +69,13 @@ public class EstablecimientoController {
         List<DTOConsultarEstablecimientoSVisitante> establecimientos = establecimientoService.consultarEstablecimientosVisitantes();
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(establecimientos));
     }
+    //  US-EST-02 Consultar establecimiento
+    @GetMapping("/{id}/detalle")
+    public ResponseEntity<ApiResponse<DTODetalleEstablecimientoVisitantes>> obtenerDetalleEstablecimientoVisitante(
+            @PathVariable UUID id) {
+        DTODetalleEstablecimientoVisitantes dto = establecimientoService.obtenerDetalleEstablecimientoVisitante(id);
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(dto));
+    }
+
 
 }

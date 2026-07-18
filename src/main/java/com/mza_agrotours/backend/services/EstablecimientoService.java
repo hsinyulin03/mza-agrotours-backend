@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.dtos.establecimiento.*;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.TipoCultivo;
+import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.establecimiento.EstadoEstablecimiento;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.establecimiento.EstablecimientoEstado;
@@ -161,7 +162,11 @@ public class EstablecimientoService  {
                 })
                 .toList();
     }
-
+    // DETALLE ESTABLECIMIENTO (vista pública / visitante)
+    public DTODetalleEstablecimientoVisitantes obtenerDetalleEstablecimientoVisitante(UUID id) {
+        Establecimiento establecimiento = obtenerEstablecimiento(id);
+        return mapearADetalleVisitante(establecimiento);
+    }
 
 
 
@@ -239,22 +244,58 @@ public class EstablecimientoService  {
                 .map(TipoCultivo::getNombre)
                 .toList();
     }
+    // ACTIVIDADES (compartido entre consulta, baja y detalle)
+    private boolean esActividadPublicada(Actividad actividad) {
+        return actividad.getFechaHoraBaja() == null
+                && actividad.getEstado().getNombre() == EstadoActividadNombre.PUBLICADO;
+    }
+
     private Integer contarActividadesPublicadas(Establecimiento establecimiento) {
         return (int) establecimiento.getActividades().stream()
-                .filter(actividad ->
-                        actividad.getFechaHoraBaja() == null &&
-                                actividad.getEstado().getNombre() == EstadoActividadNombre.PUBLICADO)
+                .filter(this::esActividadPublicada)
                 .count();
     }
+
     private void validarQueNoPoseaActividadesPublicadas(Establecimiento establecimiento) {
         boolean tieneActividadesPublicadas = establecimiento.getActividades().stream()
-                .anyMatch(actividad ->
-                        actividad.getFechaHoraBaja() == null &&
-                                actividad.getEstado().getNombre() == EstadoActividadNombre.PUBLICADO);
+                .anyMatch(this::esActividadPublicada);
 
         if (tieneActividadesPublicadas) {
             throw new BusinessException("No se puede dar de baja el establecimiento porque posee actividades publicadas");
         }
     }
+    // DETALLE ESTABLECIMIENTO
+    private DTODetalleEstablecimientoVisitantes mapearADetalleVisitante(Establecimiento establecimiento) {
+        DTODetalleEstablecimientoVisitantes dto =
+                establecimientoMapper.establecimientoToDtoDetalleVisitantes(establecimiento);
+
+        dto.setCultivos(obtenerNombresCultivosActivos(establecimiento));
+        dto.setActividades(obtenerActividadesPublicadasDetalle(establecimiento));
+
+        return dto;
+    }
+
+    private List<DTODetalleEstablecimientoActividad> obtenerActividadesPublicadasDetalle(Establecimiento establecimiento) {
+        return establecimiento.getActividades().stream()
+                .filter(this::esActividadPublicada)
+                .map(this::mapearAActividadDetalle)
+                .toList();
+    }
+
+    private DTODetalleEstablecimientoActividad mapearAActividadDetalle(Actividad actividad) {
+        DTODetalleEstablecimientoActividad dto = establecimientoMapper.actividadToDtoDetalle(actividad);
+
+        // TODO: cultivos de la actividad
+        dto.setCultivos(new ArrayList<>());
+
+        // TODO: implementar cálculo real del precio vigente para el rango etario "Adulto"
+        //dto.setPrecioDesde(obtenerPrecioAdulto(actividad));
+
+        // TODO: implementar cálculo real del promedio de Calificacion.puntuacion
+       // dto.setPuntuacion(calcularCalificacionPromedio(actividad));
+
+        return dto;
+    }
+
 
 }
