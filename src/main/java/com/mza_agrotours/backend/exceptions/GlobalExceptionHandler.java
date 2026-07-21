@@ -133,7 +133,7 @@ public class GlobalExceptionHandler {
      * Maneja los errores cuando un @RequestParam recibe un valor inválido,
      * como un valor distinto de los permitidos para un enum. Devuelve una
      * respuesta HTTP 400 con un mensaje indicando el parámetro y el valor recibido.
-     */
+
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         String nombreParametro = ex.getName();
@@ -148,5 +148,5 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> apiResponse = ApiResponse.fail("badRequest", mensajeDetallado);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
-    }
+    } */
 }

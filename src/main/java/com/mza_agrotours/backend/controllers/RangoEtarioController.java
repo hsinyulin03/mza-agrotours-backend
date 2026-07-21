@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
+import com.mza_agrotours.backend.dtos.rangoEtario.DTOListadoRangoEtarioResponse;
 import com.mza_agrotours.backend.dtos.rangoEtario.DTORangoEtarioAlta;
 import com.mza_agrotours.backend.dtos.rangoEtario.DTORangoEtarioGet;
 import com.mza_agrotours.backend.services.RangoEtarioService;
@@ -39,6 +40,13 @@ public class RangoEtarioController {
             rangoEtarioService.darDeBaja(id);
             ApiResponse<String> response = ApiResponse.ok("Rango Etario " + id + " dado de baja correctamente");
             return ResponseEntity.ok(response);
+    }
+
+    //Panel de gestión de rango etario del admin
+    @GetMapping("/dashboard")
+    public ResponseEntity<?> obtenerDashboard() {
+        DTOListadoRangoEtarioResponse dashboard = rangoEtarioService.obtenerListaRangos();
+        return ResponseEntity.ok(ApiResponse.ok(dashboard));
     }
 
 }
