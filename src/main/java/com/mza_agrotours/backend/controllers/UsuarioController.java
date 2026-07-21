@@ -1,14 +1,14 @@
 package com.mza_agrotours.backend.controllers;
 
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseAuthException;
 import com.mza_agrotours.backend.dtos.*;
-import com.mza_agrotours.backend.exceptions.UsuarioAlreadyExistsException;
+import com.mza_agrotours.backend.exceptions.UserDeleteConditionNotMetException;
 import com.mza_agrotours.backend.services.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/usuario")
@@ -42,5 +42,24 @@ public class UsuarioController {
         String email = usuarioAuthDetails.getEmail();
             UsuarioGetDTO usuarioGetDTO = this.usuarioService.updateUsuarioByEmail(email, usuarioUpdateReq);
             return ResponseEntity.ok(ApiResponse.ok(usuarioGetDTO));
+    }
+
+
+    @GetMapping("/me/meets-delete-conditions")
+    public ResponseEntity<?> getCondicionesDeleteUsuarioMeByEmail(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) throws Exception {
+        String email = usuarioAuthDetails.getEmail();
+        List<CondicionDTO> condiciones = this.usuarioService.getCondicionesDeleteUsuario(email);
+        if (!condiciones.isEmpty()) {
+            throw new UserDeleteConditionNotMetException("No se puede eliminar el usuario", condiciones);
+        }
+
+        return ResponseEntity.ok(ApiResponse.ok(condiciones));
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<?> deleteUsuarioMeByEmail(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) throws Exception {
+        String email = usuarioAuthDetails.getEmail();
+        boolean res = this.usuarioService.deleteUsuarioByEmail(email);
+        return ResponseEntity.ok(ApiResponse.ok(res));
     }
 }

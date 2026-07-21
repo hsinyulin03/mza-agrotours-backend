@@ -3,23 +3,24 @@ package com.mza_agrotours.backend.services;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
+import com.mza_agrotours.backend.dtos.CondicionDTO;
 import com.mza_agrotours.backend.dtos.UsuarioCreateReq;
 import com.mza_agrotours.backend.dtos.UsuarioGetDTO;
 import com.mza_agrotours.backend.dtos.UsuarioUpdateReq;
 import com.mza_agrotours.backend.entities.*;
-import com.mza_agrotours.backend.exceptions.PaisNotFoundException;
-import com.mza_agrotours.backend.exceptions.TipoIdentificacionInvalidoException;
-import com.mza_agrotours.backend.exceptions.UsuarioAlreadyExistsException;
-import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
+import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
+import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
+import com.mza_agrotours.backend.entities.reservas.Reserva;
+import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.mappers.UsuarioMapper;
-import com.mza_agrotours.backend.repositories.PaisRepository;
-import com.mza_agrotours.backend.repositories.TipoIdentificacionRepository;
-import com.mza_agrotours.backend.repositories.UsuarioRepository;
-import com.mza_agrotours.backend.repositories.VisitanteRepository;
+import com.mza_agrotours.backend.repositories.*;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class UsuarioService {
@@ -31,6 +32,8 @@ public class UsuarioService {
     private final TipoIdentificacionRepository tipoIdentificacionRepository;
     private final PaisRepository paisRepository;
     private final VisitanteRepository visitanteRepository;
+    private final ReservaRepository reservaRepository;
+    private final EstadoReservaRepository estadoReservaRepository;
 
     private final UsuarioMapper usuarioMapper;
 
@@ -39,13 +42,17 @@ public class UsuarioService {
                         TipoIdentificacionRepository tipoIdentificacionRepository,
                         VisitanteRepository visitanteRepository,
                         UsuarioMapper usuarioMapper,
-                        PaisRepository paisRepository) {
+                        PaisRepository paisRepository,
+                        ReservaRepository reservaRepository,
+                        EstadoReservaRepository estadoReservaRepository) {
         this.usuarioPersistenceService = usuarioPersistenceService;
         this.usuarioRepository = usuarioRepository;
         this.tipoIdentificacionRepository = tipoIdentificacionRepository;
         this.visitanteRepository = visitanteRepository;
         this.usuarioMapper = usuarioMapper;
         this.paisRepository = paisRepository;
+        this.reservaRepository = reservaRepository;
+        this.estadoReservaRepository = estadoReservaRepository;
     }
 
     public UsuarioGetDTO createUsuario(UsuarioCreateReq usuarioCreateReq) throws Exception {
@@ -146,5 +153,55 @@ public class UsuarioService {
         FirebaseAuth.getInstance().updateUser(updateRequest);
 
         return usuarioMapper.usuarioToUsuarioGetDTO(usuario);
+    }
+
+    @Transactional
+    public boolean deleteUsuarioByEmail(String email) throws Exception {
+        Usuario usuario = usuarioRepository.findActiveByEmail(email)
+                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+
+        List<CondicionDTO> condicionesEliminacion = getCondicionesDeleteUsuarioHelper(usuario);
+
+        if (!condicionesEliminacion.isEmpty()) {
+            throw new UserDeleteConditionNotMetException("No se puede eliminar el usuario", condicionesEliminacion);
+        }
+
+        usuario.setFechaHoraBaja(java.time.LocalDateTime.now());
+
+        usuarioRepository.save(usuario);
+        FirebaseAuth.getInstance().deleteUser(usuario.getFirebaseUID());
+
+        return true;
+    }
+
+    @Transactional
+    public List<CondicionDTO> getCondicionesDeleteUsuario(String email) throws Exception {
+        Usuario usuario = usuarioRepository.findActiveByEmail(email)
+                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+
+        return getCondicionesDeleteUsuarioHelper(usuario);
+    }
+
+    private List<CondicionDTO> getCondicionesDeleteUsuarioHelper(Usuario usuario) throws Exception {
+       // 1. Usuario no tiene reservas activas
+        List<CondicionDTO> condiciones = new ArrayList<>();
+        Visitante visitante = visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
+        EstadoReserva estadoPendiente = estadoReservaRepository.findByNombre(EstadoReservaNombre.PENDIENTE)
+                .orElseThrow(() -> new Exception("Estado de reserva no encontrado"));
+
+        List<Reserva> reservasActivasList = reservaRepository.findByVisitanteAndReservaEstadoActual(visitante.getId(), estadoPendiente.getId());
+
+        if (!reservasActivasList.isEmpty()) {
+            condiciones.add(
+                    new CondicionDTO(
+                            "reservasActivas",
+                            "El usuario tiene reservas activas"
+                    ));
+        }
+
+        // 2. Usuario no es administrador (TODO)
+        // 3. Usuario no es productor lider de un establecimiento vigente (TODO)
+
+        return condiciones;
     }
 }
