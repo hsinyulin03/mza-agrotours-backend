@@ -1,12 +1,13 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.google.firebase.auth.FirebaseAuth;
-import com.mza_agrotours.backend.dtos.ApiResponse;
-import com.mza_agrotours.backend.dtos.UsuarioCreateReq;
-import com.mza_agrotours.backend.dtos.UsuarioGetDTO;
+import com.google.firebase.auth.FirebaseAuthException;
+import com.mza_agrotours.backend.dtos.*;
+import com.mza_agrotours.backend.exceptions.UsuarioAlreadyExistsException;
 import com.mza_agrotours.backend.services.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -28,16 +29,18 @@ public class UsuarioController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getUsuarioMeByEmail(@RequestHeader("Authorization") String authorizationHeader) throws Exception {
-        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            throw new Exception("Invalid token format. Expected 'Bearer <token>'");
-        }
-
-        String token = authorizationHeader.substring(7);
-        String email = FirebaseAuth.getInstance().verifyIdToken(token).getEmail();
+    public ResponseEntity<?> getUsuarioMeByEmail(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) throws Exception {
+        String email = usuarioAuthDetails.getEmail();
         UsuarioGetDTO usuarioGetDTO = this.usuarioService.getUsuarioByEmail(email);
         ApiResponse<UsuarioGetDTO> response = ApiResponse.ok(usuarioGetDTO);
 
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<?> putUsuarioMeByEmail(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails, @Valid @RequestBody UsuarioUpdateReq usuarioUpdateReq) throws Exception {
+        String email = usuarioAuthDetails.getEmail();
+            UsuarioGetDTO usuarioGetDTO = this.usuarioService.updateUsuarioByEmail(email, usuarioUpdateReq);
+            return ResponseEntity.ok(ApiResponse.ok(usuarioGetDTO));
     }
 }

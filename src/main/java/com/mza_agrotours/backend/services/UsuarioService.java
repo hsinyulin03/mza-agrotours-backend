@@ -5,7 +5,9 @@ import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
 import com.mza_agrotours.backend.dtos.UsuarioCreateReq;
 import com.mza_agrotours.backend.dtos.UsuarioGetDTO;
+import com.mza_agrotours.backend.dtos.UsuarioUpdateReq;
 import com.mza_agrotours.backend.entities.*;
+import com.mza_agrotours.backend.exceptions.PaisNotFoundException;
 import com.mza_agrotours.backend.exceptions.TipoIdentificacionInvalidoException;
 import com.mza_agrotours.backend.exceptions.UsuarioAlreadyExistsException;
 import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
@@ -56,7 +58,7 @@ public class UsuarioService {
             }
 
             TipoIdentificacion tipoIdentificacion = resolveTipoIdentificacion(usuarioCreateReq.getTipoIdentificacion());
-            Pais pais = this.paisRepository.findByIso2(usuarioCreateReq.getPaisIso2()).orElseThrow();
+            Pais pais = this.paisRepository.findByIso2(usuarioCreateReq.getPaisIso2()).orElseThrow(PaisNotFoundException::new);
 
             record = FirebaseAuth.getInstance().createUser(usuarioMapper.usuarioCreateReqToFirebaseCreateRequest(usuarioCreateReq));
 
@@ -114,5 +116,35 @@ public class UsuarioService {
         usuarioGetDTO.setPaisIso2(visitante.getPais().getIso2());
 
         return usuarioGetDTO;
+    }
+
+    @Transactional
+    public UsuarioGetDTO updateUsuarioByEmail(String email, UsuarioUpdateReq usuarioUpdateReq) throws Exception {
+        Usuario usuario = usuarioRepository.findActiveByEmail(email)
+                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+
+        if (!usuarioUpdateReq.getEmail().equals(usuario.getEmail()) && usuarioRepository.findActiveByEmail(usuarioUpdateReq.getEmail()).isPresent()) {
+            throw new UsuarioAlreadyExistsException("Ya existe un usuario con ese email");
+        }
+
+        Visitante visitante = this.visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
+        Pais pais = this.paisRepository.findByIso2(usuarioUpdateReq.getPaisIso2()).orElseThrow(PaisNotFoundException::new);
+        TipoIdentificacion tipoIdentificacion = resolveTipoIdentificacion(usuarioUpdateReq.getTipoIdentificacion());
+
+        usuarioMapper.updateUsuarioFromUsuarioUpdateReq(usuario, usuarioUpdateReq);
+        usuario.setTipoIdentificacion(tipoIdentificacion);
+        visitante.setPais(pais);
+
+        usuario = usuarioRepository.save(usuario);
+        visitanteRepository.save(visitante);
+
+        UserRecord.UpdateRequest updateRequest = new UserRecord.UpdateRequest(usuario.getFirebaseUID());
+        updateRequest.setEmail(usuarioUpdateReq.getEmail());
+        updateRequest.setDisplayName(usuarioUpdateReq.getNombre());
+        updateRequest.setPhoneNumber(usuarioUpdateReq.getTelefono());
+
+        FirebaseAuth.getInstance().updateUser(updateRequest);
+
+        return usuarioMapper.usuarioToUsuarioGetDTO(usuario);
     }
 }
