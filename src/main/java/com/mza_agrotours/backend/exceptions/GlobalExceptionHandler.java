@@ -32,6 +32,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("userAlreadyExists", ex.getMessage()));
     }
 
+    @ExceptionHandler(UserDeleteConditionNotMetException.class)
+    public ResponseEntity<?> handleUserDeleteConditionNotMetException(UserDeleteConditionNotMetException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("userDeleteConditionNotMet", ex.getMessage(), ex.getCondiciones()));
+    }
+
     @ExceptionHandler(TipoIdentificacionInvalidoException.class)
     public ResponseEntity<?> handleTipoIdentificacionInvalido(TipoIdentificacionInvalidoException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.fail("tipoIdentificacionInvalido", ex.getMessage()));
