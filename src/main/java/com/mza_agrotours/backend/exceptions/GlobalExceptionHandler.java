@@ -117,13 +117,6 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail("badRequest", "Parametros invalidos", errors));
     }
 
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<?> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        String mensaje = "Parámetro '%s' invalido".formatted(ex.getName());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.fail("invalidParameter", mensaje));
-    }
-
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleAllExceptions(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.fail("internalServerError", ex.getMessage()));
