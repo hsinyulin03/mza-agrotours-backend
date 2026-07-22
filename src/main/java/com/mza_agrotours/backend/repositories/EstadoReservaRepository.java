@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface EstadoReservaRepository extends BaseEntityRepository<EstadoReserva, UUID> {
     Optional<EstadoReserva> findByNombre(EstadoReservaNombre nombre);
+    boolean existsByNombre(EstadoReservaNombre nombre);
 }
