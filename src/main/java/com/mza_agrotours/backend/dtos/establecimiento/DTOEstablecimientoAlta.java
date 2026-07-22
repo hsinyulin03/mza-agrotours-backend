@@ -29,6 +29,8 @@ public class DTOEstablecimientoAlta {
     @Pattern(regexp = "\\d{11}", message = "El CUIT debe contener únicamente números y tener exactamente 11 dígitos")
     private String cuit;
 
+   @NotBlank
+   @Size(max = 2000, message = "La descripción no puede superar los 2000 caracteres")
     private String descripcion;
 
     // Ubicación / Domicilio legal
@@ -53,6 +55,5 @@ public class DTOEstablecimientoAlta {
     @NotBlank(message = "El CVU es obligatorio")
     @Pattern(regexp = "\\d{22}", message = "El CVU debe contener únicamente números y tener exactamente 22 dígitos")
     private String cvu;
-//    private UUID productorTitularId;
     private List<UUID> cultivos;
 }

@@ -69,34 +69,16 @@ public class EstablecimientoService  {
         Establecimiento establecimiento = obtenerEstablecimiento(id);
         return mapearADatosEstablecimiento(establecimiento);
     }
-    //MODIFICAR
-    // IDENTIDAD
     @Transactional
-    public DTODatosEstablecimiento modificarDescripcion( UUID id, DTOEstablecimientoDescripcionUpd dto) throws Exception {
-        // buscar establecimiento
+    public DTODatosEstablecimiento modificarEstablecimiento(UUID id, DTODatosEstablecimientoUpd dto) {
         Establecimiento establecimiento = obtenerEstablecimiento(id);
-        // actualizar únicamente la descripción
+
         establecimiento.setDescripcion(dto.getDescripcion());
-        establecimientoRepository.save(establecimiento);
-        return mapearADatosEstablecimiento(establecimiento);
-    }
-   // MODIFICAR CONTACTO
-    @Transactional
-    public DTODatosEstablecimiento modificarContacto(UUID id, DTOEstablecimientoContactoUpd dto) throws Exception {
-        // buscar establecimiento
-        Establecimiento establecimiento = obtenerEstablecimiento(id);
         establecimiento.setTelefono(dto.getTelefono());
         establecimiento.setEmail(dto.getEmail());
-        establecimientoRepository.save(establecimiento);
-        return mapearADatosEstablecimiento(establecimiento);
-    }
-    // MODIFICAR CULTIVOS
-    @Transactional
-    public DTODatosEstablecimiento actualizarCultivos(UUID id, DTOEstablecimientoCultivosUpd dto) {
+        establecimiento.setCvu(dto.getCvu());
 
-        // Busca el establecimiento por id
-        Establecimiento establecimiento = obtenerEstablecimiento(id);
-
+        // MODIFICAR CULTIVOS
         // Lista de cultivos que el establecimiento tiene ASIGNADOS actualmente en la base
         List<TipoCultivo> cultivosActuales = establecimiento.getTiposCultivos();
 
