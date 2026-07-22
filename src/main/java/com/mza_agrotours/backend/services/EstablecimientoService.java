@@ -213,7 +213,7 @@ public class EstablecimientoService  {
     }
     // OBTENER DATOS ESTABLECIMIENTO
     private Establecimiento obtenerEstablecimiento(UUID id) {
-        return establecimientoRepository.findById(id)
+        return establecimientoRepository.findByIdAndFechaHoraBajaIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("No se encuentra el establecimiento indicado"));
     }
     private DTODatosEstablecimiento mapearADatosEstablecimiento(Establecimiento establecimiento) {
