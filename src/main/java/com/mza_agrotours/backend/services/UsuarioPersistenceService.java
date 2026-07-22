@@ -8,6 +8,8 @@ import com.mza_agrotours.backend.repositories.VisitanteRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 @Service
 public class UsuarioPersistenceService {
     private final UsuarioRepository usuarioRepository;
@@ -29,5 +31,19 @@ public class UsuarioPersistenceService {
         this.visitanteRepository.save(visitante);
 
         return nuevoUsuario;
+    }
+
+    @Transactional
+    public Usuario updateUsuarioConVisitante(Usuario usuario, Visitante visitante) {
+        Usuario usuarioActualizado = this.usuarioRepository.save(usuario);
+        this.visitanteRepository.save(visitante);
+
+        return usuarioActualizado;
+    }
+
+    @Transactional
+    public void softDeleteUsuario(Usuario usuario) {
+        usuario.setFechaHoraBaja(LocalDateTime.now());
+        this.usuarioRepository.save(usuario);
     }
 }
