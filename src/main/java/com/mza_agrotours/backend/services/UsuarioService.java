@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UsuarioService {
@@ -34,6 +35,7 @@ public class UsuarioService {
     private final VisitanteRepository visitanteRepository;
     private final ReservaRepository reservaRepository;
     private final EstadoReservaRepository estadoReservaRepository;
+    private final AdministradorSistemasRepository administradorSistemasRepository;
 
     private final UsuarioMapper usuarioMapper;
 
@@ -44,7 +46,8 @@ public class UsuarioService {
                         UsuarioMapper usuarioMapper,
                         PaisRepository paisRepository,
                         ReservaRepository reservaRepository,
-                        EstadoReservaRepository estadoReservaRepository) {
+                        EstadoReservaRepository estadoReservaRepository,
+                        AdministradorSistemasRepository administradorSistemasRepository) {
         this.usuarioPersistenceService = usuarioPersistenceService;
         this.usuarioRepository = usuarioRepository;
         this.tipoIdentificacionRepository = tipoIdentificacionRepository;
@@ -53,6 +56,7 @@ public class UsuarioService {
         this.paisRepository = paisRepository;
         this.reservaRepository = reservaRepository;
         this.estadoReservaRepository = estadoReservaRepository;
+        this.administradorSistemasRepository = administradorSistemasRepository;
     }
 
     public UsuarioGetDTO createUsuario(UsuarioCreateReq usuarioCreateReq) throws Exception {
@@ -125,7 +129,6 @@ public class UsuarioService {
         return usuarioGetDTO;
     }
 
-    @Transactional
     public UsuarioGetDTO updateUsuarioByEmail(String email, UsuarioUpdateReq usuarioUpdateReq) throws Exception {
         Usuario usuario = usuarioRepository.findActiveByEmail(email)
                 .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
@@ -142,9 +145,7 @@ public class UsuarioService {
         usuario.setTipoIdentificacion(tipoIdentificacion);
         visitante.setPais(pais);
 
-        usuario = usuarioRepository.save(usuario);
-        visitanteRepository.save(visitante);
-
+        // Firebase primero: si falla, se lanza la excepcion y no se persiste nada en la base de datos.
         UserRecord.UpdateRequest updateRequest = new UserRecord.UpdateRequest(usuario.getFirebaseUID());
         updateRequest.setEmail(usuarioUpdateReq.getEmail());
         updateRequest.setDisplayName(usuarioUpdateReq.getNombre());
@@ -152,10 +153,24 @@ public class UsuarioService {
 
         FirebaseAuth.getInstance().updateUser(updateRequest);
 
+        // Firebase ya se actualizo. Si la persistencia en la base de datos falla, Firebase y la base
+        // de datos quedan desincronizados: por ahora solo lo registramos para reconciliacion manual.
+        try {
+            usuario = usuarioPersistenceService.updateUsuarioConVisitante(usuario, visitante);
+        } catch (Exception e) {
+            log.error(
+                    "USUARIO INCONSISTENTE: se actualizo el usuario en Firebase con UID={} (email nuevo={}) " +
+                            "pero fallo la actualizacion en la base de datos. Firebase y la base de datos " +
+                            "quedaron desincronizados. Requiere limpieza manual/reconciliacion.",
+                    usuario.getFirebaseUID(),
+                    usuarioUpdateReq.getEmail(),
+                    e
+            );
+        }
+
         return usuarioMapper.usuarioToUsuarioGetDTO(usuario);
     }
 
-    @Transactional
     public boolean deleteUsuarioByEmail(String email) throws Exception {
         Usuario usuario = usuarioRepository.findActiveByEmail(email)
                 .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
@@ -166,10 +181,23 @@ public class UsuarioService {
             throw new UserDeleteConditionNotMetException("No se puede eliminar el usuario", condicionesEliminacion);
         }
 
-        usuario.setFechaHoraBaja(java.time.LocalDateTime.now());
-
-        usuarioRepository.save(usuario);
+        // Firebase primero: si falla, se lanza la excepcion y no se toca la base de datos.
         FirebaseAuth.getInstance().deleteUser(usuario.getFirebaseUID());
+
+        // Firebase ya elimino el usuario (ya no puede autenticarse). Si la baja en la base de datos
+        // falla, el usuario sigue activo en la base pero sin acceso: por ahora solo lo registramos.
+        try {
+            usuarioPersistenceService.softDeleteUsuario(usuario);
+        } catch (Exception e) {
+            log.error(
+                    "USUARIO INCONSISTENTE: se elimino el usuario en Firebase con UID={} y email={} " +
+                            "pero fallo la baja en la base de datos. El usuario ya no puede autenticarse " +
+                            "pero sigue activo en la base de datos. Requiere limpieza manual/reconciliacion.",
+                    usuario.getFirebaseUID(),
+                    email,
+                    e
+            );
+        }
 
         return true;
     }
@@ -200,6 +228,15 @@ public class UsuarioService {
         }
 
         // 2. Usuario no es administrador (TODO)
+        Optional<AdministradorSistemas> administradorSistemasOptional = administradorSistemasRepository.findByUsuarioId(usuario.getId());
+        if (administradorSistemasOptional.isPresent()) {
+            condiciones.add(
+                    new CondicionDTO(
+                            "administradorSistemas",
+                            "El usuario es administrador"
+                    ));
+        }
+
         // 3. Usuario no es productor lider de un establecimiento vigente (TODO)
 
         return condiciones;
