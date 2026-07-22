@@ -1,7 +1,13 @@
 package com.mza_agrotours.backend.dtos.rangoEtario;
 
-import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class DTORangoEtarioEdicion {
     private UUID id;
     private String nombre;

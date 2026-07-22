@@ -39,7 +39,7 @@ public class RangoEtarioService{
             throw new RangoEtarioInvalidoException("La edad máxima debe ser mayor que la edad mínima ingresada.");
         }
 
-        // 2. Validación de solapamiento
+        // Validación de solapamiento
         List<RangoEtario> rangosActivos = rangoEtarioRepository.findAllByFechaHoraBajaIsNull();
         for (RangoEtario existente : rangosActivos) {
             boolean haySolapamiento = dto.getEdadMinima() <= existente.getEdadMaxima() &&

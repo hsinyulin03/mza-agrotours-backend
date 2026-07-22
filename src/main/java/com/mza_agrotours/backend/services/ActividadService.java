@@ -1,6 +1,8 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.actividad.*;
+import com.mza_agrotours.backend.dtos.rangoEtario.DTORangoEtarioEdicion;
+import com.mza_agrotours.backend.dtos.rangoEtario.DTORangoEtarioGet;
 import com.mza_agrotours.backend.entities.RangoEtario;
 import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.enums.Dia;
@@ -11,21 +13,21 @@ import com.mza_agrotours.backend.exceptions.ResourceNotFoundException;
 import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
 import com.mza_agrotours.backend.mappers.ActividadMapper;
+import com.mza_agrotours.backend.mappers.RangoEtarioMapper;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadDiaRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
 import com.mza_agrotours.backend.repositories.rangoEtario.RangoEtarioRepository;
 
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -48,6 +50,9 @@ public class ActividadService {
 
     @Autowired
     private EstadoActividadDiaRepository estadoActividadDiaRepository;
+
+    @Autowired
+    private RangoEtarioMapper rangoEtarioMapper;
 
     //US-ACT-03 Alta de actividad
     @Transactional
@@ -315,6 +320,37 @@ public class ActividadService {
                 .toList();
     }
 
+    //La idea es que en la modificación de actividad se muestren las activas y las asociadas anteriormente en el alta
+    @Transactional(readOnly = true)
+    public List<DTORangoEtarioEdicion> listarRangosParaEdicion(UUID idActividad) {
+        List<RangoEtario> rangosActivos = rangoEtarioRepository.findAllByFechaHoraBajaIsNull();
+
+        // 2. Buscamos la actividad que se quiere editar para ver qué tiene guardado
+        Actividad actividad = actividadRepository.findById(idActividad)
+                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada"));
+
+        // 3. Filtramos los rangos de esta actividad que YA están dados de baja
+        List<RangoEtario> rangosInactivosAsociados = actividad.getActividadRangoEtarios().stream()
+                .map(ActividadRangoEtario::getRangoEtario)
+                .filter(rango -> rango.getFechaHoraBaja() != null)
+                .toList();
+
+        // 4. Mapeamos los activos (obsoleto = false)
+        List<DTORangoEtarioEdicion> dtosActivos = rangoEtarioMapper.rangoEtarioListtoDTORangoEtarioEdicionList(rangosActivos);
+        // Asegurarse de que obsoleto esté en false (si tu mapper no lo hace por defecto)
+        dtosActivos.forEach(dto -> dto.setObsoleto(false));
+
+        // 5. Mapeamos los inactivos (obsoleto = true)
+        List<DTORangoEtarioEdicion> dtosInactivos = rangoEtarioMapper.rangoEtarioListtoDTORangoEtarioEdicionList(rangosInactivosAsociados);
+        dtosInactivos.forEach(dto -> dto.setObsoleto(true));
+
+        // 6. Unimos ambas listas y las devolvemos
+        List<DTORangoEtarioEdicion> resultadoFinal = new ArrayList<>();
+        resultadoFinal.addAll(dtosActivos);
+        resultadoFinal.addAll(dtosInactivos);
+
+        return resultadoFinal;
+    }
 
 }
 
