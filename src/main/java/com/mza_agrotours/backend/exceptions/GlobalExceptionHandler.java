@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.exceptions;
 
+import com.google.firebase.auth.FirebaseAuthException;
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
 import com.mza_agrotours.backend.exceptions.rangoEtario.RangoEtarioAlreadyExistsException;
@@ -40,6 +41,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(TipoIdentificacionInvalidoException.class)
     public ResponseEntity<?> handleTipoIdentificacionInvalido(TipoIdentificacionInvalidoException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.fail("tipoIdentificacionInvalido", ex.getMessage()));
+    }
+
+    @ExceptionHandler(FirebaseAuthException.class)
+    public ResponseEntity<?> handleFirebaseAuthException(FirebaseAuthException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail(ex.getAuthErrorCode().toString(), ex.getMessage()));
     }
 
     @ExceptionHandler(UsuarioDeactivatedException.class)
