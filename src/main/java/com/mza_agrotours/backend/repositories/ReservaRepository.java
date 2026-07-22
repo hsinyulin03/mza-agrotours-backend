@@ -1,8 +1,8 @@
 package com.mza_agrotours.backend.repositories;
 
 import com.mza_agrotours.backend.entities.reservas.Reserva;
-import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
