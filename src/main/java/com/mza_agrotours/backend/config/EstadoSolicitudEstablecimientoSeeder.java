@@ -17,7 +17,7 @@ public class EstadoSolicitudEstablecimientoSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         for (EstadoSolicitudEstablecimientoNombre nombre : EstadoSolicitudEstablecimientoNombre.values()) {
-            if(estadoSolicitudEstablecimientoRepository.existsByNombre(nombre.toString())) {
+            if(estadoSolicitudEstablecimientoRepository.existsByNombre(nombre)) {
                 continue;
             }
             EstadoSolicitudEstablecimiento estado = new EstadoSolicitudEstablecimiento();
