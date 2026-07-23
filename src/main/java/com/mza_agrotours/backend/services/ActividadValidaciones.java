@@ -9,8 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Component
 
@@ -59,7 +58,6 @@ public class ActividadValidaciones {
         return errores;
     }
 
-    //Validar que no se crear múltiple actividadRangoEtario para un mismo rango etario
     private List<String> validarTarifas(DTOActividadAlta dto) {
 
         List<String> errores = new ArrayList<>();
@@ -68,14 +66,13 @@ public class ActividadValidaciones {
             errores.add("Debes cargar al menos una tarifa para la actividad.");
         }
 
-        long rangosUnicos = dto.getTarifas().stream()
-                    .map(DTOTarifa::getRangoEtarioId)
-                    .distinct()
-                    .count();
+        Set<String> nombresTarifas = new HashSet<>();
+        for (DTOTarifa tarifa : dto.getTarifas()) {
+            String nombreNormalizado = tarifa.getNombre().toLowerCase();
 
-        if (rangosUnicos < dto.getTarifas().size()) {
-            errores.add("No se pueden asignar múltiples tarifas para un mismo rango etario.");
-
+            if (!nombresTarifas.add(nombreNormalizado)) {
+                errores.add("No puedes registrar más de una tarifa con el mismo nombre ('" + tarifa.getNombre() + "').");
+            }
         }
 
         long contadorTarifasBase = dto.getTarifas().stream().filter(DTOTarifa::isEsTarifaBase).count();
@@ -85,6 +82,28 @@ public class ActividadValidaciones {
             errores.add("No puedes tener más de una tarifa base en la misma actividad.");
         }
 
+        for (DTOTarifa tarifa : dto.getTarifas()) {
+            if (tarifa.getEdadMinima() > tarifa.getEdadMaxima()) {
+                errores.add("Error en la tarifa '" + tarifa.getNombre() + "': La edad mínima (" +
+                        tarifa.getEdadMinima() + ") no puede ser mayor a la edad máxima (" +
+                        tarifa.getEdadMaxima() + ").");
+            }
+        }
+
+        //validación de solapamiento (error bloqueante)
+        List<DTOTarifa> tarifasOrdenadas = new ArrayList<>(dto.getTarifas());
+        tarifasOrdenadas.sort(Comparator.comparing(DTOTarifa::getEdadMinima));
+
+        for (int i = 1; i < tarifasOrdenadas.size(); i++) {
+            DTOTarifa anterior = tarifasOrdenadas.get(i - 1);
+            DTOTarifa actual = tarifasOrdenadas.get(i);
+
+            // Si la edad mínima del actual es MENOR o IGUAL a la edad máxima del anterior, se pisan
+            if (actual.getEdadMinima() <= anterior.getEdadMaxima()) {
+                errores.add("Solapamiento detectado: El rango '" + anterior.getNombre() +
+                        "' tiene solapamiento de edades con el rango '" + actual.getNombre() + "'.");
+            }
+        }
         return errores;
     }
 

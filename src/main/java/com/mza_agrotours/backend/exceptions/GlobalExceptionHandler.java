@@ -3,8 +3,6 @@ package com.mza_agrotours.backend.exceptions;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
-import com.mza_agrotours.backend.exceptions.rangoEtario.RangoEtarioAlreadyExistsException;
-import com.mza_agrotours.backend.exceptions.rangoEtario.RangoEtarioInvalidoException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
@@ -110,22 +108,6 @@ public class GlobalExceptionHandler {
                 ));
 
     }
-
-    //Rango Etario
-    @ExceptionHandler(RangoEtarioAlreadyExistsException.class)
-    public ResponseEntity<?> handleRangoEtarioAlreadyExistsException(RangoEtarioAlreadyExistsException ex) {
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(ApiResponse.fail("rangoEtarioAlreadyExists", ex.getMessage()));
-    }
-
-    @ExceptionHandler(RangoEtarioInvalidoException.class)
-    public ResponseEntity<?> handleEdadRangoInvalidoException(RangoEtarioInvalidoException ex) {
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.fail("rangoEtarioInvalido", ex.getMessage()));
-    }
-
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<?> handleConstraintViolationException(ConstraintViolationException ex) {

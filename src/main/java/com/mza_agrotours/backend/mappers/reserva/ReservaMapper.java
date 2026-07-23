@@ -23,6 +23,6 @@ public interface ReservaMapper {
     @Mapping(target = "idEstablecimiento", source = "establecimiento.id")
     ConsultarReservaDTO reservaToConsultarReservaDTO(Reserva reserva, Establecimiento establecimiento);
 
-    @Mapping(target = "tipoRangoEtario", source = "reservaDetalle.actividadRangoEtario.rangoEtario.nombre")
+    @Mapping(target = "tipoRangoEtario", source = "reservaDetalle.actividadRangoEtario.nombre")
     ConsultarReservaDetalleDTO reservaDetalleToDTO(ReservaDetalle reservaDetalle);
 }

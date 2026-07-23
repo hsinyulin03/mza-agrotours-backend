@@ -28,7 +28,7 @@ public class ActividadController {
     @PostMapping("/alta")
     public ResponseEntity<?> crearActividadConDetalles(@Valid @RequestBody DTOActividadAlta dto) throws Exception{
         //Está bien devolver un dto?
-        DTOActividadDetalleResponse nuevaActividad = servicio.altaActividad(dto);
+        DTOActividadAltaResponse nuevaActividad = servicio.altaActividad(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(nuevaActividad));
     }
 
