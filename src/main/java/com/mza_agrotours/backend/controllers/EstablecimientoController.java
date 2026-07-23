@@ -19,9 +19,9 @@ public class EstablecimientoController {
     @Autowired
     private EstablecimientoService establecimientoService;
     @PostMapping("/alta")
-    public ResponseEntity<ApiResponse<Void>> altaEstablecimiento(@Valid @RequestBody DTOEstablecimientoAlta dto) throws Exception {
-        establecimientoService.altaEstablecimiento(dto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(null));
+    public ResponseEntity<ApiResponse<DTODatosEstablecimiento>> altaEstablecimiento(@Valid @RequestBody DTOEstablecimientoAlta dto) throws Exception {
+        DTODatosEstablecimiento resultado = establecimientoService.altaEstablecimiento(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(resultado));
     }
     //US-EST-05 BM establecimiento (modificar)
     @GetMapping("/{id}")

@@ -51,7 +51,7 @@ public class EstablecimientoService  {
     private EstablecimientoMapper establecimientoMapper;
 // ALTA ESTABLECIMIENTO
     @Transactional
-    public void altaEstablecimiento(DTOEstablecimientoAlta dto) {
+    public DTODatosEstablecimiento altaEstablecimiento(DTOEstablecimientoAlta dto){
         validarCuitDisponible(dto.getCuit());
 
         Departamento departamento = obtenerDepartamento(dto.getDepartamentoId());
@@ -63,7 +63,9 @@ public class EstablecimientoService  {
         EstablecimientoEstado estadoInicial = crearEstadoInicial();
         establecimiento.getEstados().add(estadoInicial);
         establecimientoRepository.save(establecimiento);
+        return mapearADatosEstablecimiento(establecimiento);
     }
+
     // Obtener datos establecimiento (panel productor)
     public DTODatosEstablecimiento obtenerDatosEstablecimiento(UUID id) {
         Establecimiento establecimiento = obtenerEstablecimiento(id);
