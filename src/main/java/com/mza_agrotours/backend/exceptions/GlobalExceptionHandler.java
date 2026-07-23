@@ -45,12 +45,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleEntityAlreadyExistsException(EntityAlreadyExistsException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.fail("entityAlreadyExists", ex.getMessage()));
     }
-
-    @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<?> handleBusinessException(BusinessException ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.fail("businessError", ex.getMessage()));
-    }
-
     @ExceptionHandler(UsuarioDeactivatedException.class)
     public ResponseEntity<?> handleUsuarioDeactivated(UsuarioDeactivatedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("usuarioDeBaja", ex.getMessage()));

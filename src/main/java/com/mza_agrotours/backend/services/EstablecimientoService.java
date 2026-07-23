@@ -9,9 +9,9 @@ import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.establecimiento.EstablecimientoEstado;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
-import com.mza_agrotours.backend.exceptions.BusinessException;
 import com.mza_agrotours.backend.exceptions.EntityAlreadyExistsException;
 import com.mza_agrotours.backend.exceptions.EntityNotFoundException;
+import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
 import com.mza_agrotours.backend.mappers.EstablecimientoMapper;
 import com.mza_agrotours.backend.repositories.DepartamentoRepository;
 import com.mza_agrotours.backend.repositories.EstadoEstablecimientoRepository;
@@ -187,7 +187,7 @@ public class EstablecimientoService  {
     private EstablecimientoEstado crearEstadoInicial() {
         EstadoEstablecimiento estadoActivo = estadoEstablecimientoRepository
                 .findByNombreAndFechaBajaIsNull(EstadoEstablecimientoNombre.ACTIVO)
-                .orElseThrow(() -> new BusinessException("No se encuentra configurado el estado ACTIVO"));
+                .orElseThrow(() -> new ValidacionNegocioException("No se encuentra configurado el estado ACTIVO"));
 
         EstablecimientoEstado estadoInicial = new EstablecimientoEstado();
         estadoInicial.setFechaInicio(LocalDateTime.now());
@@ -247,7 +247,7 @@ public class EstablecimientoService  {
                 .anyMatch(this::esActividadPublicada);
 
         if (tieneActividadesPublicadas) {
-            throw new BusinessException("No se puede dar de baja el establecimiento porque posee actividades publicadas");
+            throw new ValidacionNegocioException("No se puede dar de baja el establecimiento porque posee actividades publicadas");
         }
     }
     // DETALLE ESTABLECIMIENTO
