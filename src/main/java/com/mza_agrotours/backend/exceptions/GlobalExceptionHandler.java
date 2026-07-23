@@ -45,6 +45,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleFirebaseAuthException(FirebaseAuthException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail(ex.getAuthErrorCode().toString(), ex.getMessage()));
     }
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<?> handleEntityNotFoundException(EntityNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("entityNotFound", ex.getMessage()));
+    }
+
+    @ExceptionHandler(EntityAlreadyExistsException.class)
+    public ResponseEntity<?> handleEntityAlreadyExistsException(EntityAlreadyExistsException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.fail("entityAlreadyExists", ex.getMessage()));
+    }
 
     @ExceptionHandler(UsuarioDeactivatedException.class)
     public ResponseEntity<?> handleUsuarioDeactivated(UsuarioDeactivatedException ex){
@@ -119,7 +128,7 @@ public class GlobalExceptionHandler {
      * Maneja los errores cuando un @RequestParam recibe un valor inválido,
      * como un valor distinto de los permitidos para un enum. Devuelve una
      * respuesta HTTP 400 con un mensaje indicando el parámetro y el valor recibido.
-
+     */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         String nombreParametro = ex.getName();
@@ -134,5 +143,5 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> apiResponse = ApiResponse.fail("badRequest", mensajeDetallado);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
-    } */
+    }
 }
