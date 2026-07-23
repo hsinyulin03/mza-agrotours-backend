@@ -47,6 +47,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleFirebaseAuthException(FirebaseAuthException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail(ex.getAuthErrorCode().toString(), ex.getMessage()));
     }
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<?> handleEntityNotFoundException(EntityNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("entityNotFound", ex.getMessage()));
+    }
+
+    @ExceptionHandler(EntityAlreadyExistsException.class)
+    public ResponseEntity<?> handleEntityAlreadyExistsException(EntityAlreadyExistsException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.fail("entityAlreadyExists", ex.getMessage()));
+    }
 
     @ExceptionHandler(UsuarioDeactivatedException.class)
     public ResponseEntity<?> handleUsuarioDeactivated(UsuarioDeactivatedException ex){
