@@ -19,13 +19,9 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
 
     @Query("""
     SELECT DISTINCT e
-    FROM Establecimiento e
-    JOIN FETCH e.tiposCultivos tc
-    JOIN e.estados ee
-    WHERE e.fechaHoraBaja IS NULL
-      AND ee.fechaFin IS NULL
-      AND ee.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
-      AND ee.estadoEstablecimiento.fechaBaja IS NULL
+        FROM Establecimiento e
+        WHERE e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
+        AND e.fechaHoraBaja IS NULL
 """)
     List<Establecimiento> obtenerEstablecimientosActivos();
     Optional<Establecimiento> findByIdAndFechaHoraBajaIsNull(UUID id);

@@ -68,4 +68,7 @@ public class Establecimiento extends BaseEntity {
             inverseJoinColumns = @JoinColumn(name = "tipo_cultivo_id")
     )
     private List<TipoCultivo> tiposCultivos = new ArrayList<>();
+    @OneToOne
+    @JoinColumn(name = "estado_actual_id")
+    private EstablecimientoEstado estadoActual;
 }

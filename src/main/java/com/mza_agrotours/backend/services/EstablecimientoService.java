@@ -62,6 +62,7 @@ public class EstablecimientoService  {
         establecimiento.setTiposCultivos(cultivos);
         EstablecimientoEstado estadoInicial = crearEstadoInicial();
         establecimiento.getEstados().add(estadoInicial);
+        establecimiento.setEstadoActual(estadoInicial);
         establecimientoRepository.save(establecimiento);
         return mapearADatosEstablecimiento(establecimiento);
     }

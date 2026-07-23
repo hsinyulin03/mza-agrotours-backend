@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.establecimiento.*;
+import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.services.EstablecimientoService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
