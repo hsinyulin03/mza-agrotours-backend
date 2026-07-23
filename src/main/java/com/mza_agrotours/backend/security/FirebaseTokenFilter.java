@@ -4,6 +4,7 @@ package com.mza_agrotours.backend.security;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
+import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,7 +31,12 @@ public class FirebaseTokenFilter extends OncePerRequestFilter {
                 FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(token);
 
                 var authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
-                var authentication = new UsernamePasswordAuthenticationToken(decodedToken.getUid(), null, authorities);
+
+                UsuarioAuthDetails usuarioAuthDetails = UsuarioAuthDetails.builder()
+                        .email(decodedToken.getEmail())
+                        .build();
+
+                var authentication = new UsernamePasswordAuthenticationToken(usuarioAuthDetails, null, authorities);
                 SecurityContext context = SecurityContextHolder.createEmptyContext();
                 context.setAuthentication(authentication);
                 SecurityContextHolder.setContext(context);
