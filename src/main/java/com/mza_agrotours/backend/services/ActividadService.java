@@ -17,7 +17,6 @@ import com.mza_agrotours.backend.mappers.RangoEtarioMapper;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadDiaRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
-import com.mza_agrotours.backend.repositories.rangoEtario.RangoEtarioRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +27,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.*;
 
 
 @Service
@@ -35,9 +35,6 @@ public class ActividadService {
 
     @Autowired
     private ActividadRespository actividadRepository;
-
-    @Autowired
-    private RangoEtarioRepository rangoEtarioRepository;
 
     @Autowired
     private ActividadValidaciones actividadValidaciones;
@@ -51,47 +48,51 @@ public class ActividadService {
     @Autowired
     private EstadoActividadDiaRepository estadoActividadDiaRepository;
 
-    @Autowired
-    private RangoEtarioMapper rangoEtarioMapper;
-
     //US-ACT-03 Alta de actividad
     @Transactional
-    public DTOActividadDetalleResponse altaActividad(DTOActividadAlta dto) {
+    public DTOActividadAltaResponse altaActividad(DTOActividadAlta dto) {
 
-            //Primero hacemos las validaciones del negocio
-            List<String> errores = actividadValidaciones.obtenerErroresValidacionActividad(dto);
+        //Primero hacemos las validaciones del negocio
+        List<String> errores = actividadValidaciones.obtenerErroresValidacionActividad(dto);
 
-            if (!errores.isEmpty()) {
-                 throw new ValidacionMultipleException(errores);
-            }
+        if (!errores.isEmpty()) {
+            throw new ValidacionMultipleException(errores);
+        }
 
-            EstadoActividad estado = obtenerEstado(dto);
+        EstadoActividad estado = obtenerEstado(dto);
 
-            //Paso 1: Información General
-            Actividad actividad = new Actividad();
-            actividad.setNombre(dto.getNombre());
-            actividad.setDescripcion(dto.getDescripcion());
-            actividad.setCuposMax(dto.getCuposMax());
-            //Guarda el UUID del estado
-            actividad.setEstado(estado);
+        //Paso 1: Información General
+        Actividad actividad = new Actividad();
+        actividad.setNombre(dto.getNombre());
+        actividad.setDescripcion(dto.getDescripcion());
+        actividad.setCuposMax(dto.getCuposMax());
+        //Guarda el UUID del estado
+        actividad.setEstado(estado);
 
-            List<ActividadInclusiones> inclusiones = obtenerInclusiones(dto);
-            List<ActividadFAQ> faqs = obtenerFaqs(dto);
-            List<ActividadRangoEtario> tarifas = obtenerTarifas(dto);
-            ActividadLogAltas logAltas = obtenerLogAltas(dto);
-            List<ActividadDia> calendario = generarDiasCalendario(dto, logAltas);
+        List<ActividadInclusiones> inclusiones = obtenerInclusiones(dto);
+        List<ActividadFAQ> faqs = obtenerFaqs(dto);
+        List<ActividadRangoEtario> tarifas = obtenerTarifas(dto);
+        ActividadLogAltas logAltas = obtenerLogAltas(dto);
+        List<ActividadDia> calendario = generarDiasCalendario(dto, logAltas);
 
-            //setear los valores obtenidos a actividad
-            inclusiones.forEach(actividad::addInclusion);
-            faqs.forEach(actividad::addFaq);
-            tarifas.forEach(actividad::addActividadRangoEtario);
-            actividad.addLogAlta(logAltas);
-            calendario.forEach(actividad::addActividadDia);
+        //setear los valores obtenidos a actividad
+        inclusiones.forEach(actividad::addInclusion);
+        faqs.forEach(actividad::addFaq);
+        tarifas.forEach(actividad::addActividadRangoEtario);
+        actividad.addLogAlta(logAltas);
+        calendario.forEach(actividad::addActividadDia);
 
-            // Persistir en la base de datos
-            Actividad actividadGuardada = actividadRepository.save(actividad);
-            return actividadMapper.actividadToDTOActividadDetalle(actividadGuardada);
+        // Persistir en la base de datos
+        Actividad actividadGuardada = actividadRepository.save(actividad);
 
+        List<String> advertencias = calcularHuecos(dto.getTarifas());
+
+        DTOActividadAltaResponse response = new DTOActividadAltaResponse();
+        response.setIdActividad(actividadGuardada.getId());
+        response.setMensaje("La actividad fue creada exitosamente.");
+        response.setAdvertencias(advertencias);
+
+        return response;
     }
 
     private EstadoActividad obtenerEstado(DTOActividadAlta dto) {
@@ -154,14 +155,13 @@ public class ActividadService {
         List<ActividadRangoEtario> tarifas = new ArrayList<>();
 
         for (DTOTarifa tarifaDto : dto.getTarifas()) {
-            RangoEtario rango = rangoEtarioRepository.findByIdAndFechaHoraBajaIsNull(tarifaDto.getRangoEtarioId())
-                    .orElseThrow(() -> new ResourceNotFoundException("El rango etario con ID " + tarifaDto.getRangoEtarioId() + " no existe"));
 
             ActividadRangoEtario tarifa = new ActividadRangoEtario();
+            tarifa.setNombre(tarifaDto.getNombre());
             tarifa.setPrecio(tarifaDto.getPrecio());
-            tarifa.setRangoEtario(rango);
+            tarifa.setEdadMinima(tarifaDto.getEdadMinima());
+            tarifa.setEdadMaxima(tarifaDto.getEdadMaxima());
             tarifa.setEsTarifaBase(tarifaDto.isEsTarifaBase());
-            tarifa.setFechaValidaDesde(LocalDate.now());
             tarifas.add(tarifa);
         }
 
@@ -252,6 +252,51 @@ public class ActividadService {
         };
     }
 
+    private List<String> calcularHuecos(List<DTOTarifa> tarifas) {
+
+        List<String> huecos = new ArrayList<>();
+
+        if (tarifas == null || tarifas.isEmpty()) {
+            huecos.add("0 a 120 años");
+            return huecos;
+        }
+
+        // Ordenamos por edad mínima de menor a mayor
+        List<DTOTarifa> tarifasOrdenadas = new ArrayList<>(tarifas);
+        tarifasOrdenadas.sort(Comparator.comparingInt(DTOTarifa::getEdadMinima));
+
+        // Verificamos el hueco inicial
+        DTOTarifa primerRango = tarifasOrdenadas.get(0);
+        if (primerRango.getEdadMinima() > 0) {
+            int finHueco = primerRango.getEdadMinima() - 1;
+            huecos.add("0 a " + finHueco + " años");
+        }
+
+        // Verificamos los huecos intermedios
+        for (int i = 0; i < tarifasOrdenadas.size() - 1; i++) {
+            int maxActual = tarifasOrdenadas.get(i).getEdadMaxima();
+            int minSiguiente = tarifasOrdenadas.get(i + 1).getEdadMinima();
+
+            if (minSiguiente > maxActual + 1) {
+                int inicioHueco = maxActual + 1;
+                int finHueco = minSiguiente - 1;
+                huecos.add(inicioHueco + " a " + finHueco + " años");
+            }
+        }
+
+        // Verificamos el hueco final
+        DTOTarifa ultimoRango = tarifasOrdenadas.get(tarifasOrdenadas.size() - 1);
+        //TODO: Setear como parámetro global del sistema
+        int EDAD_MAXIMA_SISTEMA = 120;
+
+        if (ultimoRango.getEdadMaxima() < EDAD_MAXIMA_SISTEMA) {
+            int inicioHueco = ultimoRango.getEdadMaxima() + 1;
+            huecos.add(inicioHueco + " a " + EDAD_MAXIMA_SISTEMA + " años");
+        }
+
+        return huecos;
+    }
+
     //US-ACT-02:  Consultar detalle de una actividad
     @Transactional(readOnly = true)
     public DTOActividadDetalleResponse obtenerDetallePorId(UUID id) {
@@ -277,7 +322,7 @@ public class ActividadService {
 
     //US-ACT-07: Consultar todos los días disponibles para una actividad
     @Transactional(readOnly = true)
-    public DTOCalendarioActividadDiaResponse obtenerDetalleCalendario(UUID actividadId, int mes, int anio){
+    public DTOCalendarioActividadDiaResponse obtenerDetalleCalendario(UUID actividadId, int mes, int anio) {
 
         Actividad actividad = actividadRepository.findById(actividadId)
                 .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada"));
@@ -318,38 +363,6 @@ public class ActividadService {
         return actividades.stream()
                 .map(actividadMapper::actividadToDTOListadoActividadVisitante)
                 .toList();
-    }
-
-    //La idea es que en la modificación de actividad se muestren las activas y las asociadas anteriormente en el alta
-    @Transactional(readOnly = true)
-    public List<DTORangoEtarioEdicion> listarRangosParaEdicion(UUID idActividad) {
-        List<RangoEtario> rangosActivos = rangoEtarioRepository.findAllByFechaHoraBajaIsNull();
-
-        // 2. Buscamos la actividad que se quiere editar para ver qué tiene guardado
-        Actividad actividad = actividadRepository.findById(idActividad)
-                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada"));
-
-        // 3. Filtramos los rangos de esta actividad que YA están dados de baja
-        List<RangoEtario> rangosInactivosAsociados = actividad.getActividadRangoEtarios().stream()
-                .map(ActividadRangoEtario::getRangoEtario)
-                .filter(rango -> rango.getFechaHoraBaja() != null)
-                .toList();
-
-        // 4. Mapeamos los activos (obsoleto = false)
-        List<DTORangoEtarioEdicion> dtosActivos = rangoEtarioMapper.rangoEtarioListtoDTORangoEtarioEdicionList(rangosActivos);
-        // Asegurarse de que obsoleto esté en false (si tu mapper no lo hace por defecto)
-        dtosActivos.forEach(dto -> dto.setObsoleto(false));
-
-        // 5. Mapeamos los inactivos (obsoleto = true)
-        List<DTORangoEtarioEdicion> dtosInactivos = rangoEtarioMapper.rangoEtarioListtoDTORangoEtarioEdicionList(rangosInactivosAsociados);
-        dtosInactivos.forEach(dto -> dto.setObsoleto(true));
-
-        // 6. Unimos ambas listas y las devolvemos
-        List<DTORangoEtarioEdicion> resultadoFinal = new ArrayList<>();
-        resultadoFinal.addAll(dtosActivos);
-        resultadoFinal.addAll(dtosInactivos);
-
-        return resultadoFinal;
     }
 
 }
