@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.exceptions;
 
+import com.google.firebase.auth.FirebaseAuthException;
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
 import com.mza_agrotours.backend.exceptions.rangoEtario.RangoEtarioAlreadyExistsException;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
 
 import java.util.HashMap;
 import java.util.List;
@@ -31,11 +33,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("userAlreadyExists", ex.getMessage()));
     }
 
+    @ExceptionHandler(UserDeleteConditionNotMetException.class)
+    public ResponseEntity<?> handleUserDeleteConditionNotMetException(UserDeleteConditionNotMetException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("userDeleteConditionNotMet", ex.getMessage(), ex.getCondiciones()));
+    }
+
     @ExceptionHandler(TipoIdentificacionInvalidoException.class)
     public ResponseEntity<?> handleTipoIdentificacionInvalido(TipoIdentificacionInvalidoException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.fail("tipoIdentificacionInvalido", ex.getMessage()));
     }
 
+    @ExceptionHandler(FirebaseAuthException.class)
+    public ResponseEntity<?> handleFirebaseAuthException(FirebaseAuthException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail(ex.getAuthErrorCode().toString(), ex.getMessage()));
+    }
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<?> handleEntityNotFoundException(EntityNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("entityNotFound", ex.getMessage()));
@@ -45,13 +56,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleEntityAlreadyExistsException(EntityAlreadyExistsException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.fail("entityAlreadyExists", ex.getMessage()));
     }
+
     @ExceptionHandler(UsuarioDeactivatedException.class)
-    public ResponseEntity<?> handleUsuarioDeactivated(UsuarioDeactivatedException ex) {
+    public ResponseEntity<?> handleUsuarioDeactivated(UsuarioDeactivatedException ex){
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("usuarioDeBaja", ex.getMessage()));
     }
 
     @ExceptionHandler(EstablecimientoNotFoundException.class)
-    public ResponseEntity<?> handleEstablecimientoNotFound(EstablecimientoNotFoundException ex) {
+    public ResponseEntity<?> handleEstablecimientoNotFound(EstablecimientoNotFoundException ex){
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("entityNonExistent", ex.getMessage()));
     }
 
@@ -96,6 +108,7 @@ public class GlobalExceptionHandler {
                         "Por favor, revisa los datos ingresados.",
                         listaDeErrores
                 ));
+
     }
 
     //Rango Etario
@@ -113,6 +126,7 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail("rangoEtarioInvalido", ex.getMessage()));
     }
 
+
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<?> handleConstraintViolationException(ConstraintViolationException ex) {
         Map<String, String> errors = new HashMap<>();
@@ -121,6 +135,11 @@ public class GlobalExceptionHandler {
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.fail("badRequest", "Parametros invalidos", errors));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<?> handleAllExceptions(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.fail("internalServerError", ex.getMessage()));
     }
 
     /**
@@ -142,10 +161,5 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> apiResponse = ApiResponse.fail("badRequest", mensajeDetallado);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<?> handleAllExceptions(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.fail("internalServerError", ex.getMessage()));
     }
 }
