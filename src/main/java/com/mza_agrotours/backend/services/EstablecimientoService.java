@@ -2,7 +2,7 @@ package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.establecimiento.*;
 import com.mza_agrotours.backend.entities.Departamento;
-import com.mza_agrotours.backend.entities.TipoCultivo;
+import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.establecimiento.EstadoEstablecimiento;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
