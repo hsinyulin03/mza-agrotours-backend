@@ -16,7 +16,7 @@ public class DepartamentoController {
         this.departamentoService = departamentoService;
     }
 
-    @GetMapping
+    @GetMapping("/")
     public ResponseEntity<?> getAllDepartamentos() {
         return ResponseEntity.ok(ApiResponse.ok(this.departamentoService.getAllDepartamentos()));
     }
