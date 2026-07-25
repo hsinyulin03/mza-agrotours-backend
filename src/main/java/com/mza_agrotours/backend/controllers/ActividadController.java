@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.actividad.*;
+import com.mza_agrotours.backend.dtos.reservas.InfoParaReservarDTO;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.services.ActividadService;
 import jakarta.validation.Valid;
@@ -70,5 +71,12 @@ public class ActividadController {
     public ResponseEntity <?> explorarActividades() throws Exception {
         List<DTOListadoActividadVisitanteResponse> listado = servicio.explorarActividades();
         return ResponseEntity.ok(ApiResponse.ok(listado));
+    }
+
+    //US-RESE-01: Reservar actividad - Información para reservar
+    @GetMapping("/{id}/reservar")
+    public ResponseEntity<ApiResponse<InfoParaReservarDTO>> infoParaReservar(@PathVariable UUID id){
+        InfoParaReservarDTO infoParaReservar = servicio.getInfoParaReservar(id);
+        return ResponseEntity.ok(ApiResponse.ok(infoParaReservar));
     }
 }

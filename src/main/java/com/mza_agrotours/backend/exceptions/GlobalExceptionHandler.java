@@ -1,9 +1,13 @@
 package com.mza_agrotours.backend.exceptions;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
+import com.mza_agrotours.backend.exceptions.actividad.ActividadDiaNotFound;
+import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
+import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
 import com.mza_agrotours.backend.exceptions.rangoEtario.RangoEtarioAlreadyExistsException;
 import com.mza_agrotours.backend.exceptions.rangoEtario.RangoEtarioInvalidoException;
+import com.mza_agrotours.backend.exceptions.reservas.FechaNacimientoInvalidaException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
@@ -117,13 +121,6 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail("badRequest", "Parametros invalidos", errors));
     }
 
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<?> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        String mensaje = "Parámetro '%s' invalido".formatted(ex.getName());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.fail("invalidParameter", mensaje));
-    }
-
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleAllExceptions(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.fail("internalServerError", ex.getMessage()));
@@ -148,5 +145,28 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> apiResponse = ApiResponse.fail("badRequest", mensajeDetallado);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
+    }
+
+    @ExceptionHandler(ActividadNotActiveException.class)
+    public ResponseEntity<ApiResponse<?>> handleActividadNotActive(ActividadNotActiveException ex){
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.fail("actividadNotActive", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ActividadDiaNotFound.class)
+    public ResponseEntity<ApiResponse<?>> handleActividadDiaNotFound(ActividadDiaNotFound ex){
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.fail("actividadDiaNotFound", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ActividadNotFoundException.class)
+    public ResponseEntity<ApiResponse<?>> handleActividadNotFound(ActividadNotFoundException ex){
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.fail("actividadNotFound", ex.getMessage()));
+    }
+
+    @ExceptionHandler(FechaNacimientoInvalidaException.class)
+    public ResponseEntity<?> handleFechaNacimientoInvalida(FechaNacimientoInvalidaException ex){
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("bornDateInvalid", ex.getMessage()));
     }
 }

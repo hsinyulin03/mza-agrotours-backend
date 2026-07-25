@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.mappers;
 
 import com.mza_agrotours.backend.dtos.actividad.*;
+import com.mza_agrotours.backend.dtos.reservas.RangoEtarioReservaDTO;
 import com.mza_agrotours.backend.entities.actividad.*;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
@@ -40,6 +41,13 @@ public abstract class ActividadMapper {
     //US-ACT-12
     @Mapping(target = "precioRegular", ignore = true)
     public abstract DTOListadoActividadVisitanteResponse actividadToDTOListadoActividadVisitante(Actividad actividad);
+
+    //US-RESE-01
+    @Mapping(target = "nombre", source = "actividadRangoEtarios.rangoEtario.nombre")
+    @Mapping(target = "edadMinima", source = "actividadRangoEtarios.rangoEtario.edadMinima")
+    @Mapping(target = "edadMaxima", source = "actividadRangoEtarios.rangoEtario.edadMaxima")
+    @Mapping(target = "precio", source = "actividadRangoEtarios.precio")
+    public abstract RangoEtarioReservaDTO actividadRangoEtarioToDTO(ActividadRangoEtario actividadRangoEtarios);
 
     @AfterMapping
     public void llenarListasComplejas(Actividad actividad, @MappingTarget DTOActividadDetalleResponse dto) {

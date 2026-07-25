@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -13,4 +14,6 @@ import java.util.UUID;
 public interface UsuarioRepository extends BaseEntityRepository<Usuario, UUID>{
     @Query("select u from Usuario u where lower(u.email) = lower(:email) and u.fechaHoraBaja is null")
     Optional<Usuario> findActiveByEmail(@Param("email") String email);
+
+    Optional<Usuario> findByFirebaseUID(String firebaseUID);
 }

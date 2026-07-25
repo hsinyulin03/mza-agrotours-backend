@@ -13,4 +13,14 @@ public class ReservaExceptionHandler {
     public ResponseEntity<?> handleReservaNotFoundException(ReservaNotFoundException ex){
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("notFound", ex.getMessage()));
     }
+
+    @ExceptionHandler(ActividadFullException.class)
+    public ResponseEntity<?> handleActividadFullException(ActividadFullException ex){
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("activityFull", ex.getMessage()));
+    }
+
+    @ExceptionHandler(EstadoReservaNotFoundException.class)
+    public ResponseEntity<?> handleReservaEstadoNotFoundException(EstadoReservaNotFoundException ex){
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("activityFull", ex.getMessage()));
+    }
 }

@@ -28,6 +28,8 @@ public class Actividad extends BaseEntity {
     @Column(name = "fecha_hora_baja_act")
     private LocalDateTime fechaHoraBaja;
 
+    private Float calificacionPromedio;
+
     //TODO: No estoy segura de esta relación, por cómo está no guardo un historial, solo sé el estado que está actualmente
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "estado_id", nullable = false)
