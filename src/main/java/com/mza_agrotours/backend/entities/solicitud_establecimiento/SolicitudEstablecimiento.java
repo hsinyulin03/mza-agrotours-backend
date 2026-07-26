@@ -3,13 +3,14 @@ package com.mza_agrotours.backend.entities.solicitud_establecimiento;
 import com.mza_agrotours.backend.entities.BaseEntity;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.Usuario;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @NoArgsConstructor
@@ -46,5 +47,12 @@ public class SolicitudEstablecimiento extends BaseEntity {
 
     @ManyToOne(optional = false)
     private Usuario usuario;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "solicitud_establecimiento_id")
+    private List<SolicitudEstablecimientoEstado> estados = new ArrayList<>();
+
+    @OneToOne
+    private SolicitudEstablecimientoEstado estadoActual;
 
 }
