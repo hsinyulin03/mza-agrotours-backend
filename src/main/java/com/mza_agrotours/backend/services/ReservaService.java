@@ -9,6 +9,7 @@ import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
+import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
@@ -26,20 +27,24 @@ import com.mza_agrotours.backend.exceptions.reservas.ReservaNotFoundException;
 import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
 import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.EXPIRADA;
 import static com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.PENDIENTE;
 
 @Service
 public class ReservaService {
+    private static final Logger log = LoggerFactory.getLogger(ReservaService.class);
+
     private final ReservaRepository reservaRepository;
     private final ReservaMapper reservaMapper;
     private final EstablecimientoRepository establecimientoRepository;
@@ -150,7 +155,7 @@ public class ReservaService {
         nuevaReserva.setFechaHoraExpiracion(fechaHoraActual.plusMinutes(parametrosService.getInstance().getTtlReserva()));
 
         EstadoReserva estadoReserva = reservaRepository.findEstadoReservaByEstadoReservaNombre(PENDIENTE)
-                .orElseThrow(EstadoReservaNotFoundException::new);
+                .orElseThrow(() -> new EstadoReservaNotFoundException(EstadoReservaNombre.PENDIENTE));
 
         nuevaReserva.cambiarEstado(estadoReserva,fechaHoraActual);
 
@@ -171,15 +176,44 @@ public class ReservaService {
 
         reservaRepository.save(nuevaReserva);
 
-        // TODO probablemente en otro método, no este
-        // Comunicarse con mercado pago
-        // Si el pago es exitoso, pasa a pagada
-        // Si el pago es fallido, pasa a expirada
-
         Establecimiento establecimiento = establecimientoRepository.findEstablecimientoByActividadId(nuevaReserva.getActividad().getId())
                 .orElseThrow(EstablecimientoNotFoundException::new);
 
         // Avisar al frontend de qué pasó
         return reservaMapper.reservaToConsultarReservaDTO(nuevaReserva, establecimiento);
+    }
+
+    // TODO
+    //  Si hay fallos con la BD en las transacciones, ya sea individual o global, el log queda mintiendo
+    //  Esto ocurre porque el save() se ignora hasta que termine la función por ser @Transactional
+    //  Así pueden haber transacciones que a nivel de Java no tuvieron problema y el log las toma como correctas,
+    //  pero cuando se va a guardar en la BD, el transactional hace que nada se guarde y el log quede mintiendo.
+    @Transactional
+    public void expirarReservas(){
+        LocalDateTime ahora = LocalDateTime.now();
+        List<Reserva> reservas = reservaRepository.findReservasExpiradas(ahora);
+
+        EstadoReserva estadoReserva = reservaRepository.findEstadoReservaByEstadoReservaNombre(EXPIRADA)
+                .orElseThrow(() -> new EstadoReservaNotFoundException(EstadoReservaNombre.EXPIRADA));
+
+        List<String> idFallidas = new ArrayList<>();
+
+        for (Reserva r : reservas){
+            try{
+                r.cambiarEstado(estadoReserva, ahora);
+                reservaRepository.save(r);
+            } catch (Exception e) {
+                idFallidas.add(r.getId().toString());
+            }
+        }
+
+        log.info("Se expiraron {}/{} reservas. Las reservas no expiradas fueron {}, con ids: {}",
+                reservas.size() - idFallidas.size(), reservas.size(), idFallidas.size(), idFallidas);
+    }
+
+    public void handlePago(){
+        // Comunicarse con mercado pago
+        // Si el pago es exitoso, pasa a pagada
+        // Si el pago es fallido, pasa a expirada
     }
 }

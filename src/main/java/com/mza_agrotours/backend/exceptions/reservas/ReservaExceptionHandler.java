@@ -21,6 +21,6 @@ public class ReservaExceptionHandler {
 
     @ExceptionHandler(EstadoReservaNotFoundException.class)
     public ResponseEntity<?> handleReservaEstadoNotFoundException(EstadoReservaNotFoundException ex){
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("activityFull", ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("estadoNotFound", ex.getMessage()));
     }
 }
