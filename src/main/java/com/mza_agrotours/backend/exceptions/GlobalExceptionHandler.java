@@ -20,7 +20,7 @@ import java.util.Map;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
-
+    // --- INICIO EXCEPCIONES USUARIO
     @ExceptionHandler(UsuarioNotFound.class)
     public ResponseEntity<?> handleUserNotFoundException(UsuarioNotFound ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("badCreds", ex.getMessage()));
@@ -35,10 +35,21 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleUserDeleteConditionNotMetException(UserDeleteConditionNotMetException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("userDeleteConditionNotMet", ex.getMessage(), ex.getCondiciones()));
     }
+    // FIN EXCEPCIONES USUARIO ---
 
     @ExceptionHandler(TipoIdentificacionInvalidoException.class)
     public ResponseEntity<?> handleTipoIdentificacionInvalido(TipoIdentificacionInvalidoException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.fail("tipoIdentificacionInvalido", ex.getMessage()));
+    }
+
+    @ExceptionHandler(EstadoSolicitudEstablecimientoNotFoundException.class)
+    public ResponseEntity<?> handleEstadoSolicitudEstablecimientoNotFoundException(EstadoSolicitudEstablecimientoNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("estadoSolicitudEstablecimientoNotFound", ex.getMessage()));
+    }
+
+    @ExceptionHandler(DepartamentoNotFoundException.class)
+    public ResponseEntity<?> handleDepartamentoNotFoundException(DepartamentoNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("departamentoNotFound", ex.getMessage()));
     }
 
     @ExceptionHandler(FirebaseAuthException.class)
