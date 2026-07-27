@@ -5,7 +5,7 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public enum EstadoEstacionalidad {
+public enum EstacionalidadNombre {
     COSECHA("Cosecha"),
     CRECIMIENTO("Crecimiento"),
     REPOSO("Reposo");

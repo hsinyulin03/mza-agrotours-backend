@@ -6,6 +6,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -17,4 +18,7 @@ public interface TipoCultivoRepository
         AND c.fechaHoraBaja IS NULL
         """)
     List<TipoCultivo> findActivosByIds(@Param("ids") List<UUID> ids);
+    boolean existsByNombreIgnoreCaseAndFechaHoraBajaIsNull(String nombre);
+
+    Optional<TipoCultivo> findByIdAndFechaHoraBajaIsNull(UUID id);
 }

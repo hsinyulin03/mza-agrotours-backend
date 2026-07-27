@@ -1,8 +1,7 @@
 package com.mza_agrotours.backend.entities.cultivo;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
-import com.mza_agrotours.backend.enums.EstadoEstacionalidad;
-import com.mza_agrotours.backend.enums.Mes;
+import com.mza_agrotours.backend.enums.EstacionalidadNombre;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -17,7 +16,7 @@ import lombok.Setter;
 public class Estacionalidad extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private EstadoEstacionalidad nombre;
+    private EstacionalidadNombre nombre;
 
     @Column(nullable = false, length = 20)
     private String colorMuestra;
