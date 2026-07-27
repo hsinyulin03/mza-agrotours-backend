@@ -1,13 +1,14 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.reservas.*;
-import com.mza_agrotours.backend.entities.TipoIdentificacion;
-import com.mza_agrotours.backend.entities.TipoIdentificacionNombre;
-import com.mza_agrotours.backend.entities.Visitante;
+import com.mza_agrotours.backend.entities.*;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
+import com.mza_agrotours.backend.entities.pago.EstadoPagoNombre;
+import com.mza_agrotours.backend.entities.pago.MetodoPago;
+import com.mza_agrotours.backend.entities.pago.Pago;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
@@ -27,6 +28,8 @@ import com.mza_agrotours.backend.exceptions.reservas.ReservaNotFoundException;
 import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
 import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
+import com.mza_agrotours.backend.services.pago.EstrategiaPago;
+import com.mza_agrotours.backend.services.pago.EstrategiaPagoFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -39,6 +42,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.EXPIRADA;
+import static com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.PAGADA;
 import static com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.PENDIENTE;
 
 @Service
@@ -52,8 +56,9 @@ public class ReservaService {
     private final ParametrosService parametrosService;
     private final VisitanteRepository visitanteRepository;
     private final TipoIdentificacionRepository tipoIdentificacionRepository;
+    private final EstrategiaPagoFactory estrategiaPagoFactory;
 
-    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, EstablecimientoRepository establecimientoRepository, ActividadRespository actividadRepository, ParametrosService parametrosService, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository) {
+    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, EstablecimientoRepository establecimientoRepository, ActividadRespository actividadRepository, ParametrosService parametrosService, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstrategiaPagoFactory estrategiaPagoFactory) {
         this.reservaRepository = reservaRepository;
         this.reservaMapper = reservaMapper;
         this.establecimientoRepository = establecimientoRepository;
@@ -61,6 +66,7 @@ public class ReservaService {
         this.parametrosService = parametrosService;
         this.visitanteRepository = visitanteRepository;
         this.tipoIdentificacionRepository = tipoIdentificacionRepository;
+        this.estrategiaPagoFactory = estrategiaPagoFactory;
     }
 
     /**
@@ -166,13 +172,18 @@ public class ReservaService {
 
         nuevaReserva.setTotalReserva(totalReserva);
 
-        // TODO estos subtotales habría que actualizarlos cuando hablemos con MP para no tener error.
-        BigDecimal comisionPropia = totalReserva;
-        nuevaReserva.setSubTotalComisionPropia(comisionPropia);
-        BigDecimal comisionTransaccion = totalReserva;
-        nuevaReserva.setSubtotalComisionTransaccion(comisionTransaccion);
-        BigDecimal subtotalProductor = totalReserva.subtract(comisionPropia).subtract(comisionTransaccion);
-        nuevaReserva.setSubtotalProductor(subtotalProductor);
+        MetodoPago metodoPago = MetodoPago.MANUAL;  // TODO Cambiar esto para cuando se use el medio de pago real
+
+        EstrategiaPago estrategiaPago = estrategiaPagoFactory.get(metodoPago);
+        Pago pago = estrategiaPago.procesarPago(nuevaReserva);
+
+        // Si el pago ya fue aprobado (ej. manual), la reserva pasa a pagada.
+        // Si queda pendiente (ej. Mercado Pago), la reserva sigue pendiente hasta la confirmación por webhook.
+        if (pago.getEstadoActual().getEstadoPago().getNombre() == EstadoPagoNombre.APROBADO) {
+            EstadoReserva estadoPagada = reservaRepository.findEstadoReservaByEstadoReservaNombre(PAGADA)
+                    .orElseThrow(() -> new EstadoReservaNotFoundException(EstadoReservaNombre.PAGADA));
+            nuevaReserva.cambiarEstado(estadoPagada, fechaHoraActual);
+        }
 
         reservaRepository.save(nuevaReserva);
 
@@ -183,7 +194,7 @@ public class ReservaService {
         return reservaMapper.reservaToConsultarReservaDTO(nuevaReserva, establecimiento);
     }
 
-    // TODO
+    // NOTE
     //  Si hay fallos con la BD en las transacciones, ya sea individual o global, el log queda mintiendo
     //  Esto ocurre porque el save() se ignora hasta que termine la función por ser @Transactional
     //  Así pueden haber transacciones que a nivel de Java no tuvieron problema y el log las toma como correctas,
@@ -209,11 +220,5 @@ public class ReservaService {
 
         log.info("Se expiraron {}/{} reservas. Las reservas no expiradas fueron {}, con ids: {}",
                 reservas.size() - idFallidas.size(), reservas.size(), idFallidas.size(), idFallidas);
-    }
-
-    public void handlePago(){
-        // Comunicarse con mercado pago
-        // Si el pago es exitoso, pasa a pagada
-        // Si el pago es fallido, pasa a expirada
     }
 }

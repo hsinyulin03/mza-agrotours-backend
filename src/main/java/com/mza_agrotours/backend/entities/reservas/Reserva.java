@@ -1,7 +1,7 @@
 package com.mza_agrotours.backend.entities.reservas;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
-import com.mza_agrotours.backend.entities.Pago;
+import com.mza_agrotours.backend.entities.pago.Pago;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.entities.Visitante;
@@ -74,8 +74,9 @@ public class Reserva extends BaseEntity {
      * @param tiempoCambio Fecha y hora a la que se realizó el cambio
      */
     public void cambiarEstado(EstadoReserva estado, LocalDateTime tiempoCambio){
-        // Al último estado le damos FechaHoraFin
-        this.estadoActual.setFechaHoraFin(tiempoCambio);
+        // Al último estado le damos FechaHoraFin, si es que había uno (primer estado del pago)
+        if (this.estadoActual != null)
+            this.estadoActual.setFechaHoraFin(tiempoCambio);
 
         // Creamos la nueva ReservaEstado
         ReservaEstado nuevoRE = new ReservaEstado(tiempoCambio, null, estado);
