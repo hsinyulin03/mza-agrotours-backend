@@ -1,8 +1,10 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.actividad.DTOActividadAlta;
+import com.mza_agrotours.backend.dtos.actividad.DTOActividadUpdate;
 import com.mza_agrotours.backend.dtos.actividad.DTODiaDisponibilidad;
 import com.mza_agrotours.backend.dtos.actividad.DTOTarifa;
+import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,9 +25,7 @@ public class ActividadValidaciones {
         List<String> errores = new ArrayList<>();
 
         // Validar que  no haya dos actividades con mismo nombre
-        if (actividadRepository.existsByNombreIgnoreCaseAndFechaHoraBajaIsNull(dto.getNombre())) {
-            errores.add("Ya existe una actividad con este nombre");
-        }
+        errores.addAll(validarNombreUnico(dto.getNombre(), null));
 
         // No permitir crear una actividad con estado "Dado de baja"
         String estadoRecibido = dto.getEstado();
@@ -36,9 +36,26 @@ public class ActividadValidaciones {
             errores.add("Una actividad nueva no puede crearse en estado '" + dto.getEstado() + "'. Solo se permite en estado BORRADOR o PUBLICADO.");
         }
         errores.addAll(validarFechas(dto));
-        errores.addAll(validarTarifas(dto));
+        errores.addAll(validarTarifas(dto.getTarifas()));
         errores.addAll(validarDisponibilidad(dto));
 
+        return errores;
+    }
+
+    public List<String> obtenerErroresValidacionModificacion(UUID idActividadActual,  DTOActividadUpdate dto) {
+        List<String> errores = new ArrayList<>();
+        errores.addAll(validarNombreUnico(dto.getNombre(), idActividadActual));
+        errores.addAll(validarTarifas(dto.getTarifas()));
+        return errores;
+    }
+
+    private List<String> validarNombreUnico(String nombre, UUID idActividadActual) {
+        List<String> errores = new ArrayList<>();
+        Optional<Actividad> existente = actividadRepository.findByNombreIgnoreCaseAndFechaHoraBajaIsNull(nombre);
+
+        if (existente.isPresent() && (idActividadActual == null || !existente.get().getId().equals(idActividadActual))) {
+            errores.add("Ya existe una actividad con este nombre");
+        }
         return errores;
     }
 
@@ -58,16 +75,17 @@ public class ActividadValidaciones {
         return errores;
     }
 
-    private List<String> validarTarifas(DTOActividadAlta dto) {
+    private List<String> validarTarifas(List <DTOTarifa> tarifas) {
 
         List<String> errores = new ArrayList<>();
 
-        if (dto.getTarifas() == null ) {
+        if (tarifas== null ) {
             errores.add("Debes cargar al menos una tarifa para la actividad.");
+            return errores;
         }
 
         Set<String> nombresTarifas = new HashSet<>();
-        for (DTOTarifa tarifa : dto.getTarifas()) {
+        for (DTOTarifa tarifa : tarifas) {
             String nombreNormalizado = tarifa.getNombre().toLowerCase();
 
             if (!nombresTarifas.add(nombreNormalizado)) {
@@ -75,14 +93,14 @@ public class ActividadValidaciones {
             }
         }
 
-        long contadorTarifasBase = dto.getTarifas().stream().filter(DTOTarifa::isEsTarifaBase).count();
+        long contadorTarifasBase = tarifas.stream().filter(DTOTarifa::isEsTarifaBase).count();
         if (contadorTarifasBase == 0) {
             errores.add("Es obligatorio marcar un rango etario como tarifa base.");
         } else if (contadorTarifasBase > 1) {
             errores.add("No puedes tener más de una tarifa base en la misma actividad.");
         }
 
-        for (DTOTarifa tarifa : dto.getTarifas()) {
+        for (DTOTarifa tarifa : tarifas) {
             if (tarifa.getEdadMinima() > tarifa.getEdadMaxima()) {
                 errores.add("Error en la tarifa '" + tarifa.getNombre() + "': La edad mínima (" +
                         tarifa.getEdadMinima() + ") no puede ser mayor a la edad máxima (" +
@@ -91,7 +109,7 @@ public class ActividadValidaciones {
         }
 
         //validación de solapamiento (error bloqueante)
-        List<DTOTarifa> tarifasOrdenadas = new ArrayList<>(dto.getTarifas());
+        List<DTOTarifa> tarifasOrdenadas = new ArrayList<>(tarifas);
         tarifasOrdenadas.sort(Comparator.comparing(DTOTarifa::getEdadMinima));
 
         for (int i = 1; i < tarifasOrdenadas.size(); i++) {
