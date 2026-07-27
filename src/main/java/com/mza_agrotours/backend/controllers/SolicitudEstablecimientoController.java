@@ -1,8 +1,9 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
-import com.mza_agrotours.backend.dtos.SolicitudEstablecimientoCreateReq;
+import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateReq;
 import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
+import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateResp;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimiento;
 import com.mza_agrotours.backend.services.SolicitudEstablecimientoService;
 import jakarta.validation.Valid;
@@ -28,7 +29,7 @@ public class SolicitudEstablecimientoController {
             @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails)
             throws Exception {
         String emailUsuario = usuarioAuthDetails.getEmail();
-        SolicitudEstablecimiento nuevaSolicitudEstablecimiento = this.solicitudEstablecimientoService.crearSolicitudEstablecimiento(solicitudEstablecimientoCreateReq, emailUsuario);
+        SolicitudEstablecimientoCreateResp nuevaSolicitudEstablecimiento = solicitudEstablecimientoService.crearSolicitudEstablecimiento(solicitudEstablecimientoCreateReq, emailUsuario);
         //TODO: Notificar al usuario que se ha creado la solicitud
         return ResponseEntity.ok().body(ApiResponse.ok(nuevaSolicitudEstablecimiento));
     }

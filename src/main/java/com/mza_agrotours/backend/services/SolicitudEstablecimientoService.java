@@ -1,9 +1,12 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.dtos.SolicitudEstablecimientoCreateReq;
+import com.mza_agrotours.backend.config.ObjectStorageProvider;
+import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
+import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateReq;
+import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateResp;
+import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.Usuario;
-import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolicitudEstablecimiento;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolicitudEstablecimientoNombre;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimiento;
@@ -11,37 +14,48 @@ import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEst
 import com.mza_agrotours.backend.exceptions.DepartamentoNotFoundException;
 import com.mza_agrotours.backend.exceptions.EstadoSolicitudEstablecimientoNotFoundException;
 import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
+import com.mza_agrotours.backend.mappers.ArchivoMapper;
 import com.mza_agrotours.backend.mappers.SolicitudEstablecimientoMapper;
 import com.mza_agrotours.backend.repositories.*;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
+import java.util.List;
 
 @Service
 public class SolicitudEstablecimientoService {
+    private final List<String> EXTENSIONES_VALIDAS = List.of("pdf", "jpg", "jpeg", "png");
+
     private final SolicitudEstablecimientoRepository solicitudEstablecimientoRepository;
     private final SolicitudEstablecimientoMapper solicitudEstablecimientoMapper;
     private final EstadoSolicitudEstablecimientoRepository estadoSolicitudEstablecimientoRepository;
     private final DepartamentoRepository departamentoRepository;
     private final UsuarioRepository usuarioRepository;
     private final EstablecimientoRepository establecimientoRepository;
+    private final ArchivoService archivoService;
+    private final ArchivoMapper archivoMapper;
 
     public SolicitudEstablecimientoService(SolicitudEstablecimientoRepository solicitudEstablecimientoRepository,
                                            SolicitudEstablecimientoMapper solicitudEstablecimientoMapper,
                                            EstadoSolicitudEstablecimientoRepository estadoSolicitudEstablecimientoRepository,
                                            DepartamentoRepository departamentoRepository,
                                            UsuarioRepository usuarioRepository,
-                                           EstablecimientoRepository establecimientoRepository) {
+                                           EstablecimientoRepository establecimientoRepository,
+                                           ArchivoService archivoService,
+                                           ArchivoMapper archivoMapper) {
         this.solicitudEstablecimientoRepository = solicitudEstablecimientoRepository;
         this.solicitudEstablecimientoMapper = solicitudEstablecimientoMapper;
         this.estadoSolicitudEstablecimientoRepository = estadoSolicitudEstablecimientoRepository;
         this.departamentoRepository = departamentoRepository;
         this.usuarioRepository = usuarioRepository;
         this.establecimientoRepository = establecimientoRepository;
+        this.archivoService = archivoService;
+        this.archivoMapper = archivoMapper;
     }
 
-    public SolicitudEstablecimiento crearSolicitudEstablecimiento(
+    @Transactional
+    public SolicitudEstablecimientoCreateResp crearSolicitudEstablecimiento(
             SolicitudEstablecimientoCreateReq solicitudEstablecimientoCreateReq,
             String emailUsuario)
             throws Exception {
@@ -88,7 +102,24 @@ public class SolicitudEstablecimientoService {
         // 4. Asociar el usuario de la solicitud
         nuevaSolicitudEstablecimiento.setUsuario(usuarioSolicitante);
 
-        // 5. Guardar la solicitud en estado pendiente asociado al usuario
-        return this.solicitudEstablecimientoRepository.save(nuevaSolicitudEstablecimiento);
+        // 5. Obtener los archivos
+        List<ArchivoUploadResponse> archivoUploadResponses = this.archivoService
+                .getSignedArchivos(
+                        solicitudEstablecimientoCreateReq.getArchivos(),
+                        this.EXTENSIONES_VALIDAS);
+
+        List<Archivo> archivos = this.archivoMapper.archivoUploadResponseListToArchivoList(archivoUploadResponses);
+        nuevaSolicitudEstablecimiento.setPruebas(archivos);
+
+        // 6. Guardar la solicitud en estado pendiente asociado al usuario
+        nuevaSolicitudEstablecimiento = this.solicitudEstablecimientoRepository.save(nuevaSolicitudEstablecimiento);
+
+        // 6. Generar listado de urls para los archivos adjuntos
+        SolicitudEstablecimientoCreateResp solicitudEstablecimientoCreateResp = new SolicitudEstablecimientoCreateResp();
+        solicitudEstablecimientoCreateResp.setSolicitudId(nuevaSolicitudEstablecimiento.getId().toString());
+        solicitudEstablecimientoCreateResp.setNombreEstablecimiento(nuevaSolicitudEstablecimiento.getRazonSocial());
+        solicitudEstablecimientoCreateResp.setArchivoUploadResponses(archivoUploadResponses);
+
+        return solicitudEstablecimientoCreateResp;
     }
 }

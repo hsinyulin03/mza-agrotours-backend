@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.entities.solicitud_establecimiento;
 
+import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.BaseEntity;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.Usuario;
@@ -54,5 +55,8 @@ public class SolicitudEstablecimiento extends BaseEntity {
 
     @OneToOne
     private SolicitudEstablecimientoEstado estadoActual;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Archivo> pruebas = new ArrayList<>();
 
 }
