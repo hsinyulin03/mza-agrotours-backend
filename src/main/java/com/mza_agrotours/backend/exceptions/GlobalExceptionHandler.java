@@ -1,12 +1,11 @@
 package com.mza_agrotours.backend.exceptions;
 
+import com.google.firebase.auth.FirebaseAuthException;
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadDiaNotFound;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
-import com.mza_agrotours.backend.exceptions.rangoEtario.RangoEtarioAlreadyExistsException;
-import com.mza_agrotours.backend.exceptions.rangoEtario.RangoEtarioInvalidoException;
 import com.mza_agrotours.backend.exceptions.reservas.FechaNacimientoInvalidaException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -36,9 +35,28 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("userAlreadyExists", ex.getMessage()));
     }
 
+    @ExceptionHandler(UserDeleteConditionNotMetException.class)
+    public ResponseEntity<?> handleUserDeleteConditionNotMetException(UserDeleteConditionNotMetException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("userDeleteConditionNotMet", ex.getMessage(), ex.getCondiciones()));
+    }
+
     @ExceptionHandler(TipoIdentificacionInvalidoException.class)
     public ResponseEntity<?> handleTipoIdentificacionInvalido(TipoIdentificacionInvalidoException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.fail("tipoIdentificacionInvalido", ex.getMessage()));
+    }
+
+    @ExceptionHandler(FirebaseAuthException.class)
+    public ResponseEntity<?> handleFirebaseAuthException(FirebaseAuthException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail(ex.getAuthErrorCode().toString(), ex.getMessage()));
+    }
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<?> handleEntityNotFoundException(EntityNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("entityNotFound", ex.getMessage()));
+    }
+
+    @ExceptionHandler(EntityAlreadyExistsException.class)
+    public ResponseEntity<?> handleEntityAlreadyExistsException(EntityAlreadyExistsException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.fail("entityAlreadyExists", ex.getMessage()));
     }
 
     @ExceptionHandler(UsuarioDeactivatedException.class)
@@ -94,22 +112,6 @@ public class GlobalExceptionHandler {
                 ));
 
     }
-
-    //Rango Etario
-    @ExceptionHandler(RangoEtarioAlreadyExistsException.class)
-    public ResponseEntity<?> handleRangoEtarioAlreadyExistsException(RangoEtarioAlreadyExistsException ex) {
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(ApiResponse.fail("rangoEtarioAlreadyExists", ex.getMessage()));
-    }
-
-    @ExceptionHandler(RangoEtarioInvalidoException.class)
-    public ResponseEntity<?> handleEdadRangoInvalidoException(RangoEtarioInvalidoException ex) {
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.fail("rangoEtarioInvalido", ex.getMessage()));
-    }
-
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<?> handleConstraintViolationException(ConstraintViolationException ex) {

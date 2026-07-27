@@ -1,11 +1,10 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.actividad.*;
+import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.dtos.reservas.DiaActividadReservaDTO;
 import com.mza_agrotours.backend.dtos.reservas.InfoParaReservarDTO;
 import com.mza_agrotours.backend.dtos.reservas.RangoEtarioReservaDTO;
-import com.mza_agrotours.backend.entities.RangoEtario;
-import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.enums.Dia;
 import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
@@ -22,7 +21,6 @@ import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadDiaRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
-import com.mza_agrotours.backend.repositories.rangoEtario.RangoEtarioRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -30,10 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 
 @Service
@@ -41,9 +36,6 @@ public class ActividadService {
 
     @Autowired
     private ActividadRespository actividadRepository;
-
-    @Autowired
-    private RangoEtarioRepository rangoEtarioRepository;
 
     @Autowired
     private ActividadValidaciones actividadValidaciones;
@@ -65,7 +57,7 @@ public class ActividadService {
 
     //US-ACT-03 Alta de actividad
     @Transactional
-    public DTOActividadDetalleResponse altaActividad(DTOActividadAlta dto) {
+    public DTOActividadAltaResponse altaActividad(DTOActividadAlta dto) {
 
             //Primero hacemos las validaciones del negocio
             List<String> errores = actividadValidaciones.obtenerErroresValidacionActividad(dto);
@@ -99,8 +91,15 @@ public class ActividadService {
 
             // Persistir en la base de datos
             Actividad actividadGuardada = actividadRepository.save(actividad);
-            return actividadMapper.actividadToDTOActividadDetalle(actividadGuardada);
 
+            List<String> advertencias = calcularHuecos(dto.getTarifas());
+
+            DTOActividadAltaResponse response = new DTOActividadAltaResponse();
+            response.setIdActividad(actividadGuardada.getId());
+            response.setMensaje("La actividad fue creada exitosamente.");
+            response.setAdvertencias(advertencias);
+
+            return response;
     }
 
     private EstadoActividad obtenerEstado(DTOActividadAlta dto) {
@@ -163,14 +162,13 @@ public class ActividadService {
         List<ActividadRangoEtario> tarifas = new ArrayList<>();
 
         for (DTOTarifa tarifaDto : dto.getTarifas()) {
-            RangoEtario rango = rangoEtarioRepository.findByIdAndFechaHoraBajaIsNull(tarifaDto.getRangoEtarioId())
-                    .orElseThrow(() -> new ResourceNotFoundException("El rango etario con ID " + tarifaDto.getRangoEtarioId() + " no existe"));
 
             ActividadRangoEtario tarifa = new ActividadRangoEtario();
+            tarifa.setNombre(tarifaDto.getNombre());
             tarifa.setPrecio(tarifaDto.getPrecio());
-            tarifa.setRangoEtario(rango);
+            tarifa.setEdadMinima(tarifaDto.getEdadMinima());
+            tarifa.setEdadMaxima(tarifaDto.getEdadMaxima());
             tarifa.setEsTarifaBase(tarifaDto.isEsTarifaBase());
-            tarifa.setFechaValidaDesde(LocalDate.now());
             tarifas.add(tarifa);
         }
 
@@ -259,6 +257,51 @@ public class ActividadService {
             case DOMINGO -> dayOfWeek == java.time.DayOfWeek.SUNDAY;
             default -> false;
         };
+    }
+
+    private List<String> calcularHuecos(List<DTOTarifa> tarifas) {
+
+        List<String> huecos = new ArrayList<>();
+
+        if (tarifas == null || tarifas.isEmpty()) {
+            huecos.add("0 a 120 años");
+            return huecos;
+        }
+
+        // Ordenamos por edad mínima de menor a mayor
+        List<DTOTarifa> tarifasOrdenadas = new ArrayList<>(tarifas);
+        tarifasOrdenadas.sort(Comparator.comparingInt(DTOTarifa::getEdadMinima));
+
+        // Verificamos el hueco inicial
+        DTOTarifa primerRango = tarifasOrdenadas.get(0);
+        if (primerRango.getEdadMinima() > 0) {
+            int finHueco = primerRango.getEdadMinima() - 1;
+            huecos.add("0 a " + finHueco + " años");
+        }
+
+        // Verificamos los huecos intermedios
+        for (int i = 0; i < tarifasOrdenadas.size() - 1; i++) {
+            int maxActual = tarifasOrdenadas.get(i).getEdadMaxima();
+            int minSiguiente = tarifasOrdenadas.get(i + 1).getEdadMinima();
+
+            if (minSiguiente > maxActual + 1) {
+                int inicioHueco = maxActual + 1;
+                int finHueco = minSiguiente - 1;
+                huecos.add(inicioHueco + " a " + finHueco + " años");
+            }
+        }
+
+        // Verificamos el hueco final
+        DTOTarifa ultimoRango = tarifasOrdenadas.get(tarifasOrdenadas.size() - 1);
+        //TODO: Setear como parámetro global del sistema
+        int EDAD_MAXIMA_SISTEMA = 120;
+
+        if (ultimoRango.getEdadMaxima() < EDAD_MAXIMA_SISTEMA) {
+            int inicioHueco = ultimoRango.getEdadMaxima() + 1;
+            huecos.add(inicioHueco + " a " + EDAD_MAXIMA_SISTEMA + " años");
+        }
+
+        return huecos;
     }
 
     //US-ACT-02:  Consultar detalle de una actividad
@@ -353,13 +396,9 @@ public class ActividadService {
         // ActividadRangoEtario activos
         List<ActividadRangoEtario> areActivos = actividad.getActividadRangoEtarios().stream()
                 .filter(are -> {
-                    LocalDate areFHHasta = are.getFechaValidaHasta();
-                    LocalDate areFHDesde = are.getFechaValidaDesde();
-                    // Casos donde es válido
-                    // La fecha desde ya pasó Y
-                    // Fecha hasta es null O fecha hasta es posterior a la fecha actual
-                    return areFHDesde.isBefore(fhActual.toLocalDate()) &&
-                            (areFHHasta == null || areFHHasta.isAfter(fhActual.toLocalDate()));
+                    LocalDateTime areFHBaja = are.getFechaHoraBaja();
+                    // La fechaHoraBaja es posterior a la actual o es nula
+                    return areFHBaja == null || areFHBaja.isAfter(fhActual);
                 })
                 .toList();
         // Los pasamos a DTO

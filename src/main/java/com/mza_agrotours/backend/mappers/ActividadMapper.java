@@ -19,6 +19,8 @@ public abstract class ActividadMapper {
     @Mapping(target = "incluye", ignore = true)
     @Mapping(target = "noIncluye", ignore = true)
     @Mapping(target = "preguntasFrecuentes", ignore = true)
+    @Mapping(target = "tarifas", ignore = true)
+    @Mapping(target = "precioRegular", ignore = true)
     public abstract DTOActividadDetalleResponse actividadToDTOActividadDetalle(Actividad actividad);
 
     //US-ACT-06
@@ -43,10 +45,6 @@ public abstract class ActividadMapper {
     public abstract DTOListadoActividadVisitanteResponse actividadToDTOListadoActividadVisitante(Actividad actividad);
 
     //US-RESE-01
-    @Mapping(target = "nombre", source = "actividadRangoEtarios.rangoEtario.nombre")
-    @Mapping(target = "edadMinima", source = "actividadRangoEtarios.rangoEtario.edadMinima")
-    @Mapping(target = "edadMaxima", source = "actividadRangoEtarios.rangoEtario.edadMaxima")
-    @Mapping(target = "precio", source = "actividadRangoEtarios.precio")
     public abstract RangoEtarioReservaDTO actividadRangoEtarioToDTO(ActividadRangoEtario actividadRangoEtarios);
 
     @AfterMapping
@@ -72,6 +70,22 @@ public abstract class ActividadMapper {
                 })
                 .toList();
         dto.setPreguntasFrecuentes(faqsDto);
+
+        List<DTOTarifaResponse> tarifasDto = actividad.getActividadRangoEtarios().stream()
+                .filter(r -> r.getFechaHoraBaja() == null)
+                .map(tarifa -> {
+                    DTOTarifaResponse t = new DTOTarifaResponse();
+                    t.setNombre(tarifa.getNombre());
+                    t.setEdadMinima(tarifa.getEdadMinima());
+                    t.setEdadMaxima(tarifa.getEdadMaxima());
+                    t.setPrecio(tarifa.getPrecio());
+                    return t;
+                })
+                .toList();
+
+        dto.setTarifas(tarifasDto);
+        dto.setPrecioRegular(obtenerPrecioBaseVigente(actividad));
+
     }
 
 
@@ -107,18 +121,15 @@ public abstract class ActividadMapper {
     //Métodos auxiliares
     private BigDecimal obtenerPrecioBaseVigente(Actividad actividad) {
 
-        LocalDate hoy = LocalDate.now();
-
         if (actividad.getActividadRangoEtarios() == null) {
             return null;
         }
 
         return actividad.getActividadRangoEtarios().stream()
-                .filter(tarifa -> tarifa.getRangoEtario() != null && tarifa.isEsTarifaBase())
-                .filter(r -> (r.getFechaValidaDesde() == null || !r.getFechaValidaDesde().isAfter(hoy)) &&
-                        (r.getFechaValidaHasta() == null || !r.getFechaValidaHasta().isBefore(hoy)))
-                .findFirst()
+                .filter(ActividadRangoEtario::isEsTarifaBase)
+                .filter(r -> (r.getFechaHoraBaja() == null))
                 .map(ActividadRangoEtario::getPrecio)
+                .findFirst()
                 .orElse(null);
     }
 

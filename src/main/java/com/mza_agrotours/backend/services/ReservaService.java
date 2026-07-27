@@ -117,9 +117,7 @@ public class ReservaService {
         // Gettear los ActividadRangoEtario activos
         List<ActividadRangoEtario> ares = actividad.getActividadRangoEtarios().stream()
                 .filter(are ->
-                        are.getFechaValidaDesde().isBefore(fechaHoraActual.toLocalDate())
-                            && (are.getFechaValidaHasta() == null
-                                || are.getFechaValidaHasta().isBefore(fechaHoraActual.toLocalDate()))
+                        are.getFechaHoraBaja() == null || are.getFechaHoraBaja().isAfter(fechaHoraActual)
                 ).toList();
 
         // Verificar que se pueda reservar para ese día
@@ -145,8 +143,8 @@ public class ReservaService {
 
             ActividadRangoEtario actividadRangoEtario = null;
             for (ActividadRangoEtario are : ares){
-                if (fechaHoraActual.toLocalDate().isBefore(dtoDetalle.fechaNacimiento().plusYears(are.getRangoEtario().getEdadMaxima())) &&
-                        fechaHoraActual.toLocalDate().isAfter(dtoDetalle.fechaNacimiento().plusYears(are.getRangoEtario().getEdadMinima()))
+                if (fechaHoraActual.toLocalDate().isBefore(dtoDetalle.fechaNacimiento().plusYears(are.getEdadMaxima())) &&
+                        fechaHoraActual.toLocalDate().isAfter(dtoDetalle.fechaNacimiento().plusYears(are.getEdadMinima()))
                 ) actividadRangoEtario = are;
             }
             if (actividadRangoEtario == null) throw new FechaNacimientoInvalidaException();
