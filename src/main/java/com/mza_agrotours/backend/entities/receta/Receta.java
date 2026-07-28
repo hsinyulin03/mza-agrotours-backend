@@ -28,7 +28,7 @@ public class Receta extends BaseEntity {
     private Integer porciones;
 
     @Column(name = "tiempo_mins_aprox", nullable = false)
-    private String tiempoMinsAprox;
+    private int tiempoMinsAprox;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
