@@ -26,6 +26,5 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
     List<Establecimiento> obtenerEstablecimientosActivos();
 
     Optional<Establecimiento> findByIdAndFechaHoraBajaIsNull(UUID id);
-
-    boolean existsByRazonSocialIgnoreCaseAndFechaHoraBajaIsNull(String razonSocial);
+    boolean existsByCuitAndFechaHoraBajaIsNull(String cuit);
 }

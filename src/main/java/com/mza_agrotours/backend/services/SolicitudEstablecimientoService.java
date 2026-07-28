@@ -1,6 +1,5 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.config.ObjectStorageProvider;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateReq;
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateResp;
@@ -11,9 +10,7 @@ import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolici
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolicitudEstablecimientoNombre;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimiento;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimientoEstado;
-import com.mza_agrotours.backend.exceptions.DepartamentoNotFoundException;
-import com.mza_agrotours.backend.exceptions.EstadoSolicitudEstablecimientoNotFoundException;
-import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
+import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.mappers.ArchivoMapper;
 import com.mza_agrotours.backend.mappers.SolicitudEstablecimientoMapper;
 import com.mza_agrotours.backend.repositories.*;
@@ -59,9 +56,9 @@ public class SolicitudEstablecimientoService {
             SolicitudEstablecimientoCreateReq solicitudEstablecimientoCreateReq,
             String emailUsuario)
             throws Exception {
-        // -1. Encontrar si existen establecimientos vigentes con la razón social de la solicitud
-        if (establecimientoRepository.existsByRazonSocialIgnoreCaseAndFechaHoraBajaIsNull(solicitudEstablecimientoCreateReq.getRazonSocial())) {
-            throw new Exception("Ya existe un establecimiento vigente con esa razón social");
+        // -1. Encontrar si existen establecimientos vigentes con el cuit de la solicitud
+        if (establecimientoRepository.existsByCuitAndFechaHoraBajaIsNull(solicitudEstablecimientoCreateReq.getCuit())) {
+            throw new AppException(SolicitudEstablecimientoError.ESTABLECIMIENTO_ALREADY_EXISTS);
         }
 
         // 1. Encontrar si el usuario solicitante ya tiene solicitudes pendientes para este establecimiento (por razón social)
@@ -72,12 +69,12 @@ public class SolicitudEstablecimientoService {
                 .orElseThrow(() -> new EstadoSolicitudEstablecimientoNotFoundException("No se pudo encontrar el estado pendiente"));
 
         if (this.solicitudEstablecimientoRepository
-                .existsByUsuario_IdAndEstadoActual_EstadoSolicitudEstablecimiento_IdAndRazonSocial(
+                .existsByUsuario_IdAndEstadoActual_EstadoSolicitudEstablecimiento_IdAndCuit(
                 usuarioSolicitante.getId(),
                 estadoPendiente.getId(),
-                solicitudEstablecimientoCreateReq.getRazonSocial()
+                solicitudEstablecimientoCreateReq.getCuit()
         )) {
-            throw new IllegalStateException("El usuario ya tiene una solicitud pendiente para este establecimiento");
+            throw new AppException(SolicitudEstablecimientoError.SOLICITUD_ESTABLECIMIENTO_ALREADY_EXISTS);
         }
 
         SolicitudEstablecimiento nuevaSolicitudEstablecimiento = this.solicitudEstablecimientoMapper
