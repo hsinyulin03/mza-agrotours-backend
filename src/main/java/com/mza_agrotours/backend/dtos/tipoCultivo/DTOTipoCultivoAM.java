@@ -13,16 +13,16 @@ import java.util.List;
 public class DTOTipoCultivoAM {
 
     @NotBlank(message = "El nombre es requerido")
-    @Size(max = 60, message = "Máximo 100 caracteres")
+    @Size(max = 60, message = "Máximo 60 caracteres")
     private String nombre;
 
     @NotBlank(message = "La descripción es requerida")
-    @Size(max = 500, message = "Máximo 300 caracteres")
+    @Size(max = 500, message = "Máximo 500 caracteres")
     private String descripcion;
 
     @NotEmpty(message = "Cargá al menos un beneficio")
     private List<@NotBlank(message = "Completá o quitá este beneficio")
-    @Size(max = 100, message = "Máximo 120 caracteres") String> beneficios;
+    @Size(max = 100, message = "Máximo 100 caracteres") String> beneficios;
 
     @NotNull(message = "La estacionalidad es requerida")
     @Size(min = 12, max = 12, message = "Debe indicarse la estacionalidad de los 12 meses")
