@@ -1,13 +1,10 @@
 package com.mza_agrotours.backend.mappers;
 
 import com.mza_agrotours.backend.dtos.establecimiento.*;
-import com.mza_agrotours.backend.entities.TipoCultivo;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-
-import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface EstablecimientoMapper {
