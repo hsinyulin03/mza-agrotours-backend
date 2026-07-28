@@ -2,14 +2,22 @@ package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.actividad.*;
 import com.mza_agrotours.backend.entities.actividad.*;
+import com.mza_agrotours.backend.dtos.reservas.DiaActividadReservaDTO;
+import com.mza_agrotours.backend.dtos.reservas.InfoParaReservarDTO;
+import com.mza_agrotours.backend.dtos.reservas.RangoEtarioReservaDTO;
+import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.enums.Dia;
 import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.exceptions.DatoInvalidoException;
+import com.mza_agrotours.backend.exceptions.EstablecimientoNotFoundException;
 import com.mza_agrotours.backend.exceptions.ResourceNotFoundException;
 import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
+import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
+import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
 import com.mza_agrotours.backend.mappers.ActividadMapper;
+import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadDiaRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
@@ -41,6 +49,12 @@ public class ActividadService {
 
     @Autowired
     private EstadoActividadDiaRepository estadoActividadDiaRepository;
+
+    @Autowired
+    private EstablecimientoRepository establecimientoRepository;
+
+    @Autowired
+    private ParametrosService parametrosService;
 
     //US-ACT-03 Alta de actividad
     @Transactional
@@ -464,6 +478,48 @@ public class ActividadService {
 
 
 
+    //US-RESE-01: Reservar actividad - información sobre la actividad para reservarla
+    @Transactional
+    public InfoParaReservarDTO getInfoParaReservar(UUID idActividad){
+
+        LocalDateTime fhActual = LocalDateTime.now();
+
+        Actividad actividad = actividadRepository.findById(idActividad)
+                .orElseThrow(ActividadNotFoundException::new);
+
+        // Que la actividad esté disponible (estado Publicado)
+        if (actividad.getEstado().getNombre() != EstadoActividadNombre.PUBLICADO)
+            throw new ActividadNotActiveException();
+
+        // Buscar el Establecimiento de la actividad
+        Establecimiento establecimiento = establecimientoRepository.findEstablecimientoByActividadId(actividad.getId())
+                .orElseThrow(EstablecimientoNotFoundException::new);
+
+        // Encontramos los ActividadDia y lo pasamos a DTO
+        List<DiaActividadReservaDTO> diaActividadReservaDTOList = actividadRepository.getDiaActividadReservaDTO(actividad.getId());
+
+        // ActividadRangoEtario activos
+        List<ActividadRangoEtario> areActivos = actividad.getActividadRangoEtarios().stream()
+                .filter(are -> {
+                    LocalDateTime areFHBaja = are.getFechaHoraBaja();
+                    // La fechaHoraBaja es posterior a la actual o es nula
+                    return areFHBaja == null || areFHBaja.isAfter(fhActual);
+                })
+                .toList();
+        // Los pasamos a DTO
+        List<RangoEtarioReservaDTO> rangoEtarioReservaDTOList = new ArrayList<>();
+        for (ActividadRangoEtario are : areActivos){
+            rangoEtarioReservaDTOList.add(actividadMapper.actividadRangoEtarioToDTO(are));
+        }
+
+        //Armar el DTO principal y devolver
+        return InfoParaReservarDTO.of(
+                actividad,
+                establecimiento,
+                diaActividadReservaDTOList,
+                rangoEtarioReservaDTOList,
+                parametrosService.getInstance());
+    }
 }
 
 

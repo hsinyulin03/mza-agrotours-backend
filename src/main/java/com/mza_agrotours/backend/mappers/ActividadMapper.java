@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.mappers;
 
 import com.mza_agrotours.backend.dtos.actividad.*;
+import com.mza_agrotours.backend.dtos.reservas.RangoEtarioReservaDTO;
 import com.mza_agrotours.backend.entities.actividad.*;
 import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.AfterMapping;
@@ -52,6 +53,9 @@ public abstract class ActividadMapper {
     @Mapping(target = "faqs", ignore = true)
     @Mapping(target = "rangosEtarios", ignore = true)
     public abstract DTOActividadGetResponse actividadToDTOActividadGetResponse(Actividad actividad);
+
+    //US-RESE-01
+    public abstract RangoEtarioReservaDTO actividadRangoEtarioToDTO(ActividadRangoEtario actividadRangoEtarios);
 
     @AfterMapping
     public void llenarListasComplejas(Actividad actividad, @MappingTarget DTOActividadDetalleResponse dto) {

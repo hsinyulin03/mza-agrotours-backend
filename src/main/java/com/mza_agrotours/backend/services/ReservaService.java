@@ -1,28 +1,72 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDTO;
+import com.mza_agrotours.backend.dtos.reservas.*;
+import com.mza_agrotours.backend.entities.*;
+import com.mza_agrotours.backend.entities.actividad.Actividad;
+import com.mza_agrotours.backend.entities.actividad.ActividadDia;
+import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
+import com.mza_agrotours.backend.entities.pago.EstadoPagoNombre;
+import com.mza_agrotours.backend.entities.pago.MetodoPago;
+import com.mza_agrotours.backend.entities.pago.Pago;
+import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
+import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
+import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
+import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.exceptions.EstablecimientoNotFoundException;
+import com.mza_agrotours.backend.exceptions.TipoIdentificacionInvalidoException;
 import com.mza_agrotours.backend.exceptions.UsuarioDeactivatedException;
+import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
+import com.mza_agrotours.backend.exceptions.actividad.ActividadDiaNotFound;
+import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
+import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
+import com.mza_agrotours.backend.exceptions.reservas.ActividadFullException;
+import com.mza_agrotours.backend.exceptions.reservas.EstadoReservaNotFoundException;
+import com.mza_agrotours.backend.exceptions.reservas.FechaNacimientoInvalidaException;
 import com.mza_agrotours.backend.exceptions.reservas.ReservaNotFoundException;
 import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
-import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
-import com.mza_agrotours.backend.repositories.ReservaRepository;
+import com.mza_agrotours.backend.repositories.*;
+import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
+import com.mza_agrotours.backend.services.pago.EstrategiaPago;
+import com.mza_agrotours.backend.services.pago.EstrategiaPagoFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+
+import static com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.EXPIRADA;
+import static com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.PAGADA;
+import static com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.PENDIENTE;
 
 @Service
 public class ReservaService {
+    private static final Logger log = LoggerFactory.getLogger(ReservaService.class);
+
     private final ReservaRepository reservaRepository;
     private final ReservaMapper reservaMapper;
     private final EstablecimientoRepository establecimientoRepository;
+    private final ActividadRespository actividadRepository;
+    private final ParametrosService parametrosService;
+    private final VisitanteRepository visitanteRepository;
+    private final TipoIdentificacionRepository tipoIdentificacionRepository;
+    private final EstrategiaPagoFactory estrategiaPagoFactory;
 
-    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, EstablecimientoRepository establecimientoRepository) {
+    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, EstablecimientoRepository establecimientoRepository, ActividadRespository actividadRepository, ParametrosService parametrosService, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstrategiaPagoFactory estrategiaPagoFactory) {
         this.reservaRepository = reservaRepository;
         this.reservaMapper = reservaMapper;
         this.establecimientoRepository = establecimientoRepository;
+        this.actividadRepository = actividadRepository;
+        this.parametrosService = parametrosService;
+        this.visitanteRepository = visitanteRepository;
+        this.tipoIdentificacionRepository = tipoIdentificacionRepository;
+        this.estrategiaPagoFactory = estrategiaPagoFactory;
     }
 
     /**
@@ -53,5 +97,126 @@ public class ReservaService {
 
         // Armamos el DTO
         return reservaMapper.reservaToConsultarReservaDTO(reserva, establecimiento);
+    }
+
+    public ConsultarReservaDTO handleIniciarReserva(RealizarReservaDTO realizarReservaDTO, String firebaseUID){
+        LocalDateTime fechaHoraActual = LocalDateTime.now();
+
+        // Gettear al usuario y verificarlo - Fecha hora baja
+        Visitante visitante = visitanteRepository.findBuyUsuarioFirebaseUID(firebaseUID)
+                .orElseThrow(() -> new UsuarioNotFound("El usuario no pudo ser encontrado"));
+        if (visitante.getUsuario().getFechaHoraBaja() != null)
+            throw new UsuarioDeactivatedException();
+
+        // Gettear la actividad, chequear que esté activa
+        Actividad actividad = actividadRepository.getActividadByDiaActividadId(UUID.fromString(realizarReservaDTO.diaActividadId()))
+                .orElseThrow(ActividadNotFoundException::new);
+        if (actividad.getFechaHoraBaja() != null || actividad.getEstado().getNombre() != EstadoActividadNombre.PUBLICADO)
+            throw new ActividadNotActiveException();
+
+        // Gettear los ActividadRangoEtario activos
+        List<ActividadRangoEtario> ares = actividad.getActividadRangoEtarios().stream()
+                .filter(are ->
+                        are.getFechaHoraBaja() == null || are.getFechaHoraBaja().isAfter(fechaHoraActual)
+                ).toList();
+
+        // Verificar que se pueda reservar para ese día
+        ActividadDia actividadDia = actividad.getActividadesDias().stream()
+                .filter(ad -> ad.getId().toString().equals(realizarReservaDTO.diaActividadId()))
+                .findFirst().
+                orElseThrow(ActividadDiaNotFound::new);
+
+        Integer cantidadReservas = reservaRepository.getCantidadReservasActivasActividadDia(actividadDia.getId());
+        if (cantidadReservas + realizarReservaDTO.reservaDetalleList().size() >= actividadDia.getCuposMax())
+                throw new ActividadFullException();
+
+        // Crear las nuevas ReservaDetalles y asignarle el estado
+        List<ReservaDetalle> reservaDetalles = new ArrayList<>();
+        List<RealizarReservaDetalleDTO> dtoDetalles = realizarReservaDTO.reservaDetalleList();
+        Integer i = 0;
+        BigDecimal totalReserva = BigDecimal.valueOf(0);
+        for (RealizarReservaDetalleDTO dtoDetalle: dtoDetalles){
+            i++;
+
+            TipoIdentificacion tipoIdentificacion = tipoIdentificacionRepository.findByNombre(TipoIdentificacionNombre.valueOf(dtoDetalle.tipoId()))
+                    .orElseThrow(() -> new TipoIdentificacionInvalidoException("El tipo de identificación provisto no es válido"));
+
+            ActividadRangoEtario actividadRangoEtario = null;
+            for (ActividadRangoEtario are : ares){
+                if (fechaHoraActual.toLocalDate().isBefore(dtoDetalle.fechaNacimiento().plusYears(are.getEdadMaxima())) &&
+                        fechaHoraActual.toLocalDate().isAfter(dtoDetalle.fechaNacimiento().plusYears(are.getEdadMinima()))
+                ) actividadRangoEtario = are;
+            }
+            if (actividadRangoEtario == null) throw new FechaNacimientoInvalidaException();
+            totalReserva = totalReserva.add(actividadRangoEtario.getPrecio());
+            reservaDetalles.add(reservaMapper.DTOtoReservaDetalle(dtoDetalle, tipoIdentificacion, i, actividadRangoEtario));
+        }
+
+        // Crear la nueva reserva
+        Reserva nuevaReserva = new Reserva();
+        nuevaReserva.setReservaDetalles(reservaDetalles);
+        nuevaReserva.setFechaHoraInicio(fechaHoraActual);
+        nuevaReserva.setFechaHoraExpiracion(fechaHoraActual.plusMinutes(parametrosService.getInstance().getTtlReserva()));
+
+        EstadoReserva estadoReserva = reservaRepository.findEstadoReservaByEstadoReservaNombre(PENDIENTE)
+                .orElseThrow(() -> new EstadoReservaNotFoundException(EstadoReservaNombre.PENDIENTE));
+
+        nuevaReserva.cambiarEstado(estadoReserva,fechaHoraActual);
+
+        nuevaReserva.setActividad(actividad);
+        nuevaReserva.setActividadDia(actividadDia);
+
+        nuevaReserva.setVisitante(visitante);
+
+        nuevaReserva.setTotalReserva(totalReserva);
+
+        MetodoPago metodoPago = MetodoPago.MANUAL;  // TODO Cambiar esto para cuando se use el medio de pago real
+
+        EstrategiaPago estrategiaPago = estrategiaPagoFactory.get(metodoPago);
+        Pago pago = estrategiaPago.procesarPago(nuevaReserva);
+
+        // Si el pago ya fue aprobado (ej. manual), la reserva pasa a pagada.
+        // Si queda pendiente (ej. Mercado Pago), la reserva sigue pendiente hasta la confirmación por webhook.
+        if (pago.getEstadoActual().getEstadoPago().getNombre() == EstadoPagoNombre.APROBADO) {
+            EstadoReserva estadoPagada = reservaRepository.findEstadoReservaByEstadoReservaNombre(PAGADA)
+                    .orElseThrow(() -> new EstadoReservaNotFoundException(EstadoReservaNombre.PAGADA));
+            nuevaReserva.cambiarEstado(estadoPagada, fechaHoraActual);
+        }
+
+        reservaRepository.save(nuevaReserva);
+
+        Establecimiento establecimiento = establecimientoRepository.findEstablecimientoByActividadId(nuevaReserva.getActividad().getId())
+                .orElseThrow(EstablecimientoNotFoundException::new);
+
+        // Avisar al frontend de qué pasó
+        return reservaMapper.reservaToConsultarReservaDTO(nuevaReserva, establecimiento);
+    }
+
+    // NOTE
+    //  Si hay fallos con la BD en las transacciones, ya sea individual o global, el log queda mintiendo
+    //  Esto ocurre porque el save() se ignora hasta que termine la función por ser @Transactional
+    //  Así pueden haber transacciones que a nivel de Java no tuvieron problema y el log las toma como correctas,
+    //  pero cuando se va a guardar en la BD, el transactional hace que nada se guarde y el log quede mintiendo.
+    @Transactional
+    public void expirarReservas(){
+        LocalDateTime ahora = LocalDateTime.now();
+        List<Reserva> reservas = reservaRepository.findReservasExpiradas(ahora);
+
+        EstadoReserva estadoReserva = reservaRepository.findEstadoReservaByEstadoReservaNombre(EXPIRADA)
+                .orElseThrow(() -> new EstadoReservaNotFoundException(EstadoReservaNombre.EXPIRADA));
+
+        List<String> idFallidas = new ArrayList<>();
+
+        for (Reserva r : reservas){
+            try{
+                r.cambiarEstado(estadoReserva, ahora);
+                reservaRepository.save(r);
+            } catch (Exception e) {
+                idFallidas.add(r.getId().toString());
+            }
+        }
+
+        log.info("Se expiraron {}/{} reservas. Las reservas no expiradas fueron {}, con ids: {}",
+                reservas.size() - idFallidas.size(), reservas.size(), idFallidas.size(), idFallidas);
     }
 }
