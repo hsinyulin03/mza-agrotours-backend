@@ -52,6 +52,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("departamentoNotFound", ex.getMessage()));
     }
 
+    @ExceptionHandler(AppException.class)
+    public ResponseEntity<?> handleAppException(AppException ex) {
+        return ResponseEntity
+                .status(ex.getErrorCode().httpStatus())
+                .body(ApiResponse.fail(ex.getErrorCode().code(), ex.getMessage(), ex.getData()));
+    }
+
     @ExceptionHandler(FirebaseAuthException.class)
     public ResponseEntity<?> handleFirebaseAuthException(FirebaseAuthException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail(ex.getAuthErrorCode().toString(), ex.getMessage()));
