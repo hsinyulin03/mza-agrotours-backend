@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.dtos.actividad;
 
 
 import com.mza_agrotours.backend.entities.actividad.EstadoActividad;
+import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Data;
@@ -17,7 +18,7 @@ public class DTOActividadAlta {
     // PASO 1: Información general
     @NotBlank(message = "El nombre es requerido")
     @Size(min = 5, max = 80, message = "El nombre debe tener entre 5 y 80 caracteres")
-    @Pattern(regexp = "^[a-zA-Z0-9 áéíóúÁÉÍÓÚñÑ]+$", message = "No se aceptan caracteres especiales")
+    @SinCaracteresEspeciales
     private String nombre;
 
     @NotBlank(message = "La descripción es requerida")

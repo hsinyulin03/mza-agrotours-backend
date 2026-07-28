@@ -80,6 +80,7 @@ public class ActividadController {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
+    //US-ACT-04: Modificar Actividad
     @PutMapping("/edit/{idActividad}")
     public ResponseEntity<?> modificarActividad(
             @PathVariable UUID idActividad,

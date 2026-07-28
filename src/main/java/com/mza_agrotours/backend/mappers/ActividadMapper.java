@@ -189,10 +189,12 @@ public abstract class ActividadMapper {
                 .filter(r -> r.getFechaHoraBaja() == null)
                 .map(tarifa -> {
                     DTOTarifaResponse t = new DTOTarifaResponse();
+                    t.setId(tarifa.getId());
                     t.setNombre(tarifa.getNombre());
                     t.setEdadMinima(tarifa.getEdadMinima());
                     t.setEdadMaxima(tarifa.getEdadMaxima());
                     t.setPrecio(tarifa.getPrecio());
+                    t.setEsTarifaBase(tarifa.isEsTarifaBase());
                     return t;
                 })
                 .toList();

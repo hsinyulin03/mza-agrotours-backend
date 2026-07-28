@@ -44,6 +44,14 @@ public class ActividadValidaciones {
 
     public List<String> obtenerErroresValidacionModificacion(UUID idActividadActual,  DTOActividadUpdate dto) {
         List<String> errores = new ArrayList<>();
+
+        // No permitir modificar una actividad con estado "Dado de baja"
+        String estadoRecibido = dto.getEstado();
+        if (estadoRecibido == null ||
+                (!EstadoActividadNombre.BORRADOR.name().equalsIgnoreCase(estadoRecibido) &&
+                        !EstadoActividadNombre.PUBLICADO.name().equalsIgnoreCase(estadoRecibido))) {
+            errores.add("Una actividad no puede modificarse en estado '" + dto.getEstado()+ "'");
+        }
         errores.addAll(validarNombreUnico(dto.getNombre(), idActividadActual));
         errores.addAll(validarTarifas(dto.getTarifas()));
         return errores;
@@ -79,7 +87,7 @@ public class ActividadValidaciones {
 
         List<String> errores = new ArrayList<>();
 
-        if (tarifas== null ) {
+        if (tarifas== null || tarifas.isEmpty() ) {
             errores.add("Debes cargar al menos una tarifa para la actividad.");
             return errores;
         }

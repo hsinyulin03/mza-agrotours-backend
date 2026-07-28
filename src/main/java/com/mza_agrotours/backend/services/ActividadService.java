@@ -92,12 +92,8 @@ public class ActividadService {
     //US-ACT-02:  Consultar detalle de una actividad
     @Transactional(readOnly = true)
     public DTOActividadDetalleResponse obtenerDetallePorId(UUID id) {
-        Actividad actividad = actividadRepository.findById(id)
+        Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + id));
-
-        if (actividad.getFechaHoraBaja() != null) {
-            throw new ValidacionNegocioException("La actividad se encuentra dada de baja");
-        }
         return actividadMapper.actividadToDTOActividadDetalle(actividad);
     }
 
@@ -116,16 +112,22 @@ public class ActividadService {
     @Transactional(readOnly = true)
     public DTOCalendarioActividadDiaResponse obtenerDetalleCalendario(UUID actividadId, int mes, int anio){
 
-        Actividad actividad = actividadRepository.findById(actividadId)
-                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada"));
+        Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(actividadId)
+                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + actividadId));
         int anioActual = java.time.LocalDate.now().getYear();
 
         if (anio < anioActual) {
             throw new ValidacionNegocioException("El año no puede ser menor al año actual (" + anioActual + ")");
         }
-        // Permite año actual, próximo año y el siguiente (ej: 2026, 2027 y 2028)
-        if (anio > anioActual + 2) {
-            throw new ValidacionNegocioException("No puedes consultar un calendario con más de 2 años de anticipación");
+
+        LocalDateTime ultimaFechaConDisponibilidad = actividadRepository.findUltimaFechaByActividadId(actividadId)
+                .orElseThrow(() -> new ValidacionNegocioException("La actividad no tiene días programados"));
+
+
+        int anioMaximoPermitido = ultimaFechaConDisponibilidad.getYear();
+        if (anio > anioMaximoPermitido) {
+            throw new ValidacionNegocioException("No puedes consultar el calendario para el año " + anio +
+                    ". La actividad tiene disponibilidad cargada solo hasta el año " + anioMaximoPermitido);
         }
 
         DTOCalendarioActividadDiaResponse dto = actividadMapper.actividadToDTOCalendarioActividadDia(actividad);
@@ -161,12 +163,8 @@ public class ActividadService {
     @Transactional
     public DTOActividadGetResponse modificarActividad(UUID idActividad, DTOActividadUpdate dto) {
 
-        Actividad actividad = actividadRepository.findById(idActividad)
-                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada "));
-
-        if (actividad.getFechaHoraBaja() != null) {
-            throw new ValidacionNegocioException("No se puede modificar una actividad que ya está dada de baja");
-        }
+        Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(idActividad)
+                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
 
         // TODO: No se permite cambiar a estado borrador cuando hay reservas en estado pendiente o pagada
         /*if (EstadoActividadNombre.BORRADOR.name().equalsIgnoreCase(dto.getEstado()) && reservasTotales > 0) {
@@ -206,11 +204,8 @@ public class ActividadService {
     }
     @Transactional(readOnly = true)
     public DTOActividadGetResponse obtenerActividadPorId(UUID idActividad) {
-        Actividad actividad = actividadRepository.findById(idActividad)
-                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada"));
-        if (actividad.getFechaHoraBaja() != null) {
-            throw new ValidacionNegocioException("La actividad solicitada se encuentra dada de baja y no puede ser editada.");
-        }
+        Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(idActividad)
+                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
 
         return actividadMapper.actividadToDTOActividadGetResponse(actividad);
     }
@@ -309,26 +304,51 @@ public class ActividadService {
         };
     }
 
-    public List <ActividadRangoEtario> actualizarTarifas(List<DTOTarifa> nuevosRangos,List<ActividadRangoEtario> activosActuales) {
+    private List <ActividadRangoEtario> actualizarTarifas(List<DTOTarifa> nuevosRangos,List<ActividadRangoEtario> activosActuales) {
+        List<UUID> idsValidos = activosActuales.stream()
+                .map(ActividadRangoEtario::getId)
+                .toList();
+
+        for (DTOTarifa dto : nuevosRangos) {
+            if (dto.getId() != null && !idsValidos.contains(dto.getId())) {
+                throw new ValidacionNegocioException(
+                        "El ID de tarifa proporcionado (" + dto.getId() + ") no es válido o no pertenece a esta actividad."
+                );
+            }
+        }
 
         List<ActividadRangoEtario> aDarDeBaja = new ArrayList<>();
         List<DTOTarifa> aInsertar = new ArrayList<>(nuevosRangos);
 
         for (ActividadRangoEtario activo : activosActuales) {
-            // Buscamos si en el DTO viene un rango exactamente igual al activo
-            Optional<DTOTarifa> matchExacto = aInsertar.stream()
-                    .filter(dto -> dto.getNombre().equals(activo.getNombre()) &&
-                            dto.getEdadMinima().equals(activo.getEdadMinima()) &&
-                            dto.getEdadMaxima().equals(activo.getEdadMaxima()) &&
-                            dto.isEsTarifaBase() == activo.isEsTarifaBase() &&
-                            dto.getPrecio().compareTo(activo.getPrecio()) == 0)
+            Optional<DTOTarifa> match = aInsertar.stream()
+                    .filter(dto -> (dto.getId() != null && dto.getId().equals(activo.getId())) ||
+                            (dto.getNombre() != null && dto.getNombre().equalsIgnoreCase(activo.getNombre()) &&
+                                    (dto.getEdadMinima() != null && dto.getEdadMinima().equals(activo.getEdadMinima()))&&
+                                    (dto.getEdadMaxima() != null && dto.getEdadMaxima().equals(activo.getEdadMaxima())) &&
+                                    dto.getPrecio().compareTo(activo.getPrecio()) == 0)
+                    )
                     .findFirst();
 
-            if (matchExacto.isPresent()) {
-                // Está intacto. Lo quitamos de "aInsertar" para no duplicarlo.
-                aInsertar.remove(matchExacto.get());
+            if (match.isPresent()) {
+                DTOTarifa dto = match.get();
+
+                // Cambio que requiere historial (Precio ||  Edades)
+                boolean requiereNuevoHistorial = dto.getPrecio().compareTo(activo.getPrecio()) != 0 ||
+                        !dto.getEdadMinima().equals(activo.getEdadMinima()) ||
+                        !dto.getEdadMaxima().equals(activo.getEdadMaxima());
+
+                if (requiereNuevoHistorial) {
+                    // Si cambia el precio o el rango etario. Damos de baja el registro viejo para evitar inconsistencias en las reservas.
+                    aDarDeBaja.add(activo);
+
+                } else {
+                    activo.setNombre(dto.getNombre());
+                    activo.setEsTarifaBase(dto.isEsTarifaBase());
+                    aInsertar.remove(dto);
+                }
+
             } else {
-                // Fue modificado o eliminado. Lo marcamos para baja lógica.
                 aDarDeBaja.add(activo);
             }
         }
