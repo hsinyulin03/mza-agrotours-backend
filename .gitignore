@@ -38,3 +38,6 @@ out/
 
 # Secrets
 firebase-service-account.json
+
+# Object storage local (dev)
+uploads/
