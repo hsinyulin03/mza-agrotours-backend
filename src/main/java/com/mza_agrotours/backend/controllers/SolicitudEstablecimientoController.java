@@ -1,10 +1,9 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
-import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateReq;
 import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
+import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateReq;
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateResp;
-import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimiento;
 import com.mza_agrotours.backend.services.SolicitudEstablecimientoService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
