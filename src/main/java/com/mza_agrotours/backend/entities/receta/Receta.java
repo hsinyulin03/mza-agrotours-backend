@@ -2,7 +2,7 @@ package com.mza_agrotours.backend.entities.receta;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
 import com.mza_agrotours.backend.enums.Dificultad;
-import com.mza_agrotours.backend.enums.Duracion;
+import com.mza_agrotours.backend.enums.DuracionNombre;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -34,8 +34,8 @@ public class Receta extends BaseEntity {
     @Column(nullable = false)
     private Dificultad dificultad;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "duracion_id", nullable = false)
     private Duracion duracion;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)

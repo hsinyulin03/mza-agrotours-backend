@@ -5,7 +5,7 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public enum Duracion {
+public enum DuracionNombre {
     RAPIDA("Rápida"),
     MEDIA("Media"),
     LARGA("Larga");
