@@ -11,7 +11,7 @@ import com.mza_agrotours.backend.exceptions.EntityAlreadyExistsException;
 import com.mza_agrotours.backend.exceptions.EntityNotFoundException;
 import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
 import com.mza_agrotours.backend.repositories.TipoCultivo.EstacionalidadRepository;
-import com.mza_agrotours.backend.repositories.TipoCultivoRepository;
+import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -38,7 +38,7 @@ public class TipoCultivoService {
         tipoCultivo.setDescripcion(dto.getDescripcion());
         tipoCultivo.setBeneficios(dto.getBeneficios());
         tipoCultivo.setEstacionalidadMeses(construirEstacionalidadMeses(dto.getEstacionalidadPorMes()));
-
+        // todo informacion nutricional
         TipoCultivo guardado = tipoCultivoRepository.save(tipoCultivo);
 
         return mapearADatos(guardado);
@@ -53,7 +53,7 @@ public class TipoCultivoService {
     @Transactional
     public DTOTipoCultivoDatos modificarTipoCultivo(UUID id, DTOTipoCultivoAM dto) {
         TipoCultivo tipoCultivo = obtenerTipoCultivo(id);
-        validarNombreDisponible(dto.getNombre());
+        validarNombreDisponibleParaModificar(id, dto.getNombre());
 
         tipoCultivo.setNombre(dto.getNombre());
         tipoCultivo.setDescripcion(dto.getDescripcion());
@@ -72,6 +72,7 @@ public class TipoCultivoService {
 
 
 
+    // ALTA
 
     private void validarNombreDisponible(String nombre) {
         if (tipoCultivoRepository.existsByNombreIgnoreCaseAndFechaHoraBajaIsNull(nombre)) {
@@ -109,7 +110,7 @@ public class TipoCultivoService {
 
         return resultado;
     }
-
+    // MODIFICACION
     private Estacionalidad obtenerEstacionalidadPorNombre(EstacionalidadNombre nombre) {
         return estacionalidadRepository.findByNombre(nombre)
                 .orElseThrow(() -> new ValidacionNegocioException("No se encuentra configurada la estacionalidad " + nombre));
@@ -165,6 +166,17 @@ public class TipoCultivoService {
         estacionalidadActual.clear();
         // Agrega las nuevas relaciones de estacionalidad a la lista
         estacionalidadActual.addAll(estacionalidadNueva);
+    }
+
+    private void validarNombreDisponibleParaModificar(UUID id, String nombre) {
+        tipoCultivoRepository.findByNombreIgnoreCaseAndFechaHoraBajaIsNull(nombre)
+                // Si el nombre pertenece a otro cultivo distinto del que se mando a editar
+                // se considera un nombre duplicado
+                // el filter lo deja pasar y lanza la exception
+                .filter(existente -> !existente.getId().equals(id))
+                .ifPresent(existente -> {
+                    throw new EntityAlreadyExistsException("Ya existe un tipo de cultivo con ese nombre");
+                });
     }
 
 }

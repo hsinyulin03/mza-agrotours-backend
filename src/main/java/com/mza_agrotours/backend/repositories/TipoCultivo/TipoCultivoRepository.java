@@ -1,6 +1,7 @@
-package com.mza_agrotours.backend.repositories;
+package com.mza_agrotours.backend.repositories.TipoCultivo;
 
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
+import com.mza_agrotours.backend.repositories.BaseEntityRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -21,4 +22,5 @@ public interface TipoCultivoRepository
     boolean existsByNombreIgnoreCaseAndFechaHoraBajaIsNull(String nombre);
 
     Optional<TipoCultivo> findByIdAndFechaHoraBajaIsNull(UUID id);
+    Optional<TipoCultivo> findByNombreIgnoreCaseAndFechaHoraBajaIsNull(String nombre);
 }
