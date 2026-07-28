@@ -4,7 +4,6 @@ import com.mza_agrotours.backend.config.ObjectStorageProvider;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadRequest;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
 import com.mza_agrotours.backend.dtos.archivo.PresignedUrlResponse;
-import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.exceptions.DatoInvalidoException;
 import com.mza_agrotours.backend.exceptions.FailedToGenerateResourceSignedUrlException;
 import com.mza_agrotours.backend.exceptions.ObjectStorageProviderException;
@@ -21,7 +20,7 @@ public class ArchivoService {
     }
 
     /**
-     * Genera una lista de urls de presigned url para una lista de archivos.
+     * Genera una lista de urls del object storage provider para una lista de archivos.
      * @param archivoUploadRequests lista de requests con el nombre del archivo
      * @return lista de archivos con la key y nombre del archivo
      * @throws DatoInvalidoException si el nombre del archivo no tiene una extension
@@ -36,7 +35,7 @@ public class ArchivoService {
     }
 
     /**
-     * Genera una url de presigned url para un archivo y retorna una instancia del mismo.
+     * Genera una presignedUrl para un archivo del object storage provider.
      * @param archivoUploadRequest request con el nombre del archivo
      * @return archivo con la key y nombre del archivo
      * @throws DatoInvalidoException si el nombre del archivo no tiene una extension o
