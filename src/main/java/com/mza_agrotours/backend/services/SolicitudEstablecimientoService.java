@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.dtos.SolicitudEstablecimientoShortDTO;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateReq;
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateResp;
@@ -109,6 +110,7 @@ public class SolicitudEstablecimientoService {
         nuevaSolicitudEstablecimiento.setPruebas(archivos);
 
         // 6. Guardar la solicitud en estado pendiente asociado al usuario
+        nuevaSolicitudEstablecimiento.setFechaHoraAlta(LocalDateTime.now());
         nuevaSolicitudEstablecimiento = this.solicitudEstablecimientoRepository.save(nuevaSolicitudEstablecimiento);
 
         // 6. Generar listado de urls para los archivos adjuntos
@@ -118,5 +120,15 @@ public class SolicitudEstablecimientoService {
         solicitudEstablecimientoCreateResp.setArchivoUploadResponses(archivoUploadResponses);
 
         return solicitudEstablecimientoCreateResp;
+    }
+
+    public List<SolicitudEstablecimientoShortDTO> obtenerSolicitudesPorUsuario(String emailUsuario) {
+        Usuario usuario = this.usuarioRepository.findActiveByEmail(emailUsuario)
+                .orElseThrow(() -> new UsuarioNotFound("No se pudo encontrar el usuario"));
+
+        List<SolicitudEstablecimiento> solicitudEstablecimientos = this.solicitudEstablecimientoRepository.findAllByUsuario(usuario);
+
+        return this.solicitudEstablecimientoMapper
+                .solicitudEstablecimientosToSolicitudEstablecimientoShortDTOs(solicitudEstablecimientos);
     }
 }
