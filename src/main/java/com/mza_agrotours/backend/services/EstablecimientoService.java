@@ -2,7 +2,7 @@ package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.establecimiento.*;
 import com.mza_agrotours.backend.entities.Departamento;
-import com.mza_agrotours.backend.entities.TipoCultivo;
+import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.establecimiento.EstadoEstablecimiento;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
@@ -17,7 +17,7 @@ import com.mza_agrotours.backend.repositories.DepartamentoRepository;
 import com.mza_agrotours.backend.repositories.EstadoEstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.EstablecimientoEstadoRepository;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
-import com.mza_agrotours.backend.repositories.TipoCultivoRepository;
+import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
