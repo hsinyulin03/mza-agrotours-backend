@@ -8,10 +8,7 @@ import com.mza_agrotours.backend.services.SolicitudEstablecimientoService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/solicitudes-establecimiento")
@@ -31,6 +28,12 @@ public class SolicitudEstablecimientoController {
         SolicitudEstablecimientoCreateResp nuevaSolicitudEstablecimiento = solicitudEstablecimientoService.crearSolicitudEstablecimiento(solicitudEstablecimientoCreateReq, emailUsuario);
         //TODO: Notificar al usuario que se ha creado la solicitud
         return ResponseEntity.ok().body(ApiResponse.ok(nuevaSolicitudEstablecimiento));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> obtenerSolicitudesPorUsuario(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) {
+        String emailUsuario = usuarioAuthDetails.getEmail();
+        return ResponseEntity.ok().body(ApiResponse.ok(solicitudEstablecimientoService.obtenerSolicitudesPorUsuario(emailUsuario)));
     }
 
 }
