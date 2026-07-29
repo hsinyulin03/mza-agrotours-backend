@@ -1,4 +1,4 @@
-package com.mza_agrotours.backend.dtos;
+package com.mza_agrotours.backend.dtos.solicitud_establecimiento;
 
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolicitudEstablecimientoNombre;
 import lombok.AllArgsConstructor;
