@@ -5,6 +5,7 @@ import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEst
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface SolicitudEstablecimientoRepository extends BaseEntityRepository<SolicitudEstablecimiento, UUID> {
@@ -15,4 +16,6 @@ public interface SolicitudEstablecimientoRepository extends BaseEntityRepository
             @Param("cuit") String cuit);
 
     List<SolicitudEstablecimiento> findAllByUsuario(Usuario usuario);
+
+    Optional<SolicitudEstablecimiento> findByIdAndUsuario(UUID id, Usuario usuario);
 }
