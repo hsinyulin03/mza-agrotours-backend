@@ -1,7 +1,9 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.dtos.tipoCultivo.DTOEstacionalidad;
+import com.mza_agrotours.backend.dtos.tipoCultivo.DTOEstacionalidadMes;
 import com.mza_agrotours.backend.dtos.tipoCultivo.DTOTipoCultivoAM;
-import com.mza_agrotours.backend.dtos.tipoCultivo.DTOTipoCultivoDatos;
+import com.mza_agrotours.backend.dtos.tipoCultivo.DTOTipoCultivoEditarDetalle;
 import com.mza_agrotours.backend.entities.cultivo.Estacionalidad;
 import com.mza_agrotours.backend.entities.cultivo.EstacionalidadMes;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
@@ -10,6 +12,7 @@ import com.mza_agrotours.backend.enums.Mes;
 import com.mza_agrotours.backend.exceptions.EntityAlreadyExistsException;
 import com.mza_agrotours.backend.exceptions.EntityNotFoundException;
 import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
+import com.mza_agrotours.backend.mappers.TipoCultivoMapper;
 import com.mza_agrotours.backend.repositories.TipoCultivo.EstacionalidadRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
 import jakarta.transaction.Transactional;
@@ -27,10 +30,12 @@ public class TipoCultivoService {
 
     @Autowired
     private EstacionalidadRepository estacionalidadRepository;
+    @Autowired
+    private TipoCultivoMapper tipoCultivoMapper;
 
     // ALTA TIPO DE CULTIVO
     @Transactional
-    public DTOTipoCultivoDatos altaTipoCultivo(DTOTipoCultivoAM dto) {
+    public DTOTipoCultivoEditarDetalle altaTipoCultivo(DTOTipoCultivoAM dto) {
         validarNombreDisponible(dto.getNombre());
 
         TipoCultivo tipoCultivo = new TipoCultivo();
@@ -45,13 +50,13 @@ public class TipoCultivoService {
     }
     // OBTENER DATOS TIPO CULTIVO (para prellenar el formulario de editar)
     @Transactional
-    public DTOTipoCultivoDatos obtenerDatosTipoCultivo(UUID id) {
+    public DTOTipoCultivoEditarDetalle obtenerDatosTipoCultivo(UUID id) {
         TipoCultivo tipoCultivo = obtenerTipoCultivo(id);
         return mapearADatos(tipoCultivo);
     }
     // MODIFICAR TIPO CULTIVO
     @Transactional
-    public DTOTipoCultivoDatos modificarTipoCultivo(UUID id, DTOTipoCultivoAM dto) {
+    public DTOTipoCultivoEditarDetalle modificarTipoCultivo(UUID id, DTOTipoCultivoAM dto) {
         TipoCultivo tipoCultivo = obtenerTipoCultivo(id);
         validarNombreDisponibleParaModificar(id, dto.getNombre());
 
@@ -63,6 +68,11 @@ public class TipoCultivoService {
 
         TipoCultivo guardado = tipoCultivoRepository.save(tipoCultivo);
         return mapearADatos(guardado);
+    }
+    // CONSULTAR ESTACIONALIDADES (catálogo fijo, para poblar el selector del formulario de cultivos)
+    public List<DTOEstacionalidad> consultarEstacionalidades() {
+        List<Estacionalidad> estacionalidades = estacionalidadRepository.findAll();
+        return tipoCultivoMapper.estacionalidadesToDto(estacionalidades);
     }
 
 
@@ -115,42 +125,42 @@ public class TipoCultivoService {
         return estacionalidadRepository.findByNombre(nombre)
                 .orElseThrow(() -> new ValidacionNegocioException("No se encuentra configurada la estacionalidad " + nombre));
     }
+    private DTOTipoCultivoEditarDetalle mapearADatos(TipoCultivo tipoCultivo) {
+        DTOTipoCultivoEditarDetalle dto = tipoCultivoMapper.tipoCultivoToDtoEditarDetalle(tipoCultivo);
 
-    private DTOTipoCultivoDatos mapearADatos(TipoCultivo tipoCultivo) {
-        DTOTipoCultivoDatos dto = new DTOTipoCultivoDatos();
-        dto.setNombre(tipoCultivo.getNombre());
-        dto.setDescripcion(tipoCultivo.getDescripcion());
-        dto.setBeneficios(tipoCultivo.getBeneficios());
         dto.setEstacionalidadPorMes(obtenerEstacionalidadPorMes(tipoCultivo));
         return dto;
     }
-    private List<EstacionalidadNombre> obtenerEstacionalidadPorMes(TipoCultivo tipoCultivo) {
-        // Crea un mapa donde la clave es el mes y el valor es el nombre
-        // de la estacionalidad correspondiente.
-        // ej ENERO -> COSECHA
-        Map<Mes, EstacionalidadNombre> porMes = tipoCultivo.getEstacionalidadMeses().stream()
-                .collect(Collectors.toMap(
-               //  el mes como clave.
-                        EstacionalidadMes::getMes,
-                        //nombre de la estacionalidad como valor
-                        em -> em.getEstacionalidad().getNombre()
-                ));
-        //Recorre todos los meses del año en el orden definido por el enum
-        // y obtiene la estacionalidad asociada a cada uno desde el mapa.
+
+    private List<DTOEstacionalidadMes> obtenerEstacionalidadPorMes(TipoCultivo tipoCultivo) {
+        // Mapa mes -> EstacionalidadMes, para no depender del orden de la colección
+        Map<Mes, EstacionalidadMes> porMes = tipoCultivo.getEstacionalidadMeses().stream()
+                .collect(Collectors.toMap(EstacionalidadMes::getMes, em -> em));
+
+        // Recorre los 12 meses en orden fijo y arma el DTO con mes + nombre
         return Arrays.stream(Mes.values())
                 .map(mes -> {
-                    EstacionalidadNombre nombre = porMes.get(mes);
-                    if (nombre == null) {
+                    // Obtiene la estacionalidad correspondiente al mes actual.
+                    EstacionalidadMes em = porMes.get(mes);
+                    // Si no existe una estacionalidad para ese mes
+                    // el cultivo está inconsistente y se lanza la excepción
+                    if (em == null) {
                         throw new IllegalStateException(
                                 "El tipo de cultivo '" + tipoCultivo.getNombre()
                                         + "' no tiene estacionalidad cargada para el mes " + mes
                         );
                     }
-                    return nombre;
+                    // Crea el DTO que se envia al frontend.
+                    DTOEstacionalidadMes dtoMes = new DTOEstacionalidadMes();
+                    // Asigna el mes correspondiente
+                    dtoMes.setMes(mes);
+                    // Asigna el nombre de la estacionalidad
+                    // (COSECHA, CRECIMIENTO o REPOSO).
+                    dtoMes.setNombre(em.getEstacionalidad().getNombre());
+                    return dtoMes;
                 })
                 .toList();
     }
-
     private TipoCultivo obtenerTipoCultivo(UUID id) {
         return tipoCultivoRepository.findByIdAndFechaHoraBajaIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("No se encuentra el tipo de cultivo indicado"));
@@ -170,7 +180,7 @@ public class TipoCultivoService {
 
     private void validarNombreDisponibleParaModificar(UUID id, String nombre) {
         tipoCultivoRepository.findByNombreIgnoreCaseAndFechaHoraBajaIsNull(nombre)
-                // Si el nombre pertenece a otro cultivo distinto del que se mando a editar
+                // Si el nombre pertenece a otro cultivo distinto del que se mandó a editar
                 // se considera un nombre duplicado
                 // el filter lo deja pasar y lanza la exception
                 .filter(existente -> !existente.getId().equals(id))

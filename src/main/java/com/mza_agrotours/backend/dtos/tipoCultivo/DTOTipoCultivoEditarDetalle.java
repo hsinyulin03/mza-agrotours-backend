@@ -7,9 +7,9 @@ import java.util.List;
 
 
 @Data
-public class DTOTipoCultivoDatos {
+public class DTOTipoCultivoEditarDetalle {
     private String nombre;
     private String descripcion;
     private List<String> beneficios;
-    private List<EstacionalidadNombre> estacionalidadPorMes;
+    private List<DTOEstacionalidadMes> estacionalidadPorMes;
 }
