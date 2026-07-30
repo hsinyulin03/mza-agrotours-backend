@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,6 +22,11 @@ import java.util.List;
 public class SolicitudEstablecimiento extends BaseEntity {
     @Column(nullable = false, length = 100)
     private String nombreEstablecimiento;
+
+    @Column(nullable = false)
+    private LocalDateTime fechaHoraAlta;
+
+    private LocalDateTime fechaHoraBaja;
 
     @Column(nullable = false, length = 100)
     private String razonSocial;
