@@ -1,10 +1,6 @@
 package com.mza_agrotours.backend.dtos.actividad;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
 import lombok.Data;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -13,8 +9,9 @@ public class DTOActividadGetResponse {
     private UUID id;
     private String nombre;
     private String descripcion;
+    private List<DTOCultivoResponse> cultivos;
 
-    //TODO: Agregar relacion con cultivos, imagenes
+    //TODO: Agregar relacion con imagenes
 
     private List<DTOTarifaResponse> rangosEtarios;
     private List<String> incluye;

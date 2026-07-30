@@ -68,8 +68,8 @@ public class ActividadController {
 
     //US-ACT-12: Listado de actividades de la plataforma - vista del visitante
     @GetMapping("/explorar")
-    public ResponseEntity<?> explorarActividades() throws Exception {
-        List<DTOListadoActividadVisitanteResponse> listado = servicio.explorarActividades();
+    public ResponseEntity<?> explorarActividades(@RequestParam(required = false) List<UUID> cultivosIds) throws Exception {
+        List<DTOListadoActividadVisitanteResponse> listado = servicio.explorarActividades(cultivosIds);
         return ResponseEntity.ok(ApiResponse.ok(listado));
     }
 

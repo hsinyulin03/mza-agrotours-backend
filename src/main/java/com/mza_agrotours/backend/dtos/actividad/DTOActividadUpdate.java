@@ -6,6 +6,7 @@ import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.util.List;
+import java.util.UUID;
 
 @Data
 public class DTOActividadUpdate {
@@ -18,7 +19,10 @@ public class DTOActividadUpdate {
     @Size(min = 20, max = 2000, message = "La descripción debe tener entre 20 y 2000 caracteres")
     private String descripcion;
 
-    //TODO: Agregar relacion con cultivos, imagenes
+    @NotEmpty(message = "El tipo de cultivo es requerido")
+    private List<UUID> cultivos;
+
+    //TODO: Agregar relacion imagenes
 
     @Valid
     @NotEmpty(message = "Debe configurar al menos la tarifa base")

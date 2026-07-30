@@ -29,11 +29,18 @@ public interface ActividadRespository extends BaseEntityRepository<Actividad, UU
             @Param("estado") EstadoActividadNombre estado
     );
 
-    //TODO - Ignoramos temporalmente los filtros de cultivo y departamento
+    //TODO - Ignoramos temporalmente los filtros de departamento
     @Query("SELECT a FROM Actividad a " +
             "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
             "AND a.fechaHoraBaja IS NULL")
     List<Actividad> explorarActividadesPublicadas();
+
+    @Query("SELECT DISTINCT a FROM Actividad a " +
+            "LEFT JOIN a.cultivos c " +
+            "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
+            "AND a.fechaHoraBaja IS NULL " +
+            "AND (c.id IN :cultivosIds )")
+    List<Actividad> explorarActividadesPublicadas(@Param("cultivosIds") List <UUID> cultivosIds);
 
     @Query("SELECT MAX(ad.fechaHoraInicio) FROM Actividad a JOIN a.actividadesDias ad WHERE a.id = :actividadId")
     Optional<LocalDateTime> findUltimaFechaByActividadId(@Param("actividadId") UUID actividadId);

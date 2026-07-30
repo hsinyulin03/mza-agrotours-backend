@@ -5,6 +5,7 @@ import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.dtos.reservas.DiaActividadReservaDTO;
 import com.mza_agrotours.backend.dtos.reservas.InfoParaReservarDTO;
 import com.mza_agrotours.backend.dtos.reservas.RangoEtarioReservaDTO;
+import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.enums.Dia;
 import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
@@ -18,6 +19,7 @@ import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
 import com.mza_agrotours.backend.mappers.ActividadMapper;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
+import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadDiaRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
@@ -56,6 +58,9 @@ public class ActividadService {
     @Autowired
     private ParametrosService parametrosService;
 
+    @Autowired
+    private TipoCultivoRepository tipoCultivoRepository;
+
     //US-ACT-03 Alta de actividad
     @Transactional
     public DTOActividadAltaResponse altaActividad(DTOActividadAlta dto) {
@@ -76,6 +81,9 @@ public class ActividadService {
         actividad.setCuposMax(dto.getCuposMax());
         //Guarda el UUID del estado
         actividad.setEstado(estado);
+
+        List<TipoCultivo> cultivos = obtenerCultivos(dto.getCultivos());
+        actividad.setCultivos(cultivos);
 
         List<ActividadInclusiones> inclusiones = obtenerInclusiones(dto.getIncluye(), dto.getNoIncluye());
         List<ActividadFAQ> faqs = obtenerFaqs(dto.getFaqs());
@@ -160,13 +168,17 @@ public class ActividadService {
 
     //US-ACT-12: Listado de actividades de la plataforma - vista del visitante
     @Transactional(readOnly = true)
-    public List<DTOListadoActividadVisitanteResponse> explorarActividades() {
+    public List<DTOListadoActividadVisitanteResponse> explorarActividades(List<UUID> cultivoIds) {
+        List<Actividad> actividades;
 
-        // TODO: Falta implementar filtro por cultivo y por departamento
+        // TODO: Falta implementar filtro por departamento
         // TODO: Falta implementar paginación
 
-        //Traemos todas las actividades publicadas y activas (temporalmente ignoramos los filtros)
-        List<Actividad> actividades = actividadRepository.explorarActividadesPublicadas();
+        if (cultivoIds == null || cultivoIds.isEmpty()) {
+            actividades = actividadRepository.explorarActividadesPublicadas();
+        }else {
+            actividades = actividadRepository.explorarActividadesPublicadas(cultivoIds);
+        }
 
         return actividades.stream()
                 .map(actividadMapper::actividadToDTOListadoActividadVisitante)
@@ -193,6 +205,11 @@ public class ActividadService {
 
         actividad.setNombre(dto.getNombre());
         actividad.setDescripcion(dto.getDescripcion());
+
+        List<TipoCultivo> cultivos = actualizarCultivos(actividad.getCultivos(), dto.getCultivos());
+        actividad.getCultivos().clear();
+        actividad.getCultivos().addAll(cultivos);
+
         List<ActividadRangoEtario> activosActuales = actividad.getActividadRangoEtarios().stream()
                 .filter(r -> r.getFechaHoraBaja() == null)
                 .collect(Collectors.toList());
@@ -475,7 +492,58 @@ public class ActividadService {
 
         return huecos;
     }
+    private List<TipoCultivo> obtenerCultivos(List<UUID> idCultivos) {
 
+        if (idCultivos == null || idCultivos.isEmpty()) {
+            throw new ValidacionNegocioException("El tipo de cultivo es requerido");
+        }
+
+        // Asegura de no tener IDs repetidos en la request, si los tiene los elimina
+        List<UUID> idsUnicos = idCultivos.stream().distinct().toList();
+        List<TipoCultivo> cultivosActivos = tipoCultivoRepository.findActivosByIds(idsUnicos);
+
+        if (cultivosActivos.size() != idsUnicos.size()) {
+            throw new ValidacionNegocioException("Uno o más tipos de cultivo seleccionados no existen o se encuentran dados de baja.");
+        }
+        return cultivosActivos;
+    }
+
+    private List<TipoCultivo> actualizarCultivos(List <TipoCultivo> cultivosActuales, List<UUID> idsRequest) {
+        // Obtener IDs de los cultivos que la actividad ya tiene asignados
+        List<UUID> idsActuales = cultivosActuales.stream()
+                .map(TipoCultivo::getId)
+                .collect(Collectors.toList());
+
+        // Separar los IDs recibidos en el dto en "nuevos" y "mantenidos"
+        List<UUID> idsNuevos = idsRequest.stream()
+                .filter(id -> !idsActuales.contains(id))
+                .distinct()
+                .collect(Collectors.toList());
+
+        List <UUID> idsMantenidos = idsRequest.stream()
+                .filter(idsActuales::contains)
+                .distinct()
+                .collect(Collectors.toList());
+
+        List<TipoCultivo> cultivosDefinitivos = new ArrayList<>();
+
+        // Validar y recuperar los cultivos nuevos (no deben estar dados de baja)
+        if (!idsNuevos.isEmpty()) {
+            List<TipoCultivo> cultivosNuevos = tipoCultivoRepository.findActivosByIds(idsNuevos);
+            if (cultivosNuevos.size() != idsNuevos.size()) {
+                throw new ValidacionNegocioException("Uno o más tipos de cultivo seleccionados se encuentran dados de baja.");
+            }
+            cultivosDefinitivos.addAll(cultivosNuevos);
+        }
+
+        // Si ya lo tenía desde antes esos cultivos, se lo dejamos guardar (sin importar si está dado de baja)
+        if (!idsMantenidos.isEmpty()) {
+            cultivosActuales.stream()
+                    .filter(c -> idsMantenidos.contains(c.getId()))
+                    .forEach(cultivosDefinitivos::add);
+        }
+        return cultivosDefinitivos;
+    }
 
 
     //US-RESE-01: Reservar actividad - información sobre la actividad para reservarla

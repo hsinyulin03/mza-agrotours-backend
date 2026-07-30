@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Mapper(componentModel = "spring")
@@ -23,18 +24,21 @@ public abstract class ActividadMapper {
     @Mapping(target = "preguntasFrecuentes", ignore = true)
     @Mapping(target = "tarifas", ignore = true)
     @Mapping(target = "precioRegular", ignore = true)
+    @Mapping(target = "cultivos", ignore = true)
     public abstract DTOActividadDetalleResponse actividadToDTOActividadDetalle(Actividad actividad);
 
     //US-ACT-06
     @Mapping(target = "estado", source = "estado.nombre")
     @Mapping(target = "diasYHorasDisponibles", ignore = true)
     @Mapping(target = "precioRegular", ignore = true)
+    @Mapping(target = "cultivos", ignore = true)
     public abstract DTOActividadesResponse actividadToDTOActividades(Actividad actividad);
 
     //US-ACT-07
     @Mapping(target = "estado", source = "estado.nombre")
     @Mapping(target = "diasYHorasDisponibles", ignore = true)
     @Mapping(target = "diasDelMes", ignore = true)
+    @Mapping(target = "cultivos", ignore = true)
     public abstract DTOCalendarioActividadDiaResponse actividadToDTOCalendarioActividadDia(Actividad actividad);
 
     @Mapping(source = "cuposMax", target = "cuposMaximos")
@@ -44,6 +48,7 @@ public abstract class ActividadMapper {
 
     //US-ACT-12
     @Mapping(target = "precioRegular", ignore = true)
+    @Mapping(target = "cultivos", ignore = true)
     public abstract DTOListadoActividadVisitanteResponse actividadToDTOListadoActividadVisitante(Actividad actividad);
 
     //US-ACT-04
@@ -52,6 +57,7 @@ public abstract class ActividadMapper {
     @Mapping(target = "noIncluye", ignore = true)
     @Mapping(target = "faqs", ignore = true)
     @Mapping(target = "rangosEtarios", ignore = true)
+    @Mapping(target = "cultivos", ignore = true)
     public abstract DTOActividadGetResponse actividadToDTOActividadGetResponse(Actividad actividad);
 
     //US-RESE-01
@@ -64,12 +70,14 @@ public abstract class ActividadMapper {
         List<DTOFaqResponse> faqs = obtenerFaqs(actividad.getFaqs());
         List<DTOTarifaResponse> tarifas = obtenerTarifas(actividad.getActividadRangoEtarios());
         BigDecimal precioBase = obtenerPrecioBaseVigente(actividad);
+        List <DTOCultivoResponse> cultivosAsociados= obtenerCultivosAsociados(actividad);
 
         dto.setIncluye(incluye);
         dto.setNoIncluye(noIncluye);
         dto.setPreguntasFrecuentes(faqs);
         dto.setTarifas(tarifas);
         dto.setPrecioRegular(precioBase);
+        dto.setCultivos(cultivosAsociados);
 
     }
 
@@ -86,6 +94,9 @@ public abstract class ActividadMapper {
         // Armar los textos de Días y Horas Disponibles ("LUNES 09:00 - 13:00")
         List<String> diasDisponibles = obtenerDiasYHorasDisponibles(actividad);
         dto.setDiasYHorasDisponibles(diasDisponibles);
+
+        List <DTOCultivoResponse> cultivosAsociados= obtenerCultivosAsociados(actividad);
+        dto.setCultivos(cultivosAsociados);
     }
 
 
@@ -95,12 +106,17 @@ public abstract class ActividadMapper {
         dto.setDiasYHorasDisponibles(diasDisponibles);
 
         dto.setEstado(obtenerNombreEstado(actividad.getEstado()));
+
+        List <DTOCultivoResponse> cultivosAsociados= obtenerCultivosAsociados(actividad);
+        dto.setCultivos(cultivosAsociados);
     }
 
     @AfterMapping
     public void llenarDatosTarjetaVisitante(Actividad actividad, @MappingTarget DTOListadoActividadVisitanteResponse dto) {
         BigDecimal precioBase = obtenerPrecioBaseVigente(actividad);
         dto.setPrecioRegular(precioBase);
+        List <DTOCultivoResponse> cultivosAsociados= obtenerCultivosAsociados(actividad);
+        dto.setCultivos(cultivosAsociados);
     }
     @AfterMapping
     public void llenarListasGetResponse(Actividad actividad, @MappingTarget DTOActividadGetResponse dto) {
@@ -108,11 +124,13 @@ public abstract class ActividadMapper {
         List<String> noIncluye = obtenerInclusiones(actividad.getInclusiones(), false);
         List<DTOFaqResponse> faqs = obtenerFaqs(actividad.getFaqs());
         List<DTOTarifaResponse> tarifas = obtenerTarifas(actividad.getActividadRangoEtarios());
+        List <DTOCultivoResponse> cultivosAsociados= obtenerCultivosAsociados(actividad);
 
         dto.setIncluye(incluye);
         dto.setNoIncluye(noIncluye);
         dto.setFaqs(faqs);
         dto.setRangosEtarios(tarifas);
+        dto.setCultivos(cultivosAsociados);
     }
 
 
@@ -208,6 +226,13 @@ public abstract class ActividadMapper {
             return estado.getNombre().name();
         }
         return null;
+    }
+
+    private List<DTOCultivoResponse> obtenerCultivosAsociados(Actividad actividad){
+        List<DTOCultivoResponse> cultivosAsociados = actividad.getCultivos().stream()
+                .map(c -> new DTOCultivoResponse(c.getId(), c.getNombre()))
+                .collect(Collectors.toList());
+        return cultivosAsociados;
     }
 
 }

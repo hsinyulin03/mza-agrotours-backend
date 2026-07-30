@@ -12,6 +12,7 @@ public class DTOCalendarioActividadDiaResponse {
     private String nombre;
     private String estado;
     private List<String> diasYHorasDisponibles;
+    private List<DTOCultivoResponse> cultivos;
 
     // Para armar el Calendario (Solo los días del mes solicitado)
     private List<DTOActividadDiaResponse> diasDelMes;
