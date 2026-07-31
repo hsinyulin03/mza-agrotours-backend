@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
+import com.mza_agrotours.backend.dtos.tipoCultivo.DTOCatalogoTipoCultivo;
 import com.mza_agrotours.backend.dtos.tipoCultivo.DTOEstacionalidad;
 import com.mza_agrotours.backend.dtos.tipoCultivo.DTOTipoCultivoAM;
 import com.mza_agrotours.backend.dtos.tipoCultivo.DTOTipoCultivoEditarDetalle;
@@ -45,6 +46,11 @@ public class TipoCultivoController {
     @GetMapping("/estacionalidades")
     public ResponseEntity<ApiResponse<List<DTOEstacionalidad>>> consultarEstacionalidades() {
         List<DTOEstacionalidad> resultado = tipoCultivoService.consultarEstacionalidades();
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(resultado));
+    }
+    @GetMapping
+    public ResponseEntity<ApiResponse<DTOCatalogoTipoCultivo>> consultarCatalogoTipoCultivo() {
+        DTOCatalogoTipoCultivo resultado = tipoCultivoService.consultarCatalogoTipoCultivo();
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(resultado));
     }
 

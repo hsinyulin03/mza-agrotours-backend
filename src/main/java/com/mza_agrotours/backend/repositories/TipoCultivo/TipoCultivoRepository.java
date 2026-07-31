@@ -23,4 +23,6 @@ public interface TipoCultivoRepository
 
     Optional<TipoCultivo> findByIdAndFechaHoraBajaIsNull(UUID id);
     Optional<TipoCultivo> findByNombreIgnoreCaseAndFechaHoraBajaIsNull(String nombre);
+    List<TipoCultivo> findAllByFechaHoraBajaIsNull();
+
 }

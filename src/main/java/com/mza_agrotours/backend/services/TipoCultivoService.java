@@ -1,9 +1,6 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.dtos.tipoCultivo.DTOEstacionalidad;
-import com.mza_agrotours.backend.dtos.tipoCultivo.DTOEstacionalidadMes;
-import com.mza_agrotours.backend.dtos.tipoCultivo.DTOTipoCultivoAM;
-import com.mza_agrotours.backend.dtos.tipoCultivo.DTOTipoCultivoEditarDetalle;
+import com.mza_agrotours.backend.dtos.tipoCultivo.*;
 import com.mza_agrotours.backend.entities.cultivo.Estacionalidad;
 import com.mza_agrotours.backend.entities.cultivo.EstacionalidadMes;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
@@ -13,6 +10,7 @@ import com.mza_agrotours.backend.exceptions.EntityAlreadyExistsException;
 import com.mza_agrotours.backend.exceptions.EntityNotFoundException;
 import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
 import com.mza_agrotours.backend.mappers.TipoCultivoMapper;
+import com.mza_agrotours.backend.repositories.RecetaRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.EstacionalidadRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
 import jakarta.transaction.Transactional;
@@ -32,7 +30,9 @@ public class TipoCultivoService {
     private EstacionalidadRepository estacionalidadRepository;
     @Autowired
     private TipoCultivoMapper tipoCultivoMapper;
-
+    @Autowired
+    private RecetaRepository recetaRepository;
+    ////US-CULT-06 ABM tipo cultivo (AM)
     // ALTA TIPO DE CULTIVO
     @Transactional
     public DTOTipoCultivoEditarDetalle altaTipoCultivo(DTOTipoCultivoAM dto) {
@@ -74,6 +74,23 @@ public class TipoCultivoService {
         List<Estacionalidad> estacionalidades = estacionalidadRepository.findAll();
         return tipoCultivoMapper.estacionalidadesToDto(estacionalidades);
     }
+    //// US-CULT-05 Consultar tipos de cultivo
+    public DTOCatalogoTipoCultivo consultarCatalogoTipoCultivo() {
+
+        List<TipoCultivo> tiposCultivo = tipoCultivoRepository.findAllByFechaHoraBajaIsNull();
+
+        List<DTOTipoCultivoListado> listado = tiposCultivo.stream()
+                .map(this::mapearAListado)
+                .toList();
+
+        DTOCatalogoTipoCultivo catalogo = new DTOCatalogoTipoCultivo();
+        catalogo.setTotalCultivos(listado.size());
+        // todas no hay fechabaja para las recetas
+        catalogo.setTotalRecetas((int) recetaRepository.count());
+        catalogo.setCultivos(listado);
+
+        return catalogo;
+    }
 
 
 
@@ -82,8 +99,11 @@ public class TipoCultivoService {
 
 
 
+
+    /**
+     * METODOS AUXILIARES
+     */
     // ALTA
-
     private void validarNombreDisponible(String nombre) {
         if (tipoCultivoRepository.existsByNombreIgnoreCaseAndFechaHoraBajaIsNull(nombre)) {
             throw new EntityAlreadyExistsException("Ya existe un tipo de cultivo con este nombre");
@@ -120,11 +140,11 @@ public class TipoCultivoService {
 
         return resultado;
     }
-    // MODIFICACION
     private Estacionalidad obtenerEstacionalidadPorNombre(EstacionalidadNombre nombre) {
         return estacionalidadRepository.findByNombre(nombre)
                 .orElseThrow(() -> new ValidacionNegocioException("No se encuentra configurada la estacionalidad " + nombre));
     }
+    // DETALLE / EDITAR
     private DTOTipoCultivoEditarDetalle mapearADatos(TipoCultivo tipoCultivo) {
         DTOTipoCultivoEditarDetalle dto = tipoCultivoMapper.tipoCultivoToDtoEditarDetalle(tipoCultivo);
 
@@ -165,7 +185,7 @@ public class TipoCultivoService {
         return tipoCultivoRepository.findByIdAndFechaHoraBajaIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("No se encuentra el tipo de cultivo indicado"));
     }
-
+    // MODIFICAR
     private void actualizarEstacionalidad(TipoCultivo tipoCultivo, List<EstacionalidadNombre> estacionalidadPorMes) {
         //Obtiene la lista de estacionalidades actualmente asociadas al cultivo
         List<EstacionalidadMes> estacionalidadActual = tipoCultivo.getEstacionalidadMeses();
@@ -188,5 +208,85 @@ public class TipoCultivoService {
                     throw new EntityAlreadyExistsException("Ya existe un tipo de cultivo con ese nombre");
                 });
     }
+    // CATALOGO (listado admin)
+    private DTOTipoCultivoListado mapearAListado(TipoCultivo tipoCultivo) {
+        DTOTipoCultivoListado dto = tipoCultivoMapper.tipoCultivoToDtoListado(tipoCultivo);
+
+        Integer cantidadRecetas = tipoCultivo.getRecetas().size();
+        // TODO CONTAR ACTIVADADES POR CULTIVO
+        Integer cantidadActividades = 0;
+        dto.setCalendarioEstacionalidad(obtenerEstacionalidadPorMes(tipoCultivo));
+        dto.setResumenCosecha(calcularResumenCosecha(tipoCultivo));
+        dto.setCantidadRecetas(cantidadRecetas);
+        dto.setCantidadActividades(cantidadActividades);
+        dto.setPuedeEliminarse(cantidadRecetas == 0 && cantidadActividades == 0 );
+
+        return dto;
+    }
+    /**
+     * Genera un resumen de los meses de cosecha de un cultivo
+     * Ej "Ene–Mar, Jun–Ago"
+     */
+
+    private String calcularResumenCosecha(TipoCultivo tipoCultivo) {
+        //1.obtener únicamente los meses con estacionalidad COSECHA
+        List<Mes> mesesEnCosecha = tipoCultivo.getEstacionalidadMeses().stream()
+                //se queda solamente con los que son COSECHA.
+                .filter(em -> em.getEstacionalidad().getNombre() == EstacionalidadNombre.COSECHA)
+                // Los ordena por el número del mes
+                //ordinal() devuelve la posición del enum
+                .sorted(Comparator.comparingInt(em -> em.getMes().ordinal()))
+                // pasa de estacionalidadmes a solo mes
+                .map(EstacionalidadMes::getMes)
+                .toList();
+        // Si el cultivo nunca está en cosecha devuelve null igual no puede ser o si ?
+        if (mesesEnCosecha.isEmpty()) {
+            return null;
+        }
+        // 2. Este metodo forma los intervalos de cosecha
+        // ej enero, febrero,abril...junio  a ene-feb abr-jun
+        List<String> tramos = agruparEnTramosContiguos(mesesEnCosecha);
+        // 3.Une los tramos en un solo string
+        return String.join(", ", tramos);
+    }
+
+    private List<String> agruparEnTramosContiguos(List<Mes> mesesOrdenados) {
+        List<String> tramos = new ArrayList<>();
+        // indice donde comienza el tramo actual
+        int inicioTramo = 0;
+        // Un tramo termina cuando
+        //  Se llega al final de la lista o
+        //  El siguiente mes deja de ser consecutivo
+        for (int i = 1; i <= mesesOrdenados.size(); i++) {
+            //.ordinal metodo heredo del enum
+            boolean esFinDeTramo = i == mesesOrdenados.size()
+                    || mesesOrdenados.get(i).ordinal() != mesesOrdenados.get(i - 1).ordinal() + 1;
+
+            if (esFinDeTramo) {
+                Mes desde = mesesOrdenados.get(inicioTramo);
+                Mes hasta = mesesOrdenados.get(i - 1);
+                // Agrega el tramo formateado al resultado
+                tramos.add(formatearTramo(desde, hasta));
+                //El próximo tramo comienza en la posición actual
+                inicioTramo = i;
+            }
+        }
+
+        return tramos;
+    }
+
+    private String formatearTramo(Mes desde, Mes hasta) {
+        if (desde == hasta) {
+            return abreviarMes(desde);
+        }
+        return abreviarMes(desde) + "–" + abreviarMes(hasta);
+    }
+
+    private String abreviarMes(Mes mes) {
+        return mes.getNombre().substring(0, 3);
+    }
+
+
+
 
 }
