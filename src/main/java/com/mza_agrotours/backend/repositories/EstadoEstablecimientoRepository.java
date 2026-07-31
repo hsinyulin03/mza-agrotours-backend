@@ -11,5 +11,6 @@ import java.util.UUID;
 @Repository
 public interface EstadoEstablecimientoRepository extends JpaRepository<EstadoEstablecimiento, UUID> {
     Optional<EstadoEstablecimiento> findByNombreAndFechaBajaIsNull(EstadoEstablecimientoNombre nombre);
+    boolean existsByNombre(EstadoEstablecimientoNombre nombre);
 
 }

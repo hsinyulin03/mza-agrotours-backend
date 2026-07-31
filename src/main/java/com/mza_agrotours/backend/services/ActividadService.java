@@ -7,6 +7,7 @@ import com.mza_agrotours.backend.dtos.reservas.InfoParaReservarDTO;
 import com.mza_agrotours.backend.dtos.reservas.RangoEtarioReservaDTO;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
+import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
 import com.mza_agrotours.backend.enums.Dia;
 import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
@@ -19,6 +20,7 @@ import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
 import com.mza_agrotours.backend.mappers.ActividadMapper;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
+import com.mza_agrotours.backend.repositories.ReservaRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadDiaRepository;
@@ -61,6 +63,9 @@ public class ActividadService {
     @Autowired
     private TipoCultivoRepository tipoCultivoRepository;
 
+    @Autowired
+    private ReservaRepository reservaRepository;
+
     //US-ACT-03 Alta de actividad
     @Transactional
     public DTOActividadAltaResponse altaActividad(DTOActividadAlta dto) {
@@ -72,7 +77,7 @@ public class ActividadService {
             throw new ValidacionMultipleException(errores);
         }
 
-        EstadoActividad estado = obtenerEstado(dto);
+        EstadoActividad estado = obtenerEstado(dto.getEstado());
 
         //Paso 1: Información General
         Actividad actividad = new Actividad();
@@ -192,16 +197,20 @@ public class ActividadService {
         Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(idActividad)
                 .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
 
-        // TODO: No se permite cambiar a estado borrador cuando hay reservas en estado pendiente o pagada
-        /*if (EstadoActividadNombre.BORRADOR.name().equalsIgnoreCase(dto.getEstado()) && reservasTotales > 0) {
-            throw new ValidacionNegocioException("No se puede guardar como borrador: hay reservas asociadas.");
-        }*/
-        //Primero hacemos las validaciones del negocio
         List<String> errores = actividadValidaciones.obtenerErroresValidacionModificacion(idActividad, dto);
 
         if (!errores.isEmpty()) {
             throw new ValidacionMultipleException(errores);
         }
+
+        EstadoActividad nuevoEstado = obtenerEstado(dto.getEstado());
+        if (EstadoActividadNombre.BORRADOR.name().equalsIgnoreCase(dto.getEstado()) &&
+                tieneReservasPendientesOPagadas(idActividad)) {
+
+            throw new ValidacionNegocioException("No se permite cambiar a estado borrador: la actividad posee reservas en estado pendiente o pagada.");
+        }
+
+        actividad.setEstado(nuevoEstado);
 
         actividad.setNombre(dto.getNombre());
         actividad.setDescripcion(dto.getDescripcion());
@@ -243,12 +252,12 @@ public class ActividadService {
 
     //Métodos auxiliares
 
-    private EstadoActividad obtenerEstado(DTOActividadAlta dto) {
+    private EstadoActividad obtenerEstado(String nombreEstadoDto) {
         EstadoActividadNombre estadoActividadNombre;
         try {
-            estadoActividadNombre = EstadoActividadNombre.valueOf(dto.getEstado().toUpperCase());
+            estadoActividadNombre = EstadoActividadNombre.valueOf(nombreEstadoDto.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new DatoInvalidoException("El estado de actividad proporcionado es inválido: " + dto.getEstado());
+            throw new DatoInvalidoException("El estado de actividad proporcionado es inválido: " + nombreEstadoDto);
         }
         return estadoActividadRepository.findByNombre(estadoActividadNombre)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el registro del estado " + estadoActividadNombre + " en la base de datos."));
@@ -543,6 +552,18 @@ public class ActividadService {
                     .forEach(cultivosDefinitivos::add);
         }
         return cultivosDefinitivos;
+    }
+
+    private boolean tieneReservasPendientesOPagadas(UUID idActividad) {
+        List<EstadoReservaNombre> estadosQueBloquean = List.of(
+                EstadoReservaNombre.PENDIENTE,
+                EstadoReservaNombre.PAGADA
+        );
+
+        return reservaRepository.existsByActividadIdAndEstadoActualEstadoReservaNombreIn(
+                idActividad,
+                estadosQueBloquean
+        );
     }
 
 

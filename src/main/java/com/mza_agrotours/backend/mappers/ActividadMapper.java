@@ -3,7 +3,6 @@ package com.mza_agrotours.backend.mappers;
 import com.mza_agrotours.backend.dtos.actividad.*;
 import com.mza_agrotours.backend.dtos.reservas.RangoEtarioReservaDTO;
 import com.mza_agrotours.backend.entities.actividad.*;
-import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -15,9 +14,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Mapper(componentModel = "spring")
-public abstract class ActividadMapper {
+public interface ActividadMapper {
     // US-ACT-02
     @Mapping(target = "incluye", ignore = true)
     @Mapping(target = "noIncluye", ignore = true)
@@ -25,31 +23,31 @@ public abstract class ActividadMapper {
     @Mapping(target = "tarifas", ignore = true)
     @Mapping(target = "precioRegular", ignore = true)
     @Mapping(target = "cultivos", ignore = true)
-    public abstract DTOActividadDetalleResponse actividadToDTOActividadDetalle(Actividad actividad);
+    DTOActividadDetalleResponse actividadToDTOActividadDetalle(Actividad actividad);
 
     //US-ACT-06
     @Mapping(target = "estado", source = "estado.nombre")
     @Mapping(target = "diasYHorasDisponibles", ignore = true)
     @Mapping(target = "precioRegular", ignore = true)
     @Mapping(target = "cultivos", ignore = true)
-    public abstract DTOActividadesResponse actividadToDTOActividades(Actividad actividad);
+    DTOActividadesResponse actividadToDTOActividades(Actividad actividad);
 
     //US-ACT-07
     @Mapping(target = "estado", source = "estado.nombre")
     @Mapping(target = "diasYHorasDisponibles", ignore = true)
     @Mapping(target = "diasDelMes", ignore = true)
     @Mapping(target = "cultivos", ignore = true)
-    public abstract DTOCalendarioActividadDiaResponse actividadToDTOCalendarioActividadDia(Actividad actividad);
+    DTOCalendarioActividadDiaResponse actividadToDTOCalendarioActividadDia(Actividad actividad);
 
     @Mapping(source = "cuposMax", target = "cuposMaximos")
     @Mapping(source = "estadoActual.estado.nombre", target = "estadoActual")
     @Mapping(target = "fecha", expression = "java(dia.getFechaHoraInicio() != null ? dia.getFechaHoraInicio().toLocalDate() : null)")
-    public abstract DTOActividadDiaResponse actividadDiatoDTOActividadDia(ActividadDia dia);
+    DTOActividadDiaResponse actividadDiatoDTOActividadDia(ActividadDia dia);
 
     //US-ACT-12
     @Mapping(target = "precioRegular", ignore = true)
     @Mapping(target = "cultivos", ignore = true)
-    public abstract DTOListadoActividadVisitanteResponse actividadToDTOListadoActividadVisitante(Actividad actividad);
+    DTOListadoActividadVisitanteResponse actividadToDTOListadoActividadVisitante(Actividad actividad);
 
     //US-ACT-04
     @Mapping(target = "estado", source = "estado.nombre")
@@ -58,13 +56,13 @@ public abstract class ActividadMapper {
     @Mapping(target = "faqs", ignore = true)
     @Mapping(target = "rangosEtarios", ignore = true)
     @Mapping(target = "cultivos", ignore = true)
-    public abstract DTOActividadGetResponse actividadToDTOActividadGetResponse(Actividad actividad);
+    DTOActividadGetResponse actividadToDTOActividadGetResponse(Actividad actividad);
 
     //US-RESE-01
-    public abstract RangoEtarioReservaDTO actividadRangoEtarioToDTO(ActividadRangoEtario actividadRangoEtarios);
+    RangoEtarioReservaDTO actividadRangoEtarioToDTO(ActividadRangoEtario actividadRangoEtarios);
 
     @AfterMapping
-    public void llenarListasComplejas(Actividad actividad, @MappingTarget DTOActividadDetalleResponse dto) {
+    default void llenarListasComplejas(Actividad actividad, @MappingTarget DTOActividadDetalleResponse dto) {
         List<String> incluye = obtenerInclusiones(actividad.getInclusiones(), true);
         List<String> noIncluye = obtenerInclusiones(actividad.getInclusiones(), false);
         List<DTOFaqResponse> faqs = obtenerFaqs(actividad.getFaqs());
@@ -83,7 +81,7 @@ public abstract class ActividadMapper {
 
 
     @AfterMapping
-    public void llenarDatosTarjetaActividades(Actividad actividad, @MappingTarget DTOActividadesResponse dto) {
+    default void llenarDatosTarjetaActividades(Actividad actividad, @MappingTarget DTOActividadesResponse dto) {
 
         //Obtener el Precio Regular
         BigDecimal precioBase = obtenerPrecioBaseVigente(actividad);
@@ -101,7 +99,7 @@ public abstract class ActividadMapper {
 
 
     @AfterMapping
-    public void llenarDatosCalendarioDetalle(Actividad actividad, @MappingTarget DTOCalendarioActividadDiaResponse dto) {
+    default void llenarDatosCalendarioDetalle(Actividad actividad, @MappingTarget DTOCalendarioActividadDiaResponse dto) {
         List<String> diasDisponibles = obtenerDiasYHorasDisponibles(actividad);
         dto.setDiasYHorasDisponibles(diasDisponibles);
 
@@ -112,14 +110,14 @@ public abstract class ActividadMapper {
     }
 
     @AfterMapping
-    public void llenarDatosTarjetaVisitante(Actividad actividad, @MappingTarget DTOListadoActividadVisitanteResponse dto) {
+    default void llenarDatosTarjetaVisitante(Actividad actividad, @MappingTarget DTOListadoActividadVisitanteResponse dto) {
         BigDecimal precioBase = obtenerPrecioBaseVigente(actividad);
         dto.setPrecioRegular(precioBase);
         List <DTOCultivoResponse> cultivosAsociados= obtenerCultivosAsociados(actividad);
         dto.setCultivos(cultivosAsociados);
     }
     @AfterMapping
-    public void llenarListasGetResponse(Actividad actividad, @MappingTarget DTOActividadGetResponse dto) {
+    default void llenarListasGetResponse(Actividad actividad, @MappingTarget DTOActividadGetResponse dto) {
         List<String> incluye = obtenerInclusiones(actividad.getInclusiones(), true);
         List<String> noIncluye = obtenerInclusiones(actividad.getInclusiones(), false);
         List<DTOFaqResponse> faqs = obtenerFaqs(actividad.getFaqs());
