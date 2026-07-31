@@ -15,6 +15,7 @@ import lombok.Setter;
 public class Permiso extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, unique = true)
     private PermisoNombre nombre;
 
     @Column(nullable = false)
