@@ -53,5 +53,11 @@ public class TipoCultivoController {
         DTOCatalogoTipoCultivo resultado = tipoCultivoService.consultarCatalogoTipoCultivo();
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(resultado));
     }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> bajaTipoCultivo(
+            @PathVariable UUID id) {
+        tipoCultivoService.bajaTipoCultivo(id);
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(null));
+    }
 
 }

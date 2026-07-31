@@ -27,4 +27,5 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
 
     Optional<Establecimiento> findByIdAndFechaHoraBajaIsNull(UUID id);
     boolean existsByCuitAndFechaHoraBajaIsNull(String cuit);
+    boolean existsByTiposCultivosIdAndFechaHoraBajaIsNull(UUID tipoCultivoId);
 }

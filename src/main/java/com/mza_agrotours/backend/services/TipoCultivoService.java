@@ -10,6 +10,7 @@ import com.mza_agrotours.backend.exceptions.EntityAlreadyExistsException;
 import com.mza_agrotours.backend.exceptions.EntityNotFoundException;
 import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
 import com.mza_agrotours.backend.mappers.TipoCultivoMapper;
+import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.RecetaRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.EstacionalidadRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
@@ -17,6 +18,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -32,6 +34,8 @@ public class TipoCultivoService {
     private TipoCultivoMapper tipoCultivoMapper;
     @Autowired
     private RecetaRepository recetaRepository;
+    @Autowired
+    private EstablecimientoRepository establecimientoRepository;
     ////US-CULT-06 ABM tipo cultivo (AM)
     // ALTA TIPO DE CULTIVO
     @Transactional
@@ -69,6 +73,7 @@ public class TipoCultivoService {
         TipoCultivo guardado = tipoCultivoRepository.save(tipoCultivo);
         return mapearADatos(guardado);
     }
+
     // CONSULTAR ESTACIONALIDADES (catálogo fijo, para poblar el selector del formulario de cultivos)
     public List<DTOEstacionalidad> consultarEstacionalidades() {
         List<Estacionalidad> estacionalidades = estacionalidadRepository.findAll();
@@ -90,6 +95,32 @@ public class TipoCultivoService {
         catalogo.setCultivos(listado);
 
         return catalogo;
+    }
+    ////US-CULT-07 ABM tipo cultivo (Baja)
+
+    // BAJA TIPO DE CULTIVO
+    @Transactional
+    public void bajaTipoCultivo(UUID id) {
+        TipoCultivo tipoCultivo = obtenerTipoCultivo(id);
+
+        if (!tipoCultivo.getRecetas().isEmpty()) {
+            throw new ValidacionNegocioException("No se puede eliminar el cultivo porque posee recetas asociadas");
+        }
+        //todo agregar contaractividadespublciadasporculivo
+        long cantidadActividades = 0;
+        if (cantidadActividades > 0) {
+            throw new ValidacionNegocioException("Existen actividades vigentes que cosechan esos cultivos");
+        }
+        boolean tieneEstablecimientosAsociados = establecimientoRepository
+                .existsByTiposCultivosIdAndFechaHoraBajaIsNull(tipoCultivo.getId());
+
+        if (tieneEstablecimientosAsociados) {
+            throw new ValidacionNegocioException("No se puede eliminar el cultivo porque hay establecimientos que lo cultivan");
+        }
+
+
+        tipoCultivo.setFechaHoraBaja(LocalDateTime.now());
+        tipoCultivoRepository.save(tipoCultivo);
     }
 
 
@@ -215,11 +246,14 @@ public class TipoCultivoService {
         Integer cantidadRecetas = tipoCultivo.getRecetas().size();
         // TODO CONTAR ACTIVADADES POR CULTIVO
         Integer cantidadActividades = 0;
+        boolean tieneEstablecimientosAsociados = establecimientoRepository
+                .existsByTiposCultivosIdAndFechaHoraBajaIsNull(tipoCultivo.getId());
+
         dto.setCalendarioEstacionalidad(obtenerEstacionalidadPorMes(tipoCultivo));
         dto.setResumenCosecha(calcularResumenCosecha(tipoCultivo));
         dto.setCantidadRecetas(cantidadRecetas);
         dto.setCantidadActividades(cantidadActividades);
-        dto.setPuedeEliminarse(cantidadRecetas == 0 && cantidadActividades == 0 );
+        dto.setPuedeEliminarse(cantidadRecetas == 0 && cantidadActividades == 0 && !tieneEstablecimientosAsociados);
 
         return dto;
     }
