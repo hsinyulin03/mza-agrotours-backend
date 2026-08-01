@@ -1,6 +1,8 @@
 package com.mza_agrotours.backend.entities;
 
+import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import jakarta.persistence.Entity;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -20,4 +22,7 @@ public class AdministradorSistemas extends BaseEntity {
 
     @OneToOne(optional = false)
     private Usuario usuario;
+
+    @ManyToOne(optional = false)
+    private Rol rol;
 }
