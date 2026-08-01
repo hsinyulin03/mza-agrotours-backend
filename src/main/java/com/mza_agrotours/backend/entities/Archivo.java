@@ -2,29 +2,24 @@ package com.mza_agrotours.backend.entities;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.OneToMany;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
-@Setter
 @Getter
-@NoArgsConstructor
+@Setter
 @AllArgsConstructor
-public class Departamento extends BaseEntity {
+@NoArgsConstructor
+public class Archivo extends BaseEntity{
     @Column(nullable = false, unique = true)
+    private String key;
+
+    @Column(nullable = false)
     private String nombre;
 
-    private String fechaBaja;
-
+    // fixme cómo me aseguro que coincida con el archivo real?
     @Column(nullable = false)
-    private Double lat;
-
-    @Column(nullable = false)
-    private Double lon;
-
+    private String extension;
 }

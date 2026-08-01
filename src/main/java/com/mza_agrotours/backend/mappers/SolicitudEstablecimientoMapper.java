@@ -1,0 +1,36 @@
+package com.mza_agrotours.backend.mappers;
+
+import com.mza_agrotours.backend.dtos.solicitud_establecimiento.*;
+import com.mza_agrotours.backend.entities.Archivo;
+import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimiento;
+import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimientoEstado;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
+import java.util.List;
+
+@Mapper(componentModel = "spring")
+public interface SolicitudEstablecimientoMapper {
+    @Mapping(target = "usuario", ignore = true)
+    @Mapping(target = "estados", ignore = true)
+    @Mapping(target = "estadoActual", ignore = true)
+    @Mapping(target = "departamento", ignore = true)
+    SolicitudEstablecimiento solicitudEstablecimientoDtoToSolicitudEstablecimiento(SolicitudEstablecimientoCreateReq solicitudEstablecimientoCreateReq);
+
+    List<SolicitudEstablecimientoShortDTO> solicitudEstablecimientosToSolicitudEstablecimientoShortDTOs(List<SolicitudEstablecimiento> solicitudEstablecimientos);
+
+    @Mapping(target="estado", source = "estadoActual.estadoSolicitudEstablecimiento.nombre")
+    SolicitudEstablecimientoShortDTO solicitudEstablecimientoToSolicitudEstablecimientoShortDTO(SolicitudEstablecimiento solicitudEstablecimiento);
+
+    @Mapping(target="estado", source = "estadoActual.estadoSolicitudEstablecimiento.nombre")
+    @Mapping(target="departamento", source = "departamento.nombre")
+    SolicitudEstablecimientoDTO solicitudEstablecimientoToDTO(SolicitudEstablecimiento solicitudEstablecimiento);
+
+    // TODO: revisar
+    @Mapping(target="estado", source = "estadoSolicitudEstablecimiento.nombre")
+    @Mapping(target="fecha", source = "fechaHoraRevision")
+    @Mapping(target="observaciones", source = "razonRevision")
+    SolicitudEstablecimientoEstadoDTO solicitudEstablecimientoEstadoToDTO(SolicitudEstablecimientoEstado solicitudEstablecimientoEstado);
+
+    SolicitudEstablecimientoPruebaDTO archivoToPruebaDTO(Archivo archivo);
+}
