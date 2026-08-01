@@ -19,7 +19,7 @@ public record RealizarReservaDetalleDTO(
         String identificacion,
 
         @NotBlank
-        String tipoId,
+        String tipoIdentificacion,
 
         @NotNull
         @Past

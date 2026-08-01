@@ -45,13 +45,13 @@ public class PagoManualStrategy implements EstrategiaPago{
 
         pago.cambiarEstado(estadoAprobado, ahora);
 
-        reserva.setSubtotalComisionTransaccion(BigDecimal.valueOf(0));
+        reserva.setSubTotalComisionTransaccion(BigDecimal.valueOf(0));
         reserva.setSubTotalComisionPropia(
                 reserva.getTotalReserva().multiply(
                         BigDecimal.valueOf(parametrosService.getInstance().getPorcentajeComision())
                 )
         );
-        reserva.setSubtotalProductor(
+        reserva.setSubTotalProductor(
                 reserva.getTotalReserva().subtract(
                         reserva.getSubTotalComisionPropia()
                 )

@@ -9,19 +9,19 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
 
-    @Query("SELECT COUNT(r) FROM Reserva r " +
+    @Query("SELECT COUNT(rd) FROM Reserva r " +
             "JOIN r.actividadDia ad " +
+            "JOIN r.reservaDetalles rd " +
             "WHERE ad.id = :uuid " +
             "AND r.estadoActual.estadoReserva.nombre " +
             "IN (com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.PENDIENTE, com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.PAGADA)")
-    Integer getCantidadReservasActivasActividadDia(@Param("uuid") UUID uuidActividadDia);
+    Long getCuposReservadosActividadDia(@Param("uuid") UUID uuidActividadDia);
 
     @Query("SELECT er FROM EstadoReserva er " +
             "JOIN er.nombre nom " +

@@ -13,9 +13,4 @@ import java.util.UUID;
 @Repository
 public interface VisitanteRepository extends JpaRepository<Visitante, UUID> {
     Optional<Visitante> findByUsuario(Usuario usuario);
-
-    @Query("SELECT v FROM Visitante v " +
-            "JOIN v.usuario u " +
-            "WHERE u.firebaseUID = :uid")
-    Optional<Visitante> findBuyUsuarioFirebaseUID(@Param("uid") String firebaseUid);
 }

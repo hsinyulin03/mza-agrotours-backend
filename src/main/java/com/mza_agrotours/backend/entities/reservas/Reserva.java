@@ -29,11 +29,11 @@ public class Reserva extends BaseEntity {
 
     private LocalDateTime fechaHoraExpiracion;      // FH cuando la reserva expira (TTL durante el proceso reserva)
 
-    private BigDecimal subtotalComisionTransaccion;      // Comisión al servicio de pagos
+    private BigDecimal subTotalComisionTransaccion;      // Comisión al servicio de pagos
 
     private BigDecimal subTotalComisionPropia;           // Comisión que nos quedamos
 
-    private BigDecimal subtotalProductor;                // Lo que queda al productor
+    private BigDecimal subTotalProductor;                // Lo que queda al productor
 
     @Column (nullable = false)
     private BigDecimal totalReserva;                     // Monto total de la reserva
