@@ -1,0 +1,61 @@
+package com.mza_agrotours.backend.config;
+
+import com.mza_agrotours.backend.entities.roles_permisos.Permiso;
+import com.mza_agrotours.backend.entities.roles_permisos.Rol;
+import com.mza_agrotours.backend.entities.roles_permisos.TipoPermiso;
+import com.mza_agrotours.backend.entities.roles_permisos.TipoPermisoNombre;
+import com.mza_agrotours.backend.repositories.PermisoRepository;
+import com.mza_agrotours.backend.repositories.RolRepository;
+import com.mza_agrotours.backend.repositories.TipoPermisoRepository;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+@Component
+@Order(5)
+public class RolSeeder implements CommandLineRunner {
+    private final RolRepository rolRepository;
+    private final PermisoRepository permisoRepository;
+    private final TipoPermisoRepository tipoPermisoRepository;
+
+    public RolSeeder(RolRepository rolRepository,
+                     PermisoRepository permisoRepository,
+                     TipoPermisoRepository tipoPermisoRepository) {
+        this.rolRepository = rolRepository;
+        this.permisoRepository = permisoRepository;
+        this.tipoPermisoRepository = tipoPermisoRepository;
+    }
+
+    @Override
+    public void run(String... args) throws Exception {
+        List<Rol> rolesSeed = List.of(this.buildRolAdminLider());
+
+        for (Rol rol : rolesSeed) {
+            if (this.rolRepository.existsByNombre(rol.getNombre())) {
+                continue;
+            }
+            this.rolRepository.save(rol);
+        }
+    }
+
+    private Rol buildRolAdminLider() {
+        TipoPermiso tipoPermisoAdmin = this.tipoPermisoRepository
+                .findByNombre(TipoPermisoNombre.ADMIN).orElseThrow(
+                        () -> new IllegalStateException("Tipo de permiso no encontrado: " + TipoPermisoNombre.ADMIN)
+                );
+
+        List<Permiso> permisosAdmin = this.permisoRepository
+                .findByTipoPermiso(tipoPermisoAdmin);
+
+        Rol rolAdmin = new Rol();
+        rolAdmin.setNombre("Administrador Líder");
+        rolAdmin.setDescripcion("Rol administrador con todos los permisos");
+        rolAdmin.setEsProtegido(true);
+        rolAdmin.setPermisos(permisosAdmin);
+        rolAdmin.setTipoPermiso(tipoPermisoAdmin);
+
+        return rolAdmin;
+    }
+}
