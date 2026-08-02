@@ -10,6 +10,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
@@ -17,6 +19,9 @@ import lombok.Setter;
 @Setter
 public class EstadoPago extends BaseEntity {
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private EstadoPagoNombre nombre;
+
+    private LocalDateTime fechaHoraInicio;
+    private LocalDateTime fechaHoraFin;
 }

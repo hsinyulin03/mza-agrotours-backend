@@ -607,7 +607,7 @@ public class ActividadService {
                 establecimiento,
                 diaActividadReservaDTOList,
                 rangoEtarioReservaDTOList,
-                parametrosService.getInstance());
+                parametrosService.getInstance().getDiasMinReembolso());
     }
 }
 

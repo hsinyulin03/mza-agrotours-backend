@@ -15,7 +15,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/reserva")
-@Validated
 public class ReservaController {
     private final ReservaService service;
     public ReservaController(ReservaService service) {
@@ -33,12 +32,13 @@ public class ReservaController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/reservar") // TODO path
+    @PostMapping("/reservar")
     public ResponseEntity<ApiResponse<ConsultarReservaDTO>> iniciarReserva(
             @Valid @RequestBody RealizarReservaDTO dtoEntrada,
-            @AuthenticationPrincipal String firebaseUID // TODO UsuarioAuthDetails
+            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
     ) {
-        ConsultarReservaDTO dtoSalida = service.handleIniciarReserva(dtoEntrada, firebaseUID);
+        String email = usuarioAuthDetails.getEmail();
+        ConsultarReservaDTO dtoSalida = service.handleIniciarReserva(dtoEntrada, email);
         ApiResponse<ConsultarReservaDTO> response = ApiResponse.ok(dtoSalida);
         return ResponseEntity.ok(response);
     }

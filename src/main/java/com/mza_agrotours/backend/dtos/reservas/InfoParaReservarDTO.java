@@ -23,7 +23,7 @@ public record InfoParaReservarDTO(
     public static InfoParaReservarDTO of(Actividad actividad, Establecimiento establecimiento,
                                           List<DiaActividadReservaDTO> diasActividad,
                                           List<RangoEtarioReservaDTO> rangosEtarios,
-                                          Parametros parametros) {
+                                          Integer diasMinReembolso) {
         return new InfoParaReservarDTO(
                 diasActividad,
                 rangosEtarios,
@@ -32,7 +32,7 @@ public record InfoParaReservarDTO(
                 establecimiento.getRazonSocial(),
                 actividad.getCuposMax(),
                 actividad.getCalificacionPromedio(),
-                parametros.getDiasMinReembolso()
+                diasMinReembolso
         );
     }
 }
