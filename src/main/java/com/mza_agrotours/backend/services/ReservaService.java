@@ -76,31 +76,26 @@ public class ReservaService {
         this.self = self;
     }
 
-    /**
-     * Devuelve todos los datos necesarios para que un visitante consulte una reserva específica<p></p>
-     *
-     * @param id UUID de la Reserva
-     * @param firebaseUID UID en firebase
-     * @return <code>ConsultarReservaDTO</code> con los datos de una reserva
-     * @throws ReservaNotFoundException si la reserva no existe o no pertenece al usuario autenticado
-     * @throws UsuarioDeactivatedException si el usuario dueño de la reserva está dado de baja
-     */
     @Transactional
-    public ConsultarReservaDTO getConsultarReserva(UUID id, String firebaseUID){
+    public ConsultarReservaDTO getConsultarReserva(UUID id, String emailUsuario){
+
+        // Gettear al usuario y visitante
+        Usuario usuario = usuarioRepository.findActiveByEmail(emailUsuario)
+                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+
+        Visitante visitante = visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
+
         // Obtenemos la reserva, si no existe error.
         Reserva reserva = reservaRepository.findById(id)
                 .orElseThrow(ReservaNotFoundException::new);
 
-        Establecimiento establecimiento = establecimientoRepository.findEstablecimientoByActividadId(reserva.getActividad().getId())
-                .orElseThrow(EstablecimientoNotFoundException::new);
-
         // Verificar que la reserva sea del usuario. Si no lo es, NOT FOUND para evitar dar información a no autorizados
-         if (!reserva.getVisitante().getUsuario().getFirebaseUID().equals(firebaseUID))
+         if (!reserva.getVisitante().getId().equals(visitante.getId()))
              throw new ReservaNotFoundException();
 
-         // Verificar que el usuario esté de alta
-        if (reserva.getVisitante().getUsuario().getFechaHoraBaja() != null)
-            throw new UsuarioDeactivatedException();
+        // Buscar el establecimiento de esa actividad
+        Establecimiento establecimiento = establecimientoRepository.findEstablecimientoByActividadId(reserva.getActividad().getId())
+                .orElseThrow(EstablecimientoNotFoundException::new);
 
         // Armamos el DTO
         return reservaMapper.reservaToConsultarReservaDTO(reserva, establecimiento);

@@ -5,7 +5,9 @@ import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.dtos.reservas.DiaActividadReservaDTO;
 import com.mza_agrotours.backend.dtos.reservas.InfoParaReservarDTO;
 import com.mza_agrotours.backend.dtos.reservas.RangoEtarioReservaDTO;
+import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
+import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
 import com.mza_agrotours.backend.enums.Dia;
 import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
@@ -18,6 +20,8 @@ import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
 import com.mza_agrotours.backend.mappers.ActividadMapper;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
+import com.mza_agrotours.backend.repositories.ReservaRepository;
+import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadDiaRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
@@ -29,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -55,128 +60,209 @@ public class ActividadService {
     @Autowired
     private ParametrosService parametrosService;
 
+    @Autowired
+    private TipoCultivoRepository tipoCultivoRepository;
+
+    @Autowired
+    private ReservaRepository reservaRepository;
+
     //US-ACT-03 Alta de actividad
     @Transactional
     public DTOActividadAltaResponse altaActividad(DTOActividadAlta dto) {
 
-            //Primero hacemos las validaciones del negocio
-            List<String> errores = actividadValidaciones.obtenerErroresValidacionActividad(dto);
+        //Primero hacemos las validaciones del negocio
+        List<String> errores = actividadValidaciones.obtenerErroresValidacionActividad(dto);
 
-            if (!errores.isEmpty()) {
-                 throw new ValidacionMultipleException(errores);
-            }
+        if (!errores.isEmpty()) {
+            throw new ValidacionMultipleException(errores);
+        }
 
-            EstadoActividad estado = obtenerEstado(dto);
+        EstadoActividad estado = obtenerEstado(dto.getEstado());
 
-            //Paso 1: Información General
-            Actividad actividad = new Actividad();
-            actividad.setNombre(dto.getNombre());
-            actividad.setDescripcion(dto.getDescripcion());
-            actividad.setCuposMax(dto.getCuposMax());
-            //Guarda el UUID del estado
-            actividad.setEstado(estado);
+        //Paso 1: Información General
+        Actividad actividad = new Actividad();
+        actividad.setNombre(dto.getNombre());
+        actividad.setDescripcion(dto.getDescripcion());
+        actividad.setCuposMax(dto.getCuposMax());
+        //Guarda el UUID del estado
+        actividad.setEstado(estado);
 
-            List<ActividadInclusiones> inclusiones = obtenerInclusiones(dto);
-            List<ActividadFAQ> faqs = obtenerFaqs(dto);
-            List<ActividadRangoEtario> tarifas = obtenerTarifas(dto);
-            ActividadLogAltas logAltas = obtenerLogAltas(dto);
-            List<ActividadDia> calendario = generarDiasCalendario(dto, logAltas);
+        List<TipoCultivo> cultivos = obtenerCultivos(dto.getCultivos());
+        actividad.setCultivos(cultivos);
 
-            //setear los valores obtenidos a actividad
-            inclusiones.forEach(actividad::addInclusion);
-            faqs.forEach(actividad::addFaq);
-            tarifas.forEach(actividad::addActividadRangoEtario);
-            actividad.addLogAlta(logAltas);
-            calendario.forEach(actividad::addActividadDia);
+        List<ActividadInclusiones> inclusiones = obtenerInclusiones(dto.getIncluye(), dto.getNoIncluye());
+        List<ActividadFAQ> faqs = obtenerFaqs(dto.getFaqs());
+        List<ActividadRangoEtario> tarifas = obtenerTarifas(dto.getTarifas());
+        ActividadLogAltas logAltas = obtenerLogAltas(dto);
+        List<ActividadDia> calendario = generarDiasCalendario(dto, logAltas);
 
-            // Persistir en la base de datos
-            Actividad actividadGuardada = actividadRepository.save(actividad);
+        //setear los valores obtenidos a actividad
+        inclusiones.forEach(actividad::addInclusion);
+        faqs.forEach(actividad::addFaq);
+        tarifas.forEach(actividad::addActividadRangoEtario);
+        actividad.addLogAlta(logAltas);
+        calendario.forEach(actividad::addActividadDia);
 
-            List<String> advertencias = calcularHuecos(dto.getTarifas());
+        // Persistir en la base de datos
+        Actividad actividadGuardada = actividadRepository.save(actividad);
 
-            DTOActividadAltaResponse response = new DTOActividadAltaResponse();
-            response.setIdActividad(actividadGuardada.getId());
-            response.setMensaje("La actividad fue creada exitosamente.");
-            response.setAdvertencias(advertencias);
+        List<String> advertencias = calcularHuecos(dto.getTarifas());
 
-            return response;
+        DTOActividadAltaResponse response = new DTOActividadAltaResponse();
+        response.setIdActividad(actividadGuardada.getId());
+        response.setMensaje("La actividad fue creada exitosamente.");
+        response.setAdvertencias(advertencias);
+
+        return response;
     }
 
-    private EstadoActividad obtenerEstado(DTOActividadAlta dto) {
+    //US-ACT-02:  Consultar detalle de una actividad
+    @Transactional(readOnly = true)
+    public DTOActividadDetalleResponse obtenerDetallePorId(UUID id) {
+        Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + id));
+        return actividadMapper.actividadToDTOActividadDetalle(actividad);
+    }
+
+    //US-ACT-06: Listado de actividades de un establecimiento - Vista productor
+    @Transactional(readOnly = true)
+    public List<DTOActividadesResponse> obtenerListadoActividades(String busqueda, EstadoActividadNombre estado) {
+        // TODO- Se debe filtrar por establecimiento
+        List<Actividad> actividades = actividadRepository.findByFiltrosDinamicos(busqueda, estado);
+
+        return actividades.stream()
+                .map(actividadMapper::actividadToDTOActividades)
+                .toList();
+    }
+
+    //US-ACT-07: Consultar todos los días disponibles para una actividad
+    @Transactional(readOnly = true)
+    public DTOCalendarioActividadDiaResponse obtenerDetalleCalendario(UUID actividadId, int mes, int anio){
+
+        Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(actividadId)
+                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + actividadId));
+        int anioActual = java.time.LocalDate.now().getYear();
+
+        if (anio < anioActual) {
+            throw new ValidacionNegocioException("El año no puede ser menor al año actual (" + anioActual + ")");
+        }
+
+        LocalDateTime ultimaFechaConDisponibilidad = actividadRepository.findUltimaFechaByActividadId(actividadId)
+                .orElseThrow(() -> new ValidacionNegocioException("La actividad no tiene días programados"));
+
+
+        int anioMaximoPermitido = ultimaFechaConDisponibilidad.getYear();
+        if (anio > anioMaximoPermitido) {
+            throw new ValidacionNegocioException("No puedes consultar el calendario para el año " + anio +
+                    ". La actividad tiene disponibilidad cargada solo hasta el año " + anioMaximoPermitido);
+        }
+
+        DTOCalendarioActividadDiaResponse dto = actividadMapper.actividadToDTOCalendarioActividadDia(actividad);
+
+        List<DTOActividadDiaResponse> diasDelMesDto = actividad.getActividadesDias().stream()
+                .filter(dia -> dia.getFechaHoraInicio() != null)
+                .filter(dia -> dia.getFechaHoraInicio().getYear() == anio
+                        && dia.getFechaHoraInicio().getMonthValue() == mes)
+                .map(actividadMapper::actividadDiatoDTOActividadDia)
+                .toList();
+
+        dto.setDiasDelMes(diasDelMesDto);
+
+        return dto;
+    }
+
+    //US-ACT-12: Listado de actividades de la plataforma - vista del visitante
+    @Transactional(readOnly = true)
+    public List<DTOListadoActividadVisitanteResponse> explorarActividades(List<UUID> cultivoIds) {
+        List<Actividad> actividades;
+
+        // TODO: Falta implementar filtro por departamento
+        // TODO: Falta implementar paginación
+
+        if (cultivoIds == null || cultivoIds.isEmpty()) {
+            actividades = actividadRepository.explorarActividadesPublicadas();
+        }else {
+            actividades = actividadRepository.explorarActividadesPublicadas(cultivoIds);
+        }
+
+        return actividades.stream()
+                .map(actividadMapper::actividadToDTOListadoActividadVisitante)
+                .toList();
+    }
+
+    //US-ACT-04: Modificar Actividad
+    @Transactional
+    public DTOActividadGetResponse modificarActividad(UUID idActividad, DTOActividadUpdate dto) {
+
+        Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(idActividad)
+                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
+
+        List<String> errores = actividadValidaciones.obtenerErroresValidacionModificacion(idActividad, dto);
+
+        if (!errores.isEmpty()) {
+            throw new ValidacionMultipleException(errores);
+        }
+
+        EstadoActividad nuevoEstado = obtenerEstado(dto.getEstado());
+        if (EstadoActividadNombre.BORRADOR.name().equalsIgnoreCase(dto.getEstado()) &&
+                tieneReservasPendientesOPagadas(idActividad)) {
+
+            throw new ValidacionNegocioException("No se permite cambiar a estado borrador: la actividad posee reservas en estado pendiente o pagada.");
+        }
+
+        actividad.setEstado(nuevoEstado);
+
+        actividad.setNombre(dto.getNombre());
+        actividad.setDescripcion(dto.getDescripcion());
+
+        List<TipoCultivo> cultivos = actualizarCultivos(actividad.getCultivos(), dto.getCultivos());
+        actividad.getCultivos().clear();
+        actividad.getCultivos().addAll(cultivos);
+
+        List<ActividadRangoEtario> activosActuales = actividad.getActividadRangoEtarios().stream()
+                .filter(r -> r.getFechaHoraBaja() == null)
+                .collect(Collectors.toList());
+
+        List <ActividadRangoEtario> nuevasTarifas = actualizarTarifas(dto.getTarifas(), activosActuales);
+
+        nuevasTarifas.forEach(actividad::addActividadRangoEtario);
+
+        actividad.getInclusiones().clear();
+        List<ActividadInclusiones> nuevasInclusiones = obtenerInclusiones(dto.getIncluye(), dto.getNoIncluye());
+        actividad.getInclusiones().addAll(nuevasInclusiones);
+
+        actividad.getFaqs().clear();
+        List<ActividadFAQ> nuevasFaqs = obtenerFaqs(dto.getFaqs());
+        actividad.getFaqs().addAll(nuevasFaqs);
+
+        Actividad actividadGuardada = actividadRepository.save(actividad);
+        DTOActividadGetResponse response = actividadMapper.actividadToDTOActividadGetResponse(actividadGuardada);
+        List<String> advertencias = calcularHuecos(dto.getTarifas());
+        response.setAdvertencias(advertencias);
+        return response;
+
+    }
+    @Transactional(readOnly = true)
+    public DTOActividadGetResponse obtenerActividadPorId(UUID idActividad) {
+        Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(idActividad)
+                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
+
+        return actividadMapper.actividadToDTOActividadGetResponse(actividad);
+    }
+
+    //Métodos auxiliares
+
+    private EstadoActividad obtenerEstado(String nombreEstadoDto) {
         EstadoActividadNombre estadoActividadNombre;
         try {
-            estadoActividadNombre = EstadoActividadNombre.valueOf(dto.getEstado().toUpperCase());
+            estadoActividadNombre = EstadoActividadNombre.valueOf(nombreEstadoDto.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new DatoInvalidoException("El estado de actividad proporcionado es inválido: " + dto.getEstado());
+            throw new DatoInvalidoException("El estado de actividad proporcionado es inválido: " + nombreEstadoDto);
         }
         return estadoActividadRepository.findByNombre(estadoActividadNombre)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el registro del estado " + estadoActividadNombre + " en la base de datos."));
     }
 
-    //Paso 2: Detalles de la experiencia (Qué incluye/ qué no incluye / FAQ)
-
-    private List<ActividadInclusiones> obtenerInclusiones(DTOActividadAlta dto) {
-        List<ActividadInclusiones> inclusiones = new ArrayList<>();
-        if (dto.getIncluye() != null) {
-            for (String desc : dto.getIncluye()) {
-                ActividadInclusiones inclusion = new ActividadInclusiones();
-                inclusion.setDescripcion(desc);
-                inclusion.setIncluye(true);
-                inclusiones.add(inclusion);
-            }
-        }
-        if (dto.getNoIncluye() != null) {
-            for (String desc : dto.getNoIncluye()) {
-                ActividadInclusiones exclusion = new ActividadInclusiones();
-                exclusion.setDescripcion(desc);
-                exclusion.setIncluye(false);
-                inclusiones.add(exclusion);
-            }
-        }
-        return inclusiones;
-    }
-
-    private List<ActividadFAQ> obtenerFaqs(DTOActividadAlta dto) {
-        if (dto.getFaqs() == null) {
-            return Collections.emptyList();
-        }
-
-        List<ActividadFAQ> faqs = new ArrayList<>();
-
-        for (DTOFaq faqDto : dto.getFaqs()) {
-            ActividadFAQ faq = new ActividadFAQ();
-            faq.setPregunta(faqDto.getPregunta());
-            faq.setRespuesta(faqDto.getRespuesta());
-            faqs.add(faq);
-        }
-        return faqs;
-    }
-
-
-    //Paso 3: Participanetes y tarifas
-    private List<ActividadRangoEtario> obtenerTarifas(DTOActividadAlta dto) {
-        if (dto.getTarifas() == null || dto.getTarifas().isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        List<ActividadRangoEtario> tarifas = new ArrayList<>();
-
-        for (DTOTarifa tarifaDto : dto.getTarifas()) {
-
-            ActividadRangoEtario tarifa = new ActividadRangoEtario();
-            tarifa.setNombre(tarifaDto.getNombre());
-            tarifa.setPrecio(tarifaDto.getPrecio());
-            tarifa.setEdadMinima(tarifaDto.getEdadMinima());
-            tarifa.setEdadMaxima(tarifaDto.getEdadMaxima());
-            tarifa.setEsTarifaBase(tarifaDto.isEsTarifaBase());
-            tarifas.add(tarifa);
-        }
-
-        return tarifas;
-    }
-
-
-    //Paso 4: Disponibilidad
     private ActividadLogAltas obtenerLogAltas(DTOActividadAlta dto) {
         ActividadLogAltas logAltas = new ActividadLogAltas();
         logAltas.setFechaHoraAlta(LocalDateTime.now());
@@ -237,7 +323,6 @@ public class ActividadService {
             fechaActual = fechaActual.plusDays(1);
         }
 
-        //No se cómo mudar esto a actividadValidaciones. Es lo único que me quedó afuera en cuanto a validaciones del dto.
         if (diasGenerados.isEmpty()) {
             throw new ValidacionNegocioException(" El rango de fechas seleccionado ("
                     + dto.getFechaDesde() + " al " + dto.getFechaHasta() +
@@ -257,6 +342,119 @@ public class ActividadService {
             case DOMINGO -> dayOfWeek == java.time.DayOfWeek.SUNDAY;
             default -> false;
         };
+    }
+
+    private List <ActividadRangoEtario> actualizarTarifas(List<DTOTarifa> nuevosRangos,List<ActividadRangoEtario> activosActuales) {
+        List<UUID> idsValidos = activosActuales.stream()
+                .map(ActividadRangoEtario::getId)
+                .toList();
+
+        for (DTOTarifa dto : nuevosRangos) {
+            if (dto.getId() != null && !idsValidos.contains(dto.getId())) {
+                throw new ValidacionNegocioException(
+                        "El ID de tarifa proporcionado (" + dto.getId() + ") no es válido o no pertenece a esta actividad."
+                );
+            }
+        }
+
+        List<ActividadRangoEtario> aDarDeBaja = new ArrayList<>();
+        List<DTOTarifa> aInsertar = new ArrayList<>(nuevosRangos);
+
+        for (ActividadRangoEtario activo : activosActuales) {
+            Optional<DTOTarifa> match = aInsertar.stream()
+                    .filter(dto -> (dto.getId() != null && dto.getId().equals(activo.getId())) ||
+                            (dto.getNombre() != null && dto.getNombre().equalsIgnoreCase(activo.getNombre()) &&
+                                    (dto.getEdadMinima() != null && dto.getEdadMinima().equals(activo.getEdadMinima()))&&
+                                    (dto.getEdadMaxima() != null && dto.getEdadMaxima().equals(activo.getEdadMaxima())) &&
+                                    dto.getPrecio().compareTo(activo.getPrecio()) == 0)
+                    )
+                    .findFirst();
+
+            if (match.isPresent()) {
+                DTOTarifa dto = match.get();
+
+                // Cambio que requiere historial (Precio ||  Edades)
+                boolean requiereNuevoHistorial = dto.getPrecio().compareTo(activo.getPrecio()) != 0 ||
+                        !dto.getEdadMinima().equals(activo.getEdadMinima()) ||
+                        !dto.getEdadMaxima().equals(activo.getEdadMaxima());
+
+                if (requiereNuevoHistorial) {
+                    // Si cambia el precio o el rango etario. Damos de baja el registro viejo para evitar inconsistencias en las reservas.
+                    aDarDeBaja.add(activo);
+
+                } else {
+                    activo.setNombre(dto.getNombre());
+                    activo.setEsTarifaBase(dto.isEsTarifaBase());
+                    aInsertar.remove(dto);
+                }
+
+            } else {
+                aDarDeBaja.add(activo);
+            }
+        }
+
+        LocalDateTime ahora = LocalDateTime.now();
+        aDarDeBaja.forEach(r -> r.setFechaHoraBaja(ahora));
+
+        return  obtenerTarifas(aInsertar);
+    }
+    //Paso 3: Participanetes y tarifas
+    private List<ActividadRangoEtario> obtenerTarifas(List<DTOTarifa> dtosTarifa) {
+        if (dtosTarifa == null || dtosTarifa.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<ActividadRangoEtario> tarifas = new ArrayList<>();
+
+        for (DTOTarifa tarifaDto : dtosTarifa) {
+
+            ActividadRangoEtario tarifa = new ActividadRangoEtario();
+            tarifa.setNombre(tarifaDto.getNombre());
+            tarifa.setPrecio(tarifaDto.getPrecio());
+            tarifa.setEdadMinima(tarifaDto.getEdadMinima());
+            tarifa.setEdadMaxima(tarifaDto.getEdadMaxima());
+            tarifa.setEsTarifaBase(tarifaDto.isEsTarifaBase());
+            tarifas.add(tarifa);
+        }
+
+        return tarifas;
+    }
+
+    private List<ActividadInclusiones> obtenerInclusiones(List<String> incluye, List<String> noIncluye) {
+        List<ActividadInclusiones> inclusiones = new ArrayList<>();
+        if (incluye != null) {
+            for (String desc : incluye) {
+                ActividadInclusiones inclusion = new ActividadInclusiones();
+                inclusion.setDescripcion(desc);
+                inclusion.setIncluye(true);
+                inclusiones.add(inclusion);
+            }
+        }
+        if (noIncluye != null) {
+            for (String desc : noIncluye) {
+                ActividadInclusiones exclusion = new ActividadInclusiones();
+                exclusion.setDescripcion(desc);
+                exclusion.setIncluye(false);
+                inclusiones.add(exclusion);
+            }
+        }
+        return inclusiones;
+    }
+
+    private List<ActividadFAQ> obtenerFaqs(List<DTOFaq> dtosFaq) {
+        if (dtosFaq == null) {
+            return Collections.emptyList();
+        }
+
+        List<ActividadFAQ> faqs = new ArrayList<>();
+
+        for (DTOFaq faqDto : dtosFaq) {
+            ActividadFAQ faq = new ActividadFAQ();
+            faq.setPregunta(faqDto.getPregunta());
+            faq.setRespuesta(faqDto.getRespuesta());
+            faqs.add(faq);
+        }
+        return faqs;
     }
 
     private List<String> calcularHuecos(List<DTOTarifa> tarifas) {
@@ -303,73 +501,69 @@ public class ActividadService {
 
         return huecos;
     }
+    private List<TipoCultivo> obtenerCultivos(List<UUID> idCultivos) {
 
-    //US-ACT-02:  Consultar detalle de una actividad
-    @Transactional(readOnly = true)
-    public DTOActividadDetalleResponse obtenerDetallePorId(UUID id) {
-        Actividad actividad = actividadRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + id));
-
-        if (actividad.getFechaHoraBaja() != null) {
-            throw new ValidacionNegocioException("La actividad se encuentra dada de baja");
-        }
-        return actividadMapper.actividadToDTOActividadDetalle(actividad);
-    }
-
-    //US-ACT-06: Listado de actividades de un establecimiento - Vista productor
-    @Transactional(readOnly = true)
-    public List<DTOActividadesResponse> obtenerListadoActividades(String busqueda, EstadoActividadNombre estado) {
-        // TODO- Se debe filtrar por establecimiento
-        List<Actividad> actividades = actividadRepository.findByFiltrosDinamicos(busqueda, estado);
-
-        return actividades.stream()
-                .map(actividadMapper::actividadToDTOActividades)
-                .toList();
-    }
-
-    //US-ACT-07: Consultar todos los días disponibles para una actividad
-    @Transactional(readOnly = true)
-    public DTOCalendarioActividadDiaResponse obtenerDetalleCalendario(UUID actividadId, int mes, int anio){
-
-        Actividad actividad = actividadRepository.findById(actividadId)
-                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada"));
-        int anioActual = java.time.LocalDate.now().getYear();
-
-        if (anio < anioActual) {
-            throw new ValidacionNegocioException("El año no puede ser menor al año actual (" + anioActual + ")");
-        }
-        // Permite año actual, próximo año y el siguiente (ej: 2026, 2027 y 2028)
-        if (anio > anioActual + 2) {
-            throw new ValidacionNegocioException("No puedes consultar un calendario con más de 2 años de anticipación");
+        if (idCultivos == null || idCultivos.isEmpty()) {
+            throw new ValidacionNegocioException("El tipo de cultivo es requerido");
         }
 
-        DTOCalendarioActividadDiaResponse dto = actividadMapper.actividadToDTOCalendarioActividadDia(actividad);
+        // Asegura de no tener IDs repetidos en la request, si los tiene los elimina
+        List<UUID> idsUnicos = idCultivos.stream().distinct().toList();
+        List<TipoCultivo> cultivosActivos = tipoCultivoRepository.findActivosByIds(idsUnicos);
 
-        List<DTOActividadDiaResponse> diasDelMesDto = actividad.getActividadesDias().stream()
-                .filter(dia -> dia.getFechaHoraInicio() != null)
-                .filter(dia -> dia.getFechaHoraInicio().getYear() == anio
-                        && dia.getFechaHoraInicio().getMonthValue() == mes)
-                .map(actividadMapper::actividadDiatoDTOActividadDia)
-                .toList();
-
-        dto.setDiasDelMes(diasDelMesDto);
-
-        return dto;
+        if (cultivosActivos.size() != idsUnicos.size()) {
+            throw new ValidacionNegocioException("Uno o más tipos de cultivo seleccionados no existen o se encuentran dados de baja.");
+        }
+        return cultivosActivos;
     }
 
-    //US-ACT-12: Listado de actividades de la plataforma - vista del visitante
-    @Transactional(readOnly = true)
-    public List<DTOListadoActividadVisitanteResponse> explorarActividades() {
+    private List<TipoCultivo> actualizarCultivos(List <TipoCultivo> cultivosActuales, List<UUID> idsRequest) {
+        // Obtener IDs de los cultivos que la actividad ya tiene asignados
+        List<UUID> idsActuales = cultivosActuales.stream()
+                .map(TipoCultivo::getId)
+                .collect(Collectors.toList());
 
-        // TODO: Falta implementar filtro por cultivo y por departamento
-        // TODO: Falta implementar paginación
+        // Separar los IDs recibidos en el dto en "nuevos" y "mantenidos"
+        List<UUID> idsNuevos = idsRequest.stream()
+                .filter(id -> !idsActuales.contains(id))
+                .distinct()
+                .collect(Collectors.toList());
 
-        //Traemos todas las actividades publicadas y activas (temporalmente ignoramos los filtros)
-        List<Actividad> actividades = actividadRepository.explorarActividadesPublicadas();
+        List <UUID> idsMantenidos = idsRequest.stream()
+                .filter(idsActuales::contains)
+                .distinct()
+                .collect(Collectors.toList());
 
-        return actividades.stream()
-                .map(actividadMapper::actividadToDTOListadoActividadVisitante)
-                .toList();
+        List<TipoCultivo> cultivosDefinitivos = new ArrayList<>();
+
+        // Validar y recuperar los cultivos nuevos (no deben estar dados de baja)
+        if (!idsNuevos.isEmpty()) {
+            List<TipoCultivo> cultivosNuevos = tipoCultivoRepository.findActivosByIds(idsNuevos);
+            if (cultivosNuevos.size() != idsNuevos.size()) {
+                throw new ValidacionNegocioException("Uno o más tipos de cultivo seleccionados se encuentran dados de baja.");
+            }
+            cultivosDefinitivos.addAll(cultivosNuevos);
+        }
+
+        // Si ya lo tenía desde antes esos cultivos, se lo dejamos guardar (sin importar si está dado de baja)
+        if (!idsMantenidos.isEmpty()) {
+            cultivosActuales.stream()
+                    .filter(c -> idsMantenidos.contains(c.getId()))
+                    .forEach(cultivosDefinitivos::add);
+        }
+        return cultivosDefinitivos;
+    }
+
+    private boolean tieneReservasPendientesOPagadas(UUID idActividad) {
+        List<EstadoReservaNombre> estadosQueBloquean = List.of(
+                EstadoReservaNombre.PENDIENTE,
+                EstadoReservaNombre.PAGADA
+        );
+
+        return reservaRepository.existsByActividadIdAndEstadoActualEstadoReservaNombreIn(
+                idActividad,
+                estadosQueBloquean
+        );
     }
 
 

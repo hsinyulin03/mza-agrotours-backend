@@ -24,9 +24,10 @@ public class ReservaController {
     @GetMapping("/{uuid}")
     public ResponseEntity<ApiResponse<ConsultarReservaDTO>> getReserva(
             @PathVariable UUID uuid,
-            @AuthenticationPrincipal String firebaseUID // TODO UsuarioAuthDetails
+            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
     ) {
-        ConsultarReservaDTO dto = service.getConsultarReserva(uuid,firebaseUID);
+        String email = usuarioAuthDetails.getEmail();
+        ConsultarReservaDTO dto = service.getConsultarReserva(uuid,email);
         ApiResponse<ConsultarReservaDTO> response = ApiResponse.ok(dto);
         return ResponseEntity.ok(response);
     }
