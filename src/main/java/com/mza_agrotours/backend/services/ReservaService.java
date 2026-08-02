@@ -5,6 +5,11 @@ import com.mza_agrotours.backend.entities.*;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
+import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDTO;
+import com.mza_agrotours.backend.dtos.reservas.EstablecimientoPorActividad;
+import com.mza_agrotours.backend.dtos.reservas.ListarReservaDTO;
+import com.mza_agrotours.backend.entities.Usuario;
+import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.pago.EstadoPagoNombre;
 import com.mza_agrotours.backend.entities.pago.MetodoPago;
@@ -33,6 +38,10 @@ import com.mza_agrotours.backend.services.pago.EstrategiaPagoFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
+import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
+import com.mza_agrotours.backend.repositories.ReservaRepository;
+import com.mza_agrotours.backend.repositories.UsuarioRepository;
+import com.mza_agrotours.backend.repositories.VisitanteRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +51,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import java.util.*;
 
 import static com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.EXPIRADA;
 import static com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.PAGADA;
@@ -54,10 +65,10 @@ public class ReservaService {
     private final ReservaRepository reservaRepository;
     private final ReservaMapper reservaMapper;
     private final EstablecimientoRepository establecimientoRepository;
-    private final ActividadRespository actividadRepository;
-    private final ParametrosService parametrosService;
     private final UsuarioRepository usuarioRepository;
     private final VisitanteRepository visitanteRepository;
+    private final ActividadRespository actividadRepository;
+    private final ParametrosService parametrosService;
     private final TipoIdentificacionRepository tipoIdentificacionRepository;
     private final EstrategiaPagoFactory estrategiaPagoFactory;
     private final ReservaService self;
@@ -66,10 +77,10 @@ public class ReservaService {
         this.reservaRepository = reservaRepository;
         this.reservaMapper = reservaMapper;
         this.establecimientoRepository = establecimientoRepository;
-        this.actividadRepository = actividadRepository;
-        this.parametrosService = parametrosService;
         this.usuarioRepository = usuarioRepository;
         this.visitanteRepository = visitanteRepository;
+        this.actividadRepository = actividadRepository;
+        this.parametrosService = parametrosService;
         this.tipoIdentificacionRepository = tipoIdentificacionRepository;
         this.estrategiaPagoFactory = estrategiaPagoFactory;
         this.self = self;
@@ -98,6 +109,46 @@ public class ReservaService {
 
         // Armamos el DTO
         return reservaMapper.reservaToConsultarReservaDTO(reserva, establecimiento);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ListarReservaDTO> getListarReservas(String emailUsuario){
+
+        List<ListarReservaDTO> dtos = new ArrayList<>();
+
+        // Gettear al usuario y visitante
+        Usuario usuario = usuarioRepository.findActiveByEmail(emailUsuario)
+                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+
+        Visitante visitante = visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
+
+        // Obtenemos las reservas. Si está vacío devolvemos el array vacío
+        List<Reserva> reservas = reservaRepository.findByVisitanteId(visitante.getId());
+        if (reservas.isEmpty())
+            return dtos;
+
+        // Obtenemos las id de las actividades que ha reservado
+        List<UUID> uuidsActividad = new ArrayList<>();
+        reservas.forEach(reserva -> uuidsActividad.add(reserva.getActividad().getId()));
+
+        // Buscamos los establecimientos de las actividades en masse
+        List<EstablecimientoPorActividad> establecimientosPorActividad = establecimientoRepository.findEstablecimientosByActividadIds(uuidsActividad);
+
+        Map<UUID, Establecimiento> actividadEstablecimientoMap = new HashMap<>();
+        establecimientosPorActividad.forEach(establecimientoPorActividad ->
+                actividadEstablecimientoMap.put(establecimientoPorActividad.actividadID(), establecimientoPorActividad.establecimiento())
+        );
+
+        // Armamos el dto para cada reserva
+        for (Reserva reserva: reservas){
+            Establecimiento establecimiento =  Optional.ofNullable(actividadEstablecimientoMap.get(reserva.getActividad().getId()))
+                    .orElseThrow(EstablecimientoNotFoundException::new);
+
+            dtos.add(reservaMapper.reservaToListarReservaDTO(reserva, establecimiento));
+        }
+
+        // Armamos el DTO
+        return dtos;
     }
 
     @Transactional

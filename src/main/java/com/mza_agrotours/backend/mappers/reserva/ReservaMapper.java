@@ -1,8 +1,10 @@
 package com.mza_agrotours.backend.mappers.reserva;
 
+import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDTO;
+import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDetalleDTO;
+import com.mza_agrotours.backend.dtos.reservas.ListarReservaDTO;
 import com.mza_agrotours.backend.dtos.reservas.*;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
-import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
@@ -41,4 +43,15 @@ public interface ReservaMapper {
 
     @Mapping(target = "tipoRangoEtario", source = "reservaDetalle.actividadRangoEtario.nombre")
     ConsultarReservaDetalleDTO reservaDetalleToDTO(ReservaDetalle reservaDetalle);
+
+    @Mapping(target = "idReserva", source = "reserva.id")
+    @Mapping(target = "estadoReserva", source = "reserva.estadoActual.estadoReserva.nombre.estado")
+    @Mapping(target = "cantPersonas", expression = "java(reserva.getReservaDetalles().size())")
+    @Mapping(target = "fechaHoraInicio", source = "reserva.actividadDia.fechaHoraInicio")
+    @Mapping(target = "fechaHoraFin", source = "reserva.actividadDia.fechaHoraFin")
+    @Mapping(target = "nombreActividad", source = "reserva.actividad.nombre")
+    @Mapping(target = "ubicacionEstablecimiento", source = "establecimiento.ubicacion")
+    @Mapping(target = "nombreEstablecimiento", source = "establecimiento.razonSocial")
+    @Mapping(target = "idActividad", source = "reserva.actividad.id")
+    ListarReservaDTO reservaToListarReservaDTO(Reserva reserva, Establecimiento establecimiento);
 }
