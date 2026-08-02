@@ -10,6 +10,7 @@ import lombok.Data;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 
@@ -24,6 +25,9 @@ public class DTOActividadAlta {
     @NotBlank(message = "La descripción es requerida")
     @Size(min = 20, max = 2000, message = "La descripción debe tener entre 20 y 2000 caracteres")
     private String descripcion;
+
+    @NotEmpty(message = "El tipo de cultivo es requerido")
+    private List<UUID> cultivos;
 
     @NotNull(message = "El estado de la actividad es requerido")
     private String estado; // Enum: BORRADOR o PUBLICADO

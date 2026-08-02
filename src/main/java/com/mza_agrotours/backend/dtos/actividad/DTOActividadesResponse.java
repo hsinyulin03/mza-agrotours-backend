@@ -15,6 +15,7 @@ public class DTOActividadesResponse {
     private String estado;
     private BigDecimal precioRegular;
     private List<String> diasYHorasDisponibles;
+    private List<DTOCultivoResponse> cultivos;
     /* TODO- Ver si es necesario incluirlo
     private int cantidadReservasAsociadas;*/
     //TODO-Se debe filtrar por establecimiento
