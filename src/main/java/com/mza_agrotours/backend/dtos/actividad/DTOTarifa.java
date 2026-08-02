@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.dtos.actividad;
 
+import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -8,9 +9,10 @@ import java.util.UUID;
 
 @Data
 public class DTOTarifa {
+    private UUID id; //se usa para la modificación de rango etario
     @NotBlank(message = "El nombre del rango es obligatorio")
     @Size(min = 3, max = 40, message = "El nombre debe tener entre 3 y 40 caracteres")
-    @Pattern(regexp = "^[a-zA-Z0-9 áéíóúÁÉÍÓÚñÑ]+$", message = "No se aceptan caracteres especiales")
+    @SinCaracteresEspeciales
     private String nombre;
 
     @NotNull(message = "Este campo es requerido")

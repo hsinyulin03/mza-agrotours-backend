@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.mappers;
 
 import com.mza_agrotours.backend.dtos.actividad.*;
 import com.mza_agrotours.backend.entities.actividad.*;
+import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -12,6 +13,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Mapper(componentModel = "spring")
 public abstract class ActividadMapper {
     // US-ACT-02
@@ -43,57 +45,40 @@ public abstract class ActividadMapper {
     @Mapping(target = "precioRegular", ignore = true)
     public abstract DTOListadoActividadVisitanteResponse actividadToDTOListadoActividadVisitante(Actividad actividad);
 
+    //US-ACT-04
+    @Mapping(target = "estado", source = "estado.nombre")
+    @Mapping(target = "incluye", ignore = true)
+    @Mapping(target = "noIncluye", ignore = true)
+    @Mapping(target = "faqs", ignore = true)
+    @Mapping(target = "rangosEtarios", ignore = true)
+    public abstract DTOActividadGetResponse actividadToDTOActividadGetResponse(Actividad actividad);
+
     @AfterMapping
     public void llenarListasComplejas(Actividad actividad, @MappingTarget DTOActividadDetalleResponse dto) {
-        List<String> incluye = actividad.getInclusiones().stream()
-                .filter(ActividadInclusiones::getIncluye)
-                .map(ActividadInclusiones::getDescripcion)
-                .toList();
+        List<String> incluye = obtenerInclusiones(actividad.getInclusiones(), true);
+        List<String> noIncluye = obtenerInclusiones(actividad.getInclusiones(), false);
+        List<DTOFaqResponse> faqs = obtenerFaqs(actividad.getFaqs());
+        List<DTOTarifaResponse> tarifas = obtenerTarifas(actividad.getActividadRangoEtarios());
+        BigDecimal precioBase = obtenerPrecioBaseVigente(actividad);
+
         dto.setIncluye(incluye);
-
-        List<String> noIncluye = actividad.getInclusiones().stream()
-                .filter(inc -> !inc.getIncluye())
-                .map(ActividadInclusiones::getDescripcion)
-                .toList();
         dto.setNoIncluye(noIncluye);
-
-        List<DTOFaqResponse> faqsDto = actividad.getFaqs().stream()
-                .map(faq -> {
-                    DTOFaqResponse faqDto = new DTOFaqResponse();
-                    faqDto.setPregunta(faq.getPregunta());
-                    faqDto.setRespuesta(faq.getRespuesta());
-                    return faqDto;
-                })
-                .toList();
-        dto.setPreguntasFrecuentes(faqsDto);
-
-        List<DTOTarifaResponse> tarifasDto = actividad.getActividadRangoEtarios().stream()
-                .filter(r -> r.getFechaHoraBaja() == null)
-                .map(tarifa -> {
-                    DTOTarifaResponse t = new DTOTarifaResponse();
-                    t.setNombre(tarifa.getNombre());
-                    t.setEdadMinima(tarifa.getEdadMinima());
-                    t.setEdadMaxima(tarifa.getEdadMaxima());
-                    t.setPrecio(tarifa.getPrecio());
-                    return t;
-                })
-                .toList();
-
-        dto.setTarifas(tarifasDto);
-        dto.setPrecioRegular(obtenerPrecioBaseVigente(actividad));
+        dto.setPreguntasFrecuentes(faqs);
+        dto.setTarifas(tarifas);
+        dto.setPrecioRegular(precioBase);
 
     }
 
 
     @AfterMapping
     public void llenarDatosTarjetaActividades(Actividad actividad, @MappingTarget DTOActividadesResponse dto) {
-        java.time.LocalDate ahora = java.time.LocalDate.now();
 
         //Obtener el Precio Regular
-        dto.setPrecioRegular(obtenerPrecioBaseVigente(actividad));
-        if (actividad.getEstado() != null && actividad.getEstado().getNombre() != null) {
-            dto.setEstado(actividad.getEstado().getNombre().name());
-        }
+        BigDecimal precioBase = obtenerPrecioBaseVigente(actividad);
+        dto.setPrecioRegular(precioBase);
+
+        dto.setEstado(obtenerNombreEstado(actividad.getEstado()));
+
         // Armar los textos de Días y Horas Disponibles ("LUNES 09:00 - 13:00")
         List<String> diasDisponibles = obtenerDiasYHorasDisponibles(actividad);
         dto.setDiasYHorasDisponibles(diasDisponibles);
@@ -102,17 +87,30 @@ public abstract class ActividadMapper {
 
     @AfterMapping
     public void llenarDatosCalendarioDetalle(Actividad actividad, @MappingTarget DTOCalendarioActividadDiaResponse dto) {
-        dto.setDiasYHorasDisponibles(obtenerDiasYHorasDisponibles(actividad));
-        if (actividad.getEstado() != null && actividad.getEstado().getNombre() != null) {
-            dto.setEstado(actividad.getEstado().getNombre().name());
-        }
-    }
+        List<String> diasDisponibles = obtenerDiasYHorasDisponibles(actividad);
+        dto.setDiasYHorasDisponibles(diasDisponibles);
 
+        dto.setEstado(obtenerNombreEstado(actividad.getEstado()));
+    }
 
     @AfterMapping
     public void llenarDatosTarjetaVisitante(Actividad actividad, @MappingTarget DTOListadoActividadVisitanteResponse dto) {
-        dto.setPrecioRegular(obtenerPrecioBaseVigente(actividad));
+        BigDecimal precioBase = obtenerPrecioBaseVigente(actividad);
+        dto.setPrecioRegular(precioBase);
     }
+    @AfterMapping
+    public void llenarListasGetResponse(Actividad actividad, @MappingTarget DTOActividadGetResponse dto) {
+        List<String> incluye = obtenerInclusiones(actividad.getInclusiones(), true);
+        List<String> noIncluye = obtenerInclusiones(actividad.getInclusiones(), false);
+        List<DTOFaqResponse> faqs = obtenerFaqs(actividad.getFaqs());
+        List<DTOTarifaResponse> tarifas = obtenerTarifas(actividad.getActividadRangoEtarios());
+
+        dto.setIncluye(incluye);
+        dto.setNoIncluye(noIncluye);
+        dto.setFaqs(faqs);
+        dto.setRangosEtarios(tarifas);
+    }
+
 
     //Métodos auxiliares
     private BigDecimal obtenerPrecioBaseVigente(Actividad actividad) {
@@ -156,6 +154,56 @@ public abstract class ActividadMapper {
                 .toList();
         return diasDisponibles;
 
+    }
+
+    private List<String> obtenerInclusiones(List<ActividadInclusiones> inclusiones, boolean incluye) {
+        if (inclusiones == null) {
+            return List.of();
+        }
+        return inclusiones.stream()
+                .filter(inc -> inc.getIncluye() == incluye)
+                .map(ActividadInclusiones::getDescripcion)
+                .toList();
+    }
+    private List<DTOFaqResponse> obtenerFaqs(List<ActividadFAQ> faqs) {
+        if (faqs == null) {
+            return List.of(); // Devuelve lista vacía en lugar de null para evitar errores futuros
+        }
+
+        return faqs.stream()
+                .map(faq -> {
+                    DTOFaqResponse f = new DTOFaqResponse();
+                    f.setPregunta(faq.getPregunta());
+                    f.setRespuesta(faq.getRespuesta());
+                    return f;
+                })
+                .toList();
+    }
+
+    private List<DTOTarifaResponse> obtenerTarifas(List<ActividadRangoEtario> rangosEtarios) {
+        if (rangosEtarios == null) {
+            return List.of();
+        }
+
+        return rangosEtarios.stream()
+                .filter(r -> r.getFechaHoraBaja() == null)
+                .map(tarifa -> {
+                    DTOTarifaResponse t = new DTOTarifaResponse();
+                    t.setId(tarifa.getId());
+                    t.setNombre(tarifa.getNombre());
+                    t.setEdadMinima(tarifa.getEdadMinima());
+                    t.setEdadMaxima(tarifa.getEdadMaxima());
+                    t.setPrecio(tarifa.getPrecio());
+                    t.setEsTarifaBase(tarifa.isEsTarifaBase());
+                    return t;
+                })
+                .toList();
+    }
+    private String obtenerNombreEstado(EstadoActividad estado) {
+        if (estado != null && estado.getNombre() != null) {
+            return estado.getNombre().name();
+        }
+        return null;
     }
 
 }
