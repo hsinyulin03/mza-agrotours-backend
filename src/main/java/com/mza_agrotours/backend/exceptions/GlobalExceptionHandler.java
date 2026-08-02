@@ -2,7 +2,11 @@ package com.mza_agrotours.backend.exceptions;
 
 import com.google.firebase.auth.FirebaseAuthException;
 import com.mza_agrotours.backend.dtos.ApiResponse;
+import com.mza_agrotours.backend.exceptions.actividad.ActividadDiaNotFound;
+import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
+import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
+import com.mza_agrotours.backend.exceptions.reservas.FechaNacimientoInvalidaException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
@@ -71,11 +75,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(EntityAlreadyExistsException.class)
     public ResponseEntity<?> handleEntityAlreadyExistsException(EntityAlreadyExistsException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.fail("entityAlreadyExists", ex.getMessage()));
-    }
-
-    @ExceptionHandler(UsuarioDeactivatedException.class)
-    public ResponseEntity<?> handleUsuarioDeactivated(UsuarioDeactivatedException ex){
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("usuarioDeBaja", ex.getMessage()));
     }
 
     @ExceptionHandler(EstablecimientoNotFoundException.class)
@@ -161,5 +160,28 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> apiResponse = ApiResponse.fail("badRequest", mensajeDetallado);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
+    }
+
+    @ExceptionHandler(ActividadNotActiveException.class)
+    public ResponseEntity<ApiResponse<?>> handleActividadNotActive(ActividadNotActiveException ex){
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.fail("actividadNotActive", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ActividadDiaNotFound.class)
+    public ResponseEntity<ApiResponse<?>> handleActividadDiaNotFound(ActividadDiaNotFound ex){
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.fail("actividadDiaNotFound", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ActividadNotFoundException.class)
+    public ResponseEntity<ApiResponse<?>> handleActividadNotFound(ActividadNotFoundException ex){
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.fail("actividadNotFound", ex.getMessage()));
+    }
+
+    @ExceptionHandler(FechaNacimientoInvalidaException.class)
+    public ResponseEntity<?> handleFechaNacimientoInvalida(FechaNacimientoInvalidaException ex){
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("bornDateInvalid", ex.getMessage()));
     }
 }

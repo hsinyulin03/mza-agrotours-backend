@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.entities.reservas;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
+import com.mza_agrotours.backend.entities.pago.Pago;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.entities.Visitante;
@@ -26,7 +27,9 @@ public class Reserva extends BaseEntity {
 
     private LocalDateTime fechaHoraFin;             // FH cuando la Reserva llega a un estado final
 
-    private BigDecimal subtotalComisionTransaccion;      // Comisión al servicio de pagos
+    private LocalDateTime fechaHoraExpiracion;      // FH cuando la reserva expira (TTL durante el proceso reserva)
+
+    private BigDecimal subTotalComisionTransaccion;      // Comisión al servicio de pagos
 
     private BigDecimal subTotalComisionPropia;           // Comisión que nos quedamos
 
@@ -35,8 +38,8 @@ public class Reserva extends BaseEntity {
     @Column (nullable = false)
     private BigDecimal totalReserva;                     // Monto total de la reserva
 
-    //TODO relaciones - Visitante, Calificacion, Pago, Reembolso
-    @OneToOne(fetch = FetchType.EAGER)
+    //TODO relaciones - Calificacion, Reembolso
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private ReservaEstado estadoActual;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
@@ -59,6 +62,9 @@ public class Reserva extends BaseEntity {
     @JoinColumn(nullable = false)
     private Visitante visitante;
 
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Pago pago;
+
     // Métodos
 
     /**
@@ -68,8 +74,9 @@ public class Reserva extends BaseEntity {
      * @param tiempoCambio Fecha y hora a la que se realizó el cambio
      */
     public void cambiarEstado(EstadoReserva estado, LocalDateTime tiempoCambio){
-        // Al último estado le damos FechaHoraFin
-        this.estadoActual.setFechaHoraFin(tiempoCambio);
+        // Al último estado le damos FechaHoraFin, si es que había uno (primer estado del pago)
+        if (this.estadoActual != null)
+            this.estadoActual.setFechaHoraFin(tiempoCambio);
 
         // Creamos la nueva ReservaEstado
         ReservaEstado nuevoRE = new ReservaEstado(tiempoCambio, null, estado);
