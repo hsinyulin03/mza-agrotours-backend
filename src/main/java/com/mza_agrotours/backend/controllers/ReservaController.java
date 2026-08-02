@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
+import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
 import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDTO;
 import com.mza_agrotours.backend.dtos.reservas.RealizarReservaDTO;
 import com.mza_agrotours.backend.services.ReservaService;
@@ -24,9 +25,10 @@ public class ReservaController {
     @GetMapping("/{uuid}")
     public ResponseEntity<ApiResponse<ConsultarReservaDTO>> getReserva(
             @PathVariable UUID uuid,
-            @AuthenticationPrincipal String firebaseUID // TODO UsuarioAuthDetails
+            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
     ) {
-        ConsultarReservaDTO dto = service.getConsultarReserva(uuid,firebaseUID);
+        String email = usuarioAuthDetails.getEmail();
+        ConsultarReservaDTO dto = service.getConsultarReserva(uuid,email);
         ApiResponse<ConsultarReservaDTO> response = ApiResponse.ok(dto);
         return ResponseEntity.ok(response);
     }
