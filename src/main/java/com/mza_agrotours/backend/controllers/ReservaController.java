@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
+import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
 import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDTO;
 import com.mza_agrotours.backend.services.ReservaService;
 import org.springframework.http.ResponseEntity;
@@ -20,9 +21,10 @@ public class ReservaController {
     @GetMapping("/{uuid}")
     public ResponseEntity<ApiResponse<ConsultarReservaDTO>> getReserva(
             @PathVariable UUID uuid,
-            @AuthenticationPrincipal String firebaseUID
+            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
     ) {
-        ConsultarReservaDTO dto = service.getConsultarReserva(uuid,firebaseUID);
+        String email = usuarioAuthDetails.getEmail();
+        ConsultarReservaDTO dto = service.getConsultarReserva(uuid,email);
         ApiResponse<ConsultarReservaDTO> response = ApiResponse.ok(dto);
         return ResponseEntity.ok(response);
     }

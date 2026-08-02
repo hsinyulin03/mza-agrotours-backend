@@ -73,11 +73,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.fail("entityAlreadyExists", ex.getMessage()));
     }
 
-    @ExceptionHandler(UsuarioDeactivatedException.class)
-    public ResponseEntity<?> handleUsuarioDeactivated(UsuarioDeactivatedException ex){
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("usuarioDeBaja", ex.getMessage()));
-    }
-
     @ExceptionHandler(EstablecimientoNotFoundException.class)
     public ResponseEntity<?> handleEstablecimientoNotFound(EstablecimientoNotFoundException ex){
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("entityNonExistent", ex.getMessage()));
