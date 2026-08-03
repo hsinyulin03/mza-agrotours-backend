@@ -11,7 +11,11 @@ import org.springframework.http.HttpStatus;
 public enum AdministradorSistemasError implements ErrorCode {
     NOT_FOUND("AS.notFound",
             HttpStatus.NOT_FOUND,
-            "El administrador de sistemas no fue encontrado");
+            "El administrador de sistemas no fue encontrado"),
+    ALREADY_EXISTS("AS.alreadyExists",
+            HttpStatus.CONFLICT,
+            "El administrador de sistemas ya existe"),
+    ;
     private final String code;
     private final HttpStatus httpStatus;
     private final String defaultMessage;
