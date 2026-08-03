@@ -57,4 +57,11 @@ public class UsuarioController {
         boolean res = this.usuarioService.deleteUsuarioByEmail(email);
         return ResponseEntity.ok(ApiResponse.ok(res));
     }
+
+    // TODO: check, mepa que en su lugar habría que pedirleselo por body
+    @GetMapping("/card/{email}")
+    public ResponseEntity<?> getCardUsuarioByEmail(@PathVariable String email) {
+        UsuarioCardDTO usuarioCardDTO = this.usuarioService.getUsuarioCardByEmail(email);
+        return ResponseEntity.ok(ApiResponse.ok(usuarioCardDTO));
+    }
 }

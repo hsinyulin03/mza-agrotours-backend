@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.mappers;
 
 import com.google.firebase.auth.UserRecord.CreateRequest;
+import com.mza_agrotours.backend.dtos.UsuarioCardDTO;
 import com.mza_agrotours.backend.dtos.UsuarioCreateReq;
 import com.mza_agrotours.backend.dtos.UsuarioGetDTO;
 import com.mza_agrotours.backend.dtos.UsuarioUpdateReq;
@@ -20,6 +21,8 @@ public interface UsuarioMapper {
 
     @Mapping(target = "tipoIdentificacion", ignore = true)
     void updateUsuarioFromUsuarioUpdateReq(@MappingTarget Usuario usuario, UsuarioUpdateReq usuarioUpdateReq);
+
+    UsuarioCardDTO usuarioToUsuarioCardDTO(Usuario usuario);
 
     default CreateRequest usuarioCreateReqToFirebaseCreateRequest(UsuarioCreateReq usuarioCreateReq) {
         CreateRequest request = new CreateRequest()

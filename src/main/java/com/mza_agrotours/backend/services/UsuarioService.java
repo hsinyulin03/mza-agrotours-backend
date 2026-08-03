@@ -3,10 +3,7 @@ package com.mza_agrotours.backend.services;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
-import com.mza_agrotours.backend.dtos.CondicionDTO;
-import com.mza_agrotours.backend.dtos.UsuarioCreateReq;
-import com.mza_agrotours.backend.dtos.UsuarioGetDTO;
-import com.mza_agrotours.backend.dtos.UsuarioUpdateReq;
+import com.mza_agrotours.backend.dtos.*;
 import com.mza_agrotours.backend.entities.*;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
@@ -204,6 +201,12 @@ public class UsuarioService {
         }
 
         return true;
+    }
+
+    public UsuarioCardDTO getUsuarioCardByEmail(String email) {
+        Usuario usuario = usuarioRepository.findActiveByEmail(email)
+                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+        return usuarioMapper.usuarioToUsuarioCardDTO(usuario);
     }
 
     @Transactional
