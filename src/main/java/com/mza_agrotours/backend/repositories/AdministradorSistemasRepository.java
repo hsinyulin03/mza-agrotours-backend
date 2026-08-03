@@ -10,6 +10,8 @@ import java.util.UUID;
 public interface AdministradorSistemasRepository extends BaseEntityRepository<AdministradorSistemas, UUID> {
     Optional<AdministradorSistemas> findByUsuarioAndFechaHoraBajaIsNull(Usuario usuario);
 
+    Optional<AdministradorSistemas> findByIdAndFechaHoraBajaIsNull(UUID id);
+
     boolean existsByUsuarioAndFechaHoraBajaIsNull(Usuario usuario);
 
     List<AdministradorSistemas> findByFechaHoraBajaIsNull();

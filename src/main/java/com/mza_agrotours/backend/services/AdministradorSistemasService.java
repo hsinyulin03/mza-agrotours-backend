@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.administrador_sistemas.AdminSistemasCreateReq;
 import com.mza_agrotours.backend.dtos.administrador_sistemas.AdminSistemasGetDTO;
+import com.mza_agrotours.backend.dtos.administrador_sistemas.AdministradorSistemasUpdateReq;
 import com.mza_agrotours.backend.dtos.roles_permisos.RolGetShortDTO;
 import com.mza_agrotours.backend.entities.AdministradorSistemas;
 import com.mza_agrotours.backend.entities.Usuario;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class AdministradorSistemasService {
@@ -66,7 +68,7 @@ public class AdministradorSistemasService {
                         adminSistemasCreateReq.getRolId(),
                         TipoPermisoNombre.ADMIN,
                         RolProtegido.ADMIN_LIDER.getNombre())
-                .orElseThrow(IllegalStateException::new);
+                .orElseThrow(() -> new AppException(AdministradorSistemasError.ROL_INVALIDO));
 
         //TODO: no podemos añadir a otro administrador líder
         // ...
@@ -74,6 +76,26 @@ public class AdministradorSistemasService {
         administradorSistemas.setUsuario(usuario);
         administradorSistemas.setRol(rolAdmin);
         administradorSistemas.setFechaHoraAlta(LocalDateTime.now());
+        administradorSistemas = this.administradorSistemasRepository.save(administradorSistemas);
+
+        return this.administradorSistemasMapper.administradorSistemasToAdminSistemasGetDTO(administradorSistemas);
+    }
+
+    public AdminSistemasGetDTO updateRolAdmin(UUID adminId, AdministradorSistemasUpdateReq administradorSistemasUpdateReq) {
+        AdministradorSistemas administradorSistemas = this.administradorSistemasRepository
+                .findByIdAndFechaHoraBajaIsNull(adminId)
+                .orElseThrow(() -> new AppException(AdministradorSistemasError.NOT_FOUND));
+
+        // Mismas reglas que en el alta: solo roles de tipo permiso ADMIN
+        // y nunca el rol de Administrador Líder
+        Rol rolAdmin = this.rolRepository
+                .findByIdAndTipoPermiso_NombreAndFechaHoraBajaIsNullAndNombreIsNotContaining(
+                        administradorSistemasUpdateReq.getRolId(),
+                        TipoPermisoNombre.ADMIN,
+                        RolProtegido.ADMIN_LIDER.getNombre())
+                .orElseThrow(() -> new AppException(AdministradorSistemasError.ROL_INVALIDO));
+
+        administradorSistemas.setRol(rolAdmin);
         administradorSistemas = this.administradorSistemasRepository.save(administradorSistemas);
 
         return this.administradorSistemasMapper.administradorSistemasToAdminSistemasGetDTO(administradorSistemas);

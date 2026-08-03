@@ -15,6 +15,9 @@ public enum AdministradorSistemasError implements ErrorCode {
     ALREADY_EXISTS("AS.alreadyExists",
             HttpStatus.CONFLICT,
             "El administrador de sistemas ya existe"),
+    ROL_INVALIDO("AS.rolInvalido",
+            HttpStatus.BAD_REQUEST,
+            "El rol no es un rol de administrador asignable"),
     ;
     private final String code;
     private final HttpStatus httpStatus;
