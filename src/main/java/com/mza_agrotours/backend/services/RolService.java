@@ -31,7 +31,7 @@ public class RolService {
                 .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
 
         AdministradorSistemas administradorSistemas = administradorSistemasRepository
-                .findByUsuarioId(usuario.getId())
+                .findByUsuarioAndFechaHoraBajaIsNull(usuario)
                 .orElseThrow(() -> new AppException(AdministradorSistemasError.NOT_FOUND));
 
         return administradorSistemas.getRol().getPermisos();
