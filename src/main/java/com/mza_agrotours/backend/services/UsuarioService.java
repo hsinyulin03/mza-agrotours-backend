@@ -11,6 +11,7 @@ import com.mza_agrotours.backend.entities.*;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
+import com.mza_agrotours.backend.entities.roles_permisos.TipoPermisoNombre;
 import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.mappers.UsuarioMapper;
 import com.mza_agrotours.backend.repositories.*;
@@ -126,6 +127,9 @@ public class UsuarioService {
                         "El usuario no tiene un visitante asociado: " + usuario.getId()));
         usuarioGetDTO.setPaisIso2(visitante.getPais().getIso2());
 
+        List<TipoPermisoNombre> tipoPermisos = this.obtenerTipoPermisosUsuario(usuario);
+        usuarioGetDTO.setTipoPermisos(tipoPermisos);
+
         return usuarioGetDTO;
     }
 
@@ -228,7 +232,7 @@ public class UsuarioService {
         }
 
         // 2. Usuario no es administrador (TODO)
-        Optional<AdministradorSistemas> administradorSistemasOptional = administradorSistemasRepository.findByUsuarioId(usuario.getId());
+        Optional<AdministradorSistemas> administradorSistemasOptional = administradorSistemasRepository.findByUsuarioAndFechaHoraBajaIsNull(usuario);
         if (administradorSistemasOptional.isPresent()) {
             condiciones.add(
                     new CondicionDTO(
@@ -240,5 +244,23 @@ public class UsuarioService {
         // 3. Usuario no es productor lider de un establecimiento vigente (TODO)
 
         return condiciones;
+    }
+
+    private List<TipoPermisoNombre> obtenerTipoPermisosUsuario(Usuario usuario) {
+        List<TipoPermisoNombre> tipoPermisos = new ArrayList<>();
+
+        Optional<Visitante> visitante = visitanteRepository.findByUsuario(usuario);
+        if (visitante.isPresent()) {
+            tipoPermisos.add(TipoPermisoNombre.VISITANTE);
+        }
+
+        Optional<AdministradorSistemas> administradorSistemas = administradorSistemasRepository.findByUsuarioAndFechaHoraBajaIsNull(usuario);
+        if (administradorSistemas.isPresent()) {
+            tipoPermisos.add(TipoPermisoNombre.ADMIN);
+        }
+
+        // TODO: agregar permisos de productor
+
+        return tipoPermisos;
     }
 }
