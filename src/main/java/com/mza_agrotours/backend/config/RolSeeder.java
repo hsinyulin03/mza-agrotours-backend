@@ -4,6 +4,7 @@ import com.mza_agrotours.backend.entities.roles_permisos.Permiso;
 import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import com.mza_agrotours.backend.entities.roles_permisos.TipoPermiso;
 import com.mza_agrotours.backend.entities.roles_permisos.TipoPermisoNombre;
+import com.mza_agrotours.backend.enums.RolProtegido;
 import com.mza_agrotours.backend.repositories.PermisoRepository;
 import com.mza_agrotours.backend.repositories.RolRepository;
 import com.mza_agrotours.backend.repositories.TipoPermisoRepository;
@@ -30,8 +31,8 @@ public class RolSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        List<Rol> rolesSeed = List.of(this.buildRolAdminLider());
-
+        List<Rol> rolesSeed = new java.util.ArrayList<>(List.of(this.buildRolAdminLider()));
+        rolesSeed.add(buildRolAdminPrueba());
         for (Rol rol : rolesSeed) {
             if (this.rolRepository.existsByNombre(rol.getNombre())) {
                 continue;
@@ -50,12 +51,30 @@ public class RolSeeder implements CommandLineRunner {
                 .findByTipoPermiso(tipoPermisoAdmin);
 
         Rol rolAdmin = new Rol();
-        rolAdmin.setNombre("Administrador Líder");
+        rolAdmin.setNombre(RolProtegido.ADMIN_LIDER.getNombre());
         rolAdmin.setDescripcion("Rol administrador con todos los permisos");
         rolAdmin.setEsProtegido(true);
         rolAdmin.setPermisos(permisosAdmin);
         rolAdmin.setTipoPermiso(tipoPermisoAdmin);
 
         return rolAdmin;
+    }
+
+    private Rol buildRolAdminPrueba() {
+        TipoPermiso tipoPermisoAdmin = this.tipoPermisoRepository
+                .findByNombre(TipoPermisoNombre.ADMIN).orElseThrow(
+                        () -> new IllegalStateException("Tipo de permiso no encontrado: " + TipoPermisoNombre.ADMIN)
+                );
+
+        List<Permiso> permisosAdmin = this.permisoRepository.findByTipoPermiso(tipoPermisoAdmin);
+
+        Rol rolAdminPrueba = new Rol();
+        rolAdminPrueba.setNombre("Admin prueba");
+        rolAdminPrueba.setDescripcion("Rol administrador con todos los permisos");
+        rolAdminPrueba.setEsProtegido(true);
+        rolAdminPrueba.setPermisos(permisosAdmin);
+        rolAdminPrueba.setTipoPermiso(tipoPermisoAdmin);
+
+        return rolAdminPrueba;
     }
 }
