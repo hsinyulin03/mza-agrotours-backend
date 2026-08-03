@@ -86,6 +86,10 @@ public class AdministradorSistemasService {
                 .findByIdAndFechaHoraBajaIsNull(adminId)
                 .orElseThrow(() -> new AppException(AdministradorSistemasError.NOT_FOUND));
 
+        if(administradorSistemas.getRol().getNombre().equals(RolProtegido.ADMIN_LIDER.getNombre())){
+            throw new AppException(AdministradorSistemasError.LIDER_INMUTABLE);
+        }
+
         // Mismas reglas que en el alta: solo roles de tipo permiso ADMIN
         // y nunca el rol de Administrador Líder
         Rol rolAdmin = this.rolRepository
