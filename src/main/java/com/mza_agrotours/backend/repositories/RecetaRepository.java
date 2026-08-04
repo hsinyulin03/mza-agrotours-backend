@@ -7,4 +7,5 @@ import java.util.UUID;
 
 @Repository
 public interface RecetaRepository extends BaseEntityRepository<Receta, UUID> {
+    long countByFechaHoraBajaIsNull();
 }

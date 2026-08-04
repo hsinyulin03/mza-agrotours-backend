@@ -90,8 +90,7 @@ public class TipoCultivoService {
 
         DTOCatalogoTipoCultivo catalogo = new DTOCatalogoTipoCultivo();
         catalogo.setTotalCultivos(listado.size());
-        // todas no hay fechabaja para las recetas
-        catalogo.setTotalRecetas((int) recetaRepository.count());
+        catalogo.setTotalRecetas((int) recetaRepository.countByFechaHoraBajaIsNull());
         catalogo.setCultivos(listado);
 
         return catalogo;
@@ -247,7 +246,11 @@ public class TipoCultivoService {
     private DTOTipoCultivoListado mapearAListado(TipoCultivo tipoCultivo) {
         DTOTipoCultivoListado dto = tipoCultivoMapper.tipoCultivoToDtoListado(tipoCultivo);
 
-        Integer cantidadRecetas = tipoCultivo.getRecetas().size();
+        Integer cantidadRecetas = (int) tipoCultivo.getRecetas().stream()
+                // filtra  las recetas que no fueron dadas de baja
+                .filter(r -> r.getFechaHoraBaja() == null)
+                // Cuenta cuántas recetas cumplen
+                .count();
         // TODO CONTAR ACTIVADADES POR CULTIVO
         Integer cantidadActividades = 0;
         boolean tieneEstablecimientosAsociados = establecimientoRepository
