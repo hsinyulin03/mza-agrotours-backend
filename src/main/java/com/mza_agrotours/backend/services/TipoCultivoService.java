@@ -157,6 +157,8 @@ public class TipoCultivoService {
                     "Se esperaban " + meses.length + " estacionalidades (una por mes), se recibieron " + estacionalidadPorMes.size()
             );
         }
+        validarAlMenosUnMesEnCosecha(estacionalidadPorMes);
+
         // Recorre la lista de estacionalidades(reposo-cosecha-crecimiento) por mes recibida
         for (int i = 0; i < estacionalidadPorMes.size(); i++) {
             // Convierte el estado/fase recibido ej COSECHA
@@ -177,6 +179,14 @@ public class TipoCultivoService {
     private Estacionalidad obtenerEstacionalidadPorNombre(EstacionalidadNombre nombre) {
         return estacionalidadRepository.findByNombre(nombre)
                 .orElseThrow(() -> new ValidacionNegocioException("No se encuentra configurada la estacionalidad " + nombre));
+    }
+    private void validarAlMenosUnMesEnCosecha(List<EstacionalidadNombre> estacionalidadPorMes) {
+        boolean tieneCosecha = estacionalidadPorMes.stream()
+                .anyMatch(estado -> estado == EstacionalidadNombre.COSECHA);
+
+        if (!tieneCosecha) {
+            throw new ValidacionNegocioException("El cultivo debe tener al menos un mes en estado de cosecha");
+        }
     }
     // DETALLE / EDITAR
     private DTOTipoCultivoEditarDetalle mapearADatos(TipoCultivo tipoCultivo) {
