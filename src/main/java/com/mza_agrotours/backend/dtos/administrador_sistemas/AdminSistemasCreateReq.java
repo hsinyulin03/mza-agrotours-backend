@@ -1,5 +1,7 @@
 package com.mza_agrotours.backend.dtos.administrador_sistemas;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -14,9 +16,10 @@ import java.util.UUID;
 @Setter
 public class AdminSistemasCreateReq {
     @NotNull
+    @Email
+    @NotBlank
     private String emailUsuario;
 
     @NotNull
-    @org.hibernate.validator.constraints.UUID
     private UUID rolId;
 }

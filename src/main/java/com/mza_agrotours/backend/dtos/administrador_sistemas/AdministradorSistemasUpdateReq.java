@@ -14,6 +14,5 @@ import java.util.UUID;
 @Setter
 public class AdministradorSistemasUpdateReq {
     @NotNull
-    @org.hibernate.validator.constraints.UUID
     private UUID rolId;
 }
