@@ -30,6 +30,8 @@ public class Receta extends BaseEntity {
     @Column(name = "tiempo_mins_aprox", nullable = false)
     private int tiempoMinsAprox;
 
+    private LocalDateTime fechaHoraBaja;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Dificultad dificultad;
