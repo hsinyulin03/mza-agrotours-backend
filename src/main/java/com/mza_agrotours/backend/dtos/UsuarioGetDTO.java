@@ -1,6 +1,6 @@
 package com.mza_agrotours.backend.dtos;
 
-import com.mza_agrotours.backend.entities.roles_permisos.TipoPermisoNombre;
+import com.mza_agrotours.backend.enums.TipoPermisoNombre;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

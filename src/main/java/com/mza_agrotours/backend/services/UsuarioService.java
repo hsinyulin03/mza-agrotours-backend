@@ -8,7 +8,7 @@ import com.mza_agrotours.backend.entities.*;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
-import com.mza_agrotours.backend.entities.roles_permisos.TipoPermisoNombre;
+import com.mza_agrotours.backend.enums.TipoPermisoNombre;
 import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.mappers.UsuarioMapper;
 import com.mza_agrotours.backend.repositories.*;

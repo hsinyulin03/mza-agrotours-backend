@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.entities.roles_permisos;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
+import com.mza_agrotours.backend.enums.TipoPermisoNombre;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

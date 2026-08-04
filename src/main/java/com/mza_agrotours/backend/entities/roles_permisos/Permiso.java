@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.entities.roles_permisos;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
+import com.mza_agrotours.backend.enums.PermisoNombre;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

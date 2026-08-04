@@ -1,4 +1,4 @@
-package com.mza_agrotours.backend.entities.roles_permisos;
+package com.mza_agrotours.backend.enums;
 
 public enum TipoPermisoNombre {
     ADMIN,

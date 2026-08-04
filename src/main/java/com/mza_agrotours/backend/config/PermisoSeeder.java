@@ -1,9 +1,9 @@
 package com.mza_agrotours.backend.config;
 
 import com.mza_agrotours.backend.entities.roles_permisos.Permiso;
-import com.mza_agrotours.backend.entities.roles_permisos.PermisoNombre;
 import com.mza_agrotours.backend.entities.roles_permisos.TipoPermiso;
-import com.mza_agrotours.backend.entities.roles_permisos.TipoPermisoNombre;
+import com.mza_agrotours.backend.enums.PermisoNombre;
+import com.mza_agrotours.backend.enums.TipoPermisoNombre;
 import com.mza_agrotours.backend.repositories.PermisoRepository;
 import com.mza_agrotours.backend.repositories.TipoPermisoRepository;
 import org.springframework.boot.CommandLineRunner;

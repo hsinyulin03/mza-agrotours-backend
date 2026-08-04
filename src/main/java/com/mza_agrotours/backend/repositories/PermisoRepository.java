@@ -1,8 +1,8 @@
 package com.mza_agrotours.backend.repositories;
 
 import com.mza_agrotours.backend.entities.roles_permisos.Permiso;
-import com.mza_agrotours.backend.entities.roles_permisos.PermisoNombre;
 import com.mza_agrotours.backend.entities.roles_permisos.TipoPermiso;
+import com.mza_agrotours.backend.enums.PermisoNombre;
 
 import java.util.List;
 import java.util.Optional;
