@@ -103,9 +103,13 @@ public class TipoCultivoService {
     public void bajaTipoCultivo(UUID id) {
         TipoCultivo tipoCultivo = obtenerTipoCultivo(id);
 
-        if (!tipoCultivo.getRecetas().isEmpty()) {
+        boolean tieneRecetasActivas = tipoCultivo.getRecetas().stream()
+                .anyMatch(r -> r.getFechaHoraBaja() == null);
+
+        if (tieneRecetasActivas) {
             throw new ValidacionNegocioException("No se puede eliminar el cultivo porque posee recetas asociadas");
         }
+
         //todo agregar contaractividadespublciadasporculivo
         long cantidadActividades = 0;
         if (cantidadActividades > 0) {
