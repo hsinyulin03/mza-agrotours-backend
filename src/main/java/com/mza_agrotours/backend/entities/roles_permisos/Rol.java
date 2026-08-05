@@ -16,7 +16,7 @@ import java.util.List;
 @Getter
 @Setter
 public class Rol extends BaseEntity {
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String nombre;
 
     @Column(nullable = false)
