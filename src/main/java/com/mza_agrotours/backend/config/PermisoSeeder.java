@@ -32,18 +32,14 @@ public class PermisoSeeder implements CommandLineRunner {
      * en cada arranque.
      */
     private static final Map<PermisoNombre, SeedPermiso> SEEDS = Map.ofEntries(
-            entry(PermisoNombre.CREAR_ADMIN,
-                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Crear administradores")),
-            entry(PermisoNombre.MODIFICAR_ADMIN,
-                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Modificar administradores")),
-            entry(PermisoNombre.ELIMINAR_ADMIN,
-                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Eliminar administradores")),
-            entry(PermisoNombre.CREAR_PRODUCTOR,
-                    new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Crear productores")),
-            entry(PermisoNombre.MODIFICAR_PRODUCTOR,
-                    new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Modificar productores")),
-            entry(PermisoNombre.ELIMINAR_PRODUCTOR,
-                    new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Eliminar productores"))
+            entry(PermisoNombre.GESTIONAR_ADMIN,
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Crear, modificar y eliminar administradores")),
+            entry(PermisoNombre.LEER_ADMIN,
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Ver administradores")),
+            entry(PermisoNombre.GESTIONAR_PRODUCTOR,
+                    new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Crear, modificar y eliminar productores")),
+            entry(PermisoNombre.LEER_PRODUCTOR,
+                    new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Ver productores"))
     );
 
     private final PermisoRepository permisoRepository;
