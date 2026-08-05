@@ -1,11 +1,13 @@
 package com.mza_agrotours.backend.controllers;
 
+import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.administrador_sistemas.AdminSistemasCreateReq;
 import com.mza_agrotours.backend.dtos.administrador_sistemas.AdminSistemasGetDTO;
 import com.mza_agrotours.backend.dtos.administrador_sistemas.AdministradorSistemasUpdateReq;
 import com.mza_agrotours.backend.dtos.roles_permisos.RolGetShortDTO;
 import com.mza_agrotours.backend.services.AdministradorSistemasService;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,26 +23,34 @@ public class AdministradorSistemasController {
     }
 
     @GetMapping("/")
-    public List<AdminSistemasGetDTO> findAllAdminSistemasVigentes() {
-        return this.administradorSistemasService.findAllAdminSistemasVigentes();
+    public ResponseEntity<ApiResponse<List<AdminSistemasGetDTO>>> findAllAdminSistemasVigentes() {
+        return ResponseEntity.ok(ApiResponse.ok(this.administradorSistemasService.findAllAdminSistemasVigentes()));
     }
 
     @PostMapping("/create")
-    public AdminSistemasGetDTO createAdmin(
+    public ResponseEntity<ApiResponse<AdminSistemasGetDTO>> createAdmin(
             @Valid
             @RequestBody AdminSistemasCreateReq adminSistemasCreateReq) {
-        return this.administradorSistemasService.createAdmin(adminSistemasCreateReq);
+        return ResponseEntity.ok(ApiResponse.ok(this.administradorSistemasService.createAdmin(adminSistemasCreateReq)));
     }
 
     @PutMapping("/update/{adminId}")
-    public AdminSistemasGetDTO updateRolAdmin(@PathVariable UUID adminId,
-                                              @Valid
-                                              @RequestBody AdministradorSistemasUpdateReq administradorSistemasUpdateReq) {
-        return this.administradorSistemasService.updateRolAdmin(adminId, administradorSistemasUpdateReq);
+    public ResponseEntity<ApiResponse<AdminSistemasGetDTO>> updateRolAdmin(@PathVariable UUID adminId,
+                                                                          @Valid
+                                                                          @RequestBody AdministradorSistemasUpdateReq administradorSistemasUpdateReq) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(this.administradorSistemasService.updateRolAdmin(adminId, administradorSistemasUpdateReq)));
+    }
+
+    @DeleteMapping("/{adminId}")
+    public ResponseEntity<ApiResponse<Boolean>> deleteAdmin(@PathVariable UUID adminId) {
+        boolean fueEliminado = this.administradorSistemasService.deleteAdmin(adminId);
+        // Si la baja falla, el servicio lanza AppException y nunca llegamos acá
+        return ResponseEntity.ok(ApiResponse.ok(fueEliminado));
     }
 
     @GetMapping("/roles")
-    public List<RolGetShortDTO> obtenerRolesAdmin() {
-        return this.administradorSistemasService.obtenerRolesAdmin();
+    public ResponseEntity<ApiResponse<List<RolGetShortDTO>>> obtenerRolesAdmin() {
+        return ResponseEntity.ok(ApiResponse.ok(this.administradorSistemasService.obtenerRolesAdmin()));
     }
 }

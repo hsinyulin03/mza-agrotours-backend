@@ -105,6 +105,21 @@ public class AdministradorSistemasService {
         return this.administradorSistemasMapper.administradorSistemasToAdminSistemasGetDTO(administradorSistemas);
     }
 
+    public boolean deleteAdmin(UUID adminId) {
+        AdministradorSistemas administradorSistemas = this.administradorSistemasRepository
+                .findByIdAndFechaHoraBajaIsNull(adminId)
+                .orElseThrow(() -> new AppException(AdministradorSistemasError.NOT_FOUND));
+
+        if (administradorSistemas.getRol().getNombre().equals(RolProtegido.ADMIN_LIDER.getNombre())) {
+            throw new AppException(AdministradorSistemasError.LIDER_INMUTABLE);
+        }
+
+        // Baja lógica: el registro se conserva y deja de ser vigente
+        administradorSistemas.setFechaHoraBaja(LocalDateTime.now());
+        this.administradorSistemasRepository.save(administradorSistemas);
+        return true;
+    }
+
     public List<RolGetShortDTO> obtenerRolesAdmin() {
         List<Rol> rolesAdmin = this.rolRepository
                 .findByTipoPermiso_NombreAndFechaHoraBajaIsNullAndNombreIsNotContaining(
