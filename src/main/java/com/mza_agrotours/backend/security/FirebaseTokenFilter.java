@@ -38,7 +38,7 @@ public class FirebaseTokenFilter extends OncePerRequestFilter {
             try {
                 FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(token);
                 // TODO: split on two filters AdminAuthoritiesFilter and ProductoresAuthoritiesFilter or something
-                var authorities = getAuthorities(decodedToken.getEmail());
+                var authorities = getAdminAuthorities(decodedToken.getEmail());
 
                 UsuarioAuthDetails usuarioAuthDetails = UsuarioAuthDetails.builder()
                         .email(decodedToken.getEmail())
@@ -55,7 +55,7 @@ public class FirebaseTokenFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private List<SimpleGrantedAuthority> getAuthorities(String email) {
+    private List<SimpleGrantedAuthority> getAdminAuthorities(String email) {
         try {
             List<Permiso> permisosEmail = this.rolService.obtenerPermisosAdminPorEmail(email);
             return permisosEmail
