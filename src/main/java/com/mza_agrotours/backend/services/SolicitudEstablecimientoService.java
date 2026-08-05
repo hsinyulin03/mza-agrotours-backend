@@ -3,6 +3,8 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateReq;
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateResp;
+import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoDTO;
+import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoShortDTO;
 import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.Usuario;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class SolicitudEstablecimientoService {
@@ -109,6 +112,7 @@ public class SolicitudEstablecimientoService {
         nuevaSolicitudEstablecimiento.setPruebas(archivos);
 
         // 6. Guardar la solicitud en estado pendiente asociado al usuario
+        nuevaSolicitudEstablecimiento.setFechaHoraAlta(LocalDateTime.now());
         nuevaSolicitudEstablecimiento = this.solicitudEstablecimientoRepository.save(nuevaSolicitudEstablecimiento);
 
         // 6. Generar listado de urls para los archivos adjuntos
@@ -118,5 +122,26 @@ public class SolicitudEstablecimientoService {
         solicitudEstablecimientoCreateResp.setArchivoUploadResponses(archivoUploadResponses);
 
         return solicitudEstablecimientoCreateResp;
+    }
+
+    public List<SolicitudEstablecimientoShortDTO> obtenerSolicitudesPorUsuario(String emailUsuario) {
+        Usuario usuario = this.usuarioRepository.findActiveByEmail(emailUsuario)
+                .orElseThrow(() -> new UsuarioNotFound("No se pudo encontrar el usuario"));
+
+        List<SolicitudEstablecimiento> solicitudEstablecimientos = this.solicitudEstablecimientoRepository.findAllByUsuario(usuario);
+
+        return this.solicitudEstablecimientoMapper
+                .solicitudEstablecimientosToSolicitudEstablecimientoShortDTOs(solicitudEstablecimientos);
+    }
+
+    public SolicitudEstablecimientoDTO obtenerSolicitudPorUsuario(String emailUsuario, String solicitudId) {
+        Usuario usuario = this.usuarioRepository.findActiveByEmail(emailUsuario)
+                .orElseThrow(() -> new UsuarioNotFound("No se pudo encontrar el usuario"));
+
+        SolicitudEstablecimiento solicitudEstablecimiento = this.solicitudEstablecimientoRepository
+                .findByIdAndUsuario(UUID.fromString(solicitudId), usuario)
+                .orElseThrow(() -> new AppException(SolicitudEstablecimientoError.NOT_FOUND));
+
+        return this.solicitudEstablecimientoMapper.solicitudEstablecimientoToDTO(solicitudEstablecimiento);
     }
 }
