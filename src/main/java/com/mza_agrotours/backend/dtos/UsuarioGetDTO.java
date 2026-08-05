@@ -1,6 +1,5 @@
 package com.mza_agrotours.backend.dtos;
 
-import com.mza_agrotours.backend.enums.TipoPermisoNombre;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,5 +17,5 @@ public class UsuarioGetDTO {
     private String fechaNacimiento;
     private String identificacion;
     private String tipoIdentificacion;
-    private List<TipoPermisoNombre> tipoPermisos;
+    private List<AccesoDTO> accesos;
 }
