@@ -60,9 +60,6 @@ public class AdministradorSistemasService {
             throw new AppException(AdministradorSistemasError.ALREADY_EXISTS);
         }
 
-        // Te pensaste que iba a caer en esto silly boy,
-        // NO VAS A PONER ROLES DE OTROS TIPO PERMISOS
-        // Y NO VAS A AÑADIR A DOS ADMINISTRADORES LÍDERES
         Rol rolAdmin = this.rolRepository
                 .findByIdAndTipoPermiso_NombreAndFechaHoraBajaIsNullAndNombreIsNotContaining(
                         adminSistemasCreateReq.getRolId(),
@@ -70,21 +67,24 @@ public class AdministradorSistemasService {
                         RolProtegido.ADMIN_LIDER.getNombre())
                 .orElseThrow(() -> new AppException(AdministradorSistemasError.ROL_INVALIDO));
 
-        //TODO: no podemos añadir a otro administrador líder
-        // ...
         AdministradorSistemas administradorSistemas = new AdministradorSistemas();
         administradorSistemas.setUsuario(usuario);
         administradorSistemas.setRol(rolAdmin);
         administradorSistemas.setFechaHoraAlta(LocalDateTime.now());
         administradorSistemas = this.administradorSistemasRepository.save(administradorSistemas);
 
+        // TODO: entidad que diga quien hizo el cambio
         return this.administradorSistemasMapper.administradorSistemasToAdminSistemasGetDTO(administradorSistemas);
     }
 
-    public AdminSistemasGetDTO updateRolAdmin(UUID adminId, AdministradorSistemasUpdateReq administradorSistemasUpdateReq) {
+    public AdminSistemasGetDTO updateRolAdmin(UUID adminId,
+                                              AdministradorSistemasUpdateReq administradorSistemasUpdateReq,
+                                              String emailAdminEjecutor) {
         AdministradorSistemas administradorSistemas = this.administradorSistemasRepository
                 .findByIdAndFechaHoraBajaIsNull(adminId)
                 .orElseThrow(() -> new AppException(AdministradorSistemasError.NOT_FOUND));
+
+        validarNoEsAutoGestion(administradorSistemas.getUsuario().getEmail(), emailAdminEjecutor);
 
         if(administradorSistemas.getRol().getNombre().equals(RolProtegido.ADMIN_LIDER.getNombre())){
             throw new AppException(AdministradorSistemasError.LIDER_INMUTABLE);
@@ -101,20 +101,21 @@ public class AdministradorSistemasService {
 
         administradorSistemas.setRol(rolAdmin);
         administradorSistemas = this.administradorSistemasRepository.save(administradorSistemas);
-
+        // TODO: entidad que diga quien hizo el cambio
         return this.administradorSistemasMapper.administradorSistemasToAdminSistemasGetDTO(administradorSistemas);
     }
 
-    public boolean deleteAdmin(UUID adminId) {
+    public boolean deleteAdmin(UUID adminId, String emailAdminEjecutor) {
         AdministradorSistemas administradorSistemas = this.administradorSistemasRepository
                 .findByIdAndFechaHoraBajaIsNull(adminId)
                 .orElseThrow(() -> new AppException(AdministradorSistemasError.NOT_FOUND));
 
+        validarNoEsAutoGestion(administradorSistemas.getUsuario().getEmail(), emailAdminEjecutor);
+
         if (administradorSistemas.getRol().getNombre().equals(RolProtegido.ADMIN_LIDER.getNombre())) {
             throw new AppException(AdministradorSistemasError.LIDER_INMUTABLE);
         }
-
-        // Baja lógica: el registro se conserva y deja de ser vigente
+        // TODO: entidad que diga quien hizo el cambio
         administradorSistemas.setFechaHoraBaja(LocalDateTime.now());
         this.administradorSistemasRepository.save(administradorSistemas);
         return true;
@@ -126,6 +127,13 @@ public class AdministradorSistemasService {
                         TipoPermisoNombre.ADMIN,
                         RolProtegido.ADMIN_LIDER.getNombre());
         return this.rolMapper.rolListToRolGetShortDTOList(rolesAdmin);
+    }
+
+    // Nadie gestiona su propio rol de administrador: ni para escalarlo ni para darse de baja
+    private void validarNoEsAutoGestion(String emailUsuarioAfectado, String emailAdminEjecutor) {
+        if (emailUsuarioAfectado.equalsIgnoreCase(emailAdminEjecutor)) {
+            throw new AppException(AdministradorSistemasError.AUTO_GESTION_PROHIBIDA);
+        }
     }
 
 

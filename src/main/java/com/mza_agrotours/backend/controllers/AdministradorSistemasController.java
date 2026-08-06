@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
+import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
 import com.mza_agrotours.backend.dtos.administrador_sistemas.AdminSistemasCreateReq;
 import com.mza_agrotours.backend.dtos.administrador_sistemas.AdminSistemasGetDTO;
 import com.mza_agrotours.backend.dtos.administrador_sistemas.AdministradorSistemasUpdateReq;
@@ -8,6 +9,7 @@ import com.mza_agrotours.backend.dtos.roles_permisos.RolGetShortDTO;
 import com.mza_agrotours.backend.services.AdministradorSistemasService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,14 +39,18 @@ public class AdministradorSistemasController {
     @PutMapping("/update/{adminId}")
     public ResponseEntity<ApiResponse<AdminSistemasGetDTO>> updateRolAdmin(@PathVariable UUID adminId,
                                                                           @Valid
-                                                                          @RequestBody AdministradorSistemasUpdateReq administradorSistemasUpdateReq) {
-        return ResponseEntity.ok(
-                ApiResponse.ok(this.administradorSistemasService.updateRolAdmin(adminId, administradorSistemasUpdateReq)));
+                                                                          @RequestBody AdministradorSistemasUpdateReq administradorSistemasUpdateReq,
+                                                                          @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) {
+        String emailAdminEjecutor = usuarioAuthDetails.getEmail();
+        return ResponseEntity.ok(ApiResponse.ok(
+                this.administradorSistemasService.updateRolAdmin(adminId, administradorSistemasUpdateReq, emailAdminEjecutor)));
     }
 
     @DeleteMapping("/{adminId}")
-    public ResponseEntity<ApiResponse<Boolean>> deleteAdmin(@PathVariable UUID adminId) {
-        boolean fueEliminado = this.administradorSistemasService.deleteAdmin(adminId);
+    public ResponseEntity<ApiResponse<Boolean>> deleteAdmin(@PathVariable UUID adminId,
+                                                            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) {
+        String emailAdminEjecutor = usuarioAuthDetails.getEmail();
+        boolean fueEliminado = this.administradorSistemasService.deleteAdmin(adminId, emailAdminEjecutor);
         // Si la baja falla, el servicio lanza AppException y nunca llegamos acá
         return ResponseEntity.ok(ApiResponse.ok(fueEliminado));
     }
