@@ -20,7 +20,7 @@ public interface ReservaMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "nombre", source = "dto.nombreApellido")
     @Mapping(target = "identificacion", source = "dto.identificacion")
-    @Mapping(target = "tipoIdentificacion", source = "tipoIdentificacion")
+    @Mapping(target = "tipoIdentificacion", source = "tipoId")
     @Mapping(target = "fechaNacimiento", source = "dto.fechaNacimiento")
     @Mapping(target = "renglon", source = "renglon")
     @Mapping(target = "actividadRangoEtario", source = "are")

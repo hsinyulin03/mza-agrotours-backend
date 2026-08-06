@@ -92,4 +92,8 @@ public class ArchivoService {
 
         return filename.substring(filename.lastIndexOf(".") + 1);
     }
+
+    public String getDownloadUrl(String key) {
+        return objectStorageProvider.generateDownloadUrl(key);
+    }
 }

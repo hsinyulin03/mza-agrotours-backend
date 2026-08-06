@@ -3,7 +3,6 @@ package com.mza_agrotours.backend.mappers;
 import com.mza_agrotours.backend.dtos.actividad.*;
 import com.mza_agrotours.backend.dtos.reservas.RangoEtarioReservaDTO;
 import com.mza_agrotours.backend.entities.actividad.*;
-import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -15,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Slf4j
+
 @Mapper(componentModel = "spring")
 public interface ActividadMapper {
     // US-ACT-02
@@ -58,6 +57,7 @@ public interface ActividadMapper {
     @Mapping(target = "faqs", ignore = true)
     @Mapping(target = "rangosEtarios", ignore = true)
     @Mapping(target = "cultivos", ignore = true)
+    @Mapping(source = "fotos", target = "fotosGuardadas")
     DTOActividadGetResponse actividadToDTOActividadGetResponse(Actividad actividad);
 
     //US-RESE-01
@@ -131,18 +131,6 @@ public interface ActividadMapper {
         dto.setFaqs(faqs);
         dto.setRangosEtarios(tarifas);
         dto.setCultivos(cultivosAsociados);
-    }
-    @AfterMapping
-    public void llenarListasGetResponse(Actividad actividad, @MappingTarget DTOActividadGetResponse dto) {
-        List<String> incluye = obtenerInclusiones(actividad.getInclusiones(), true);
-        List<String> noIncluye = obtenerInclusiones(actividad.getInclusiones(), false);
-        List<DTOFaqResponse> faqs = obtenerFaqs(actividad.getFaqs());
-        List<DTOTarifaResponse> tarifas = obtenerTarifas(actividad.getActividadRangoEtarios());
-
-        dto.setIncluye(incluye);
-        dto.setNoIncluye(noIncluye);
-        dto.setFaqs(faqs);
-        dto.setRangosEtarios(tarifas);
     }
 
 
