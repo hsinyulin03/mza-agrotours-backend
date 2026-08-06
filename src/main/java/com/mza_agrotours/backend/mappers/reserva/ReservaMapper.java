@@ -1,8 +1,5 @@
 package com.mza_agrotours.backend.mappers.reserva;
 
-import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDTO;
-import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDetalleDTO;
-import com.mza_agrotours.backend.dtos.reservas.ListarReservaDTO;
 import com.mza_agrotours.backend.dtos.reservas.*;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
@@ -11,8 +8,6 @@ import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-
-import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface ReservaMapper {
@@ -25,7 +20,7 @@ public interface ReservaMapper {
     @Mapping(target = "renglon", source = "renglon")
     @Mapping(target = "actividadRangoEtario", source = "are")
     @Mapping(target = "subtotal", source = "are.precio")
-    ReservaDetalle DTOtoReservaDetalle(RealizarReservaDetalleDTO dto, TipoIdentificacion tipoId, Integer renglon, ActividadRangoEtario are);
+    ReservaDetalle DTOtoReservaDetalle(RealizarReservaDetalleDTO dto, TipoIdentificacion tipoIdentificacion, Integer renglon, ActividadRangoEtario are);
 
     // US RESE-04
     @Mapping(target = "idReserva", source = "reserva.id")

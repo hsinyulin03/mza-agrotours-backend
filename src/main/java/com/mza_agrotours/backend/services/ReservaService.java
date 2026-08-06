@@ -1,13 +1,11 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.reservas.*;
-import com.mza_agrotours.backend.entities.*;
+import com.mza_agrotours.backend.entities.TipoIdentificacion;
+import com.mza_agrotours.backend.entities.TipoIdentificacionNombre;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
-import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDTO;
-import com.mza_agrotours.backend.dtos.reservas.EstablecimientoPorActividad;
-import com.mza_agrotours.backend.dtos.reservas.ListarReservaDTO;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
@@ -38,10 +36,6 @@ import com.mza_agrotours.backend.services.pago.EstrategiaPagoFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
-import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
-import com.mza_agrotours.backend.repositories.ReservaRepository;
-import com.mza_agrotours.backend.repositories.UsuarioRepository;
-import com.mza_agrotours.backend.repositories.VisitanteRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
