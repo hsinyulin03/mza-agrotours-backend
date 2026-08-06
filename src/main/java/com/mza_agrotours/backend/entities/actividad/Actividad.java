@@ -1,6 +1,8 @@
 package com.mza_agrotours.backend.entities.actividad;
 
 import com.mza_agrotours.backend.entities.*;
+import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
+import com.mza_agrotours.backend.entities.receta.Receta;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import jakarta.persistence.*;
 import lombok.*;
@@ -28,7 +30,8 @@ public class Actividad extends BaseEntity {
     @Column(name = "fecha_hora_baja_act")
     private LocalDateTime fechaHoraBaja;
 
-    //TODO: No estoy segura de esta relación, por cómo está no guardo un historial, solo sé el estado que está actualmente
+    private Float calificacionPromedio;
+
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "estado_id", nullable = false)
     private EstadoActividad estado;
@@ -38,6 +41,14 @@ public class Actividad extends BaseEntity {
     /*@ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "establecimiento_id", nullable = false)
     private Establecimiento establecimiento;*/
+
+    @ManyToMany
+    @JoinTable(
+            name = "actividad_tipo_cultivo",
+            joinColumns = @JoinColumn(name = "actividad_id"),
+            inverseJoinColumns = @JoinColumn(name = "tipo_cultivo_id")
+    )
+    private List<TipoCultivo> cultivos = new ArrayList<>();
 
     // Paso 2: Inclusiones y FAQs
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)

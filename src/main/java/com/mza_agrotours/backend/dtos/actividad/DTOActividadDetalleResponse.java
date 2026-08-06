@@ -15,6 +15,7 @@ public class DTOActividadDetalleResponse {
     //Informacion General
     private String nombre;
     private Integer cuposMax;
+    private List<DTOCultivoResponse> cultivos;
 
     //Sobre la experiencia
     private String descripcion;
