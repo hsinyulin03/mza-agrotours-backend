@@ -5,7 +5,6 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
-import com.mza_agrotours.backend.entities.roles_permisos.Permiso;
 import com.mza_agrotours.backend.services.RolService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -56,14 +55,9 @@ public class FirebaseTokenFilter extends OncePerRequestFilter {
     }
 
     private List<SimpleGrantedAuthority> getAdminAuthorities(String email) {
-        try {
-            List<Permiso> permisosEmail = this.rolService.obtenerPermisosAdminPorEmail(email);
-            return permisosEmail
-                    .stream()
-                    .map((p) -> new SimpleGrantedAuthority(p.getNombre().name()))
-                    .toList();
-        } catch (Exception e) {
-            return List.of();
-        }
+        return this.rolService
+                .obtenerPermisosAdminPorEmail(email)
+                .stream()
+                .map(p -> new SimpleGrantedAuthority(p.name())).toList();
     }
 }
