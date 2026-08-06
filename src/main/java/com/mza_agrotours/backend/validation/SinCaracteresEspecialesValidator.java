@@ -5,8 +5,8 @@ import jakarta.validation.ConstraintValidatorContext;
 
 public class SinCaracteresEspecialesValidator implements ConstraintValidator<SinCaracteresEspeciales, String> {
 
-    // Expresión regular: Letras, números, acentos, la ñ y espacios.
-    private static final String REGEX = "^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]*$";
+    // Expresión regular: Letras, números, acentos, la ñ, espacios, guion bajo y guion medio.
+    private static final String REGEX = "^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ _-]*$";
 
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
