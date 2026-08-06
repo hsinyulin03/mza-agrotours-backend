@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.entities;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -18,7 +19,6 @@ public class Visitante extends BaseEntity {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
-    @OneToOne(optional = false)
-    @JoinColumn(name = "pais_id", nullable = false)
+    @ManyToOne(optional = false)
     private Pais pais;
 }
