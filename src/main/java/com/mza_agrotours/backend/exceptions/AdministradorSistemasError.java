@@ -19,8 +19,11 @@ public enum AdministradorSistemasError implements ErrorCode {
             HttpStatus.BAD_REQUEST,
             "El rol no es un rol de administrador asignable"),
     LIDER_INMUTABLE("AS.lider",
-            HttpStatus.BAD_REQUEST,
-            "No se puede mutar el estado de un administrador líder")
+            HttpStatus.FORBIDDEN,
+            "No se puede mutar el estado de un administrador líder"),
+    AUTO_GESTION_PROHIBIDA("AS.autoGestion",
+            HttpStatus.FORBIDDEN,
+            "No se puede gestionar el propio rol de administrador")
     ;
     private final String code;
     private final HttpStatus httpStatus;
