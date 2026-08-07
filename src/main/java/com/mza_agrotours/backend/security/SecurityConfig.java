@@ -35,9 +35,17 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Administradores
                         .requestMatchers("/administradores-sistemas/").hasAuthority(PermisoNombre.LEER_ADMIN.name())
                         .requestMatchers("/administradores-sistemas/**").hasAuthority(PermisoNombre.GESTIONAR_ADMIN.name())
+
+                        // Usuario
                         .requestMatchers("/usuario/**").authenticated()
+
+                        // Solicitudes
+                        .requestMatchers("/solicitudes-establecimiento/me/**").authenticated()
+                        .requestMatchers("/solicitudes-establecimiento/").hasAuthority(PermisoNombre.LEER_SOLICITUD_ESTABLECIMIENTO.name())
+                        .requestMatchers("/solicitudes-establecimiento/observar/**").hasAuthority(PermisoNombre.GESTIONAR_SOLICITUD_ESTABLECIMIENTO.name())
                         .anyRequest().authenticated())
                 .addFilterBefore(firebaseTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
