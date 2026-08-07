@@ -170,6 +170,22 @@ public class RecetaService {
         response.setMensaje("Se eliminó la receta " + receta.getNombre() + " del catágolo de recetas.");
         return response;
     }
+    // CONSULTAR CATÁLOGO DE RECETAS
+    public DTOCatalogoReceta consultarCatalogoRecetas() {
+        List<Receta> recetas = recetaRepository.findAllByFechaHoraBajaIsNull();
+
+        List<DTORecetaListado> listado = recetas.stream()
+                .map(this::mapearAListado)
+                .toList();
+
+        DTOCatalogoReceta catalogo = new DTOCatalogoReceta();
+        catalogo.setTotalRecetas(listado.size());
+        catalogo.setCultivosConReceta((int) tipoCultivoRepository.contarCultivosConRecetaActiva());
+        catalogo.setRecetas(listado);
+
+        return catalogo;
+    }
+
 
 
 
@@ -241,6 +257,17 @@ public class RecetaService {
                 .ifPresent(existente -> {
                     throw new EntityAlreadyExistsException("Ya existe una receta con ese nombre");
                 });
+    }
+    // CONSULTAR CATÁLOGO RECETAS
+    private DTORecetaListado mapearAListado(Receta receta) {
+        DTORecetaListado dto = recetaMapper.recetaToDtoListado(receta);
+
+        dto.setNombresCultivos(tipoCultivoRepository.findByRecetasId(receta.getId()).stream()
+                .map(TipoCultivo::getNombre)
+                .toList());
+        dto.setCantidadPasos(receta.getPasos().size());
+
+        return dto;
     }
 
 

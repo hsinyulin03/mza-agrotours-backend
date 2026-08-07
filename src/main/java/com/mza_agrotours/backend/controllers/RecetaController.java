@@ -1,10 +1,7 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
-import com.mza_agrotours.backend.dtos.receta.DTORecetaAM;
-import com.mza_agrotours.backend.dtos.receta.DTORecetaAMResponse;
-import com.mza_agrotours.backend.dtos.receta.DTORecetaDetalleM;
-import com.mza_agrotours.backend.dtos.receta.DTORectaBResponse;
+import com.mza_agrotours.backend.dtos.receta.*;
 import com.mza_agrotours.backend.services.RecetaService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +43,11 @@ public class RecetaController {
     public ResponseEntity<ApiResponse<DTORectaBResponse>> bajaReceta(
             @PathVariable UUID id) {
         DTORectaBResponse resultado = recetaService.bajaReceta(id);
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(resultado));
+    }
+    @GetMapping
+    public ResponseEntity<ApiResponse<DTOCatalogoReceta>> consultarCatalogoRecetas() {
+        DTOCatalogoReceta resultado = recetaService.consultarCatalogoRecetas();
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(resultado));
     }
 }

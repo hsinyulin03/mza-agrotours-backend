@@ -4,6 +4,7 @@ import com.mza_agrotours.backend.entities.receta.Receta;
 import com.mza_agrotours.backend.repositories.BaseEntityRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,4 +16,6 @@ public interface RecetaRepository extends BaseEntityRepository<Receta, UUID> {
 
     Optional<Receta> findByIdAndFechaHoraBajaIsNull(UUID id);
     Optional<Receta> findByNombreIgnoreCaseAndFechaHoraBajaIsNull(String nombre);
+
+    List<Receta> findAllByFechaHoraBajaIsNull();
 }
