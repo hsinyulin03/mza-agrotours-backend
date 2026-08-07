@@ -7,6 +7,7 @@ import com.mza_agrotours.backend.entities.AdministradorSistemas;
 import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.Usuario;
+import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolicitudEstablecimiento;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolicitudEstablecimientoNombre;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimiento;
@@ -163,6 +164,7 @@ public class SolicitudEstablecimientoService {
         return this.solicitudEstablecimientoMapper.solicitudEstablecimientoToDTO(solicitudEstablecimiento);
     }
 
+    @Transactional
     public SolicitudEstablecimientoDTO observarSolicitud(String emailObservador,
                                                         String solicitudId,
                                                         ObservacionSolicitudDTO observacionSolicitudDTO) {
@@ -182,6 +184,14 @@ public class SolicitudEstablecimientoService {
 
         solicitudEstablecimiento.getEstados().add(nuevaSolicitudEstadoEstablecimiento);
         solicitudEstablecimiento.setEstadoActual(nuevaSolicitudEstadoEstablecimiento);
+
+
+        if (solicitudFueValidada(solicitudEstablecimiento)) {
+            Establecimiento nuevoEstablecimiento = this.obtenerNuevoEstablecimientoPorSolicitud(solicitudEstablecimiento);
+            nuevoEstablecimiento = this.establecimientoRepository.save(nuevoEstablecimiento);
+
+            solicitudEstablecimiento.setEstablecimientoCreado(nuevoEstablecimiento);
+        }
 
         solicitudEstablecimiento = this.solicitudEstablecimientoRepository.save(solicitudEstablecimiento);
 
@@ -207,5 +217,17 @@ public class SolicitudEstablecimientoService {
         return this.administradorSistemasRepository
                 .findByUsuarioAndFechaHoraBajaIsNull(usuarioAdmin)
                 .orElseThrow(() -> new AppException(AdministradorSistemasError.NOT_FOUND));
+    }
+
+    private boolean solicitudFueValidada(SolicitudEstablecimiento solicitudEstablecimiento) {
+        return solicitudEstablecimiento.getEstadoActual()
+                .getEstadoSolicitudEstablecimiento()
+                .getNombre()
+                .equals(EstadoSolicitudEstablecimientoNombre.VALIDADA);
+    }
+
+    private Establecimiento obtenerNuevoEstablecimientoPorSolicitud(SolicitudEstablecimiento solicitudEstablecimiento) {
+        return this.solicitudEstablecimientoMapper
+                .solicitudEstablecimientoToEstablecimiento(solicitudEstablecimiento);
     }
 }

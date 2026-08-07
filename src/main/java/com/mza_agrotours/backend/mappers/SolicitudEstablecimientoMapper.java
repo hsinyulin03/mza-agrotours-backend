@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.mappers;
 
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.*;
 import com.mza_agrotours.backend.entities.Archivo;
+import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimiento;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimientoEstado;
 import org.mapstruct.Mapper;
@@ -40,4 +41,10 @@ public interface SolicitudEstablecimientoMapper {
     SolicitudEstablecimientoEstadoDTO solicitudEstablecimientoEstadoToDTO(SolicitudEstablecimientoEstado solicitudEstablecimientoEstado);
 
     SolicitudEstablecimientoPruebaDTO archivoToPruebaDTO(Archivo archivo);
+
+    @Mapping(target = "nombre", source = "nombreEstablecimiento")
+    @Mapping(target = "ubicacion", source = "domicilioLegal")
+    @Mapping(target = "estados", ignore = true)
+    @Mapping(target = "estadoActual", ignore = true)
+    Establecimiento solicitudEstablecimientoToEstablecimiento(SolicitudEstablecimiento solicitudEstablecimiento);
 }
