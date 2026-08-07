@@ -47,6 +47,11 @@ public class SolicitudEstablecimientoController {
         return ResponseEntity.ok().body(ApiResponse.ok(solicitudEstablecimientoService.obtenerSolicitudPorUsuario(emailUsuario, solicitudId)));
     }
 
+    @GetMapping("/")
+    public ResponseEntity<?> obtenerTodasLasSolicitudes() {
+        return ResponseEntity.ok().body(ApiResponse.ok(solicitudEstablecimientoService.obtenerTodasLasSolicitudes()));
+    }
+
     @PostMapping("/observar/{solicitudId}")
     public ResponseEntity<?> observarSolicitud(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails,
                                                @UUID @PathVariable String solicitudId,

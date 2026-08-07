@@ -2,10 +2,7 @@ package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.ObservacionSolicitudDTO;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
-import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateReq;
-import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateResp;
-import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoDTO;
-import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoShortDTO;
+import com.mza_agrotours.backend.dtos.solicitud_establecimiento.*;
 import com.mza_agrotours.backend.entities.AdministradorSistemas;
 import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.Departamento;
@@ -129,7 +126,7 @@ public class SolicitudEstablecimientoService {
         return solicitudEstablecimientoCreateResp;
     }
 
-    public List<SolicitudEstablecimientoShortDTO> obtenerSolicitudesPorUsuario(String emailUsuario) {
+    public List<SolicitudEstablecimientoUserShotDTO> obtenerSolicitudesPorUsuario(String emailUsuario) {
         Usuario usuario = this.usuarioRepository.findActiveByEmail(emailUsuario)
                 .orElseThrow(UsuarioNotFound::new);
 
@@ -148,6 +145,14 @@ public class SolicitudEstablecimientoService {
                 .orElseThrow(() -> new AppException(SolicitudEstablecimientoError.NOT_FOUND));
 
         return this.solicitudEstablecimientoMapper.solicitudEstablecimientoToDTO(solicitudEstablecimiento);
+    }
+
+    public List<SolicitudEstablecimientoShortDTO> obtenerTodasLasSolicitudes() {
+        List<SolicitudEstablecimiento> solicitudesPendientes = this.solicitudEstablecimientoRepository
+                .findAll();
+
+        return this.solicitudEstablecimientoMapper
+                .solicitudEstablecimientoToShortDTOs(solicitudesPendientes);
     }
 
     public SolicitudEstablecimientoDTO observarSolicitud(String emailObservador,
