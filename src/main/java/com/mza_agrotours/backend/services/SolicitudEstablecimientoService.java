@@ -155,6 +155,14 @@ public class SolicitudEstablecimientoService {
                 .solicitudEstablecimientoToShortDTOs(solicitudesPendientes);
     }
 
+    public SolicitudEstablecimientoDTO obtenerSolicitudPorId(String id) {
+        SolicitudEstablecimiento solicitudEstablecimiento = this.solicitudEstablecimientoRepository
+                .findById(UUID.fromString(id))
+                .orElseThrow(() -> new AppException(SolicitudEstablecimientoError.NOT_FOUND));
+
+        return this.solicitudEstablecimientoMapper.solicitudEstablecimientoToDTO(solicitudEstablecimiento);
+    }
+
     public SolicitudEstablecimientoDTO observarSolicitud(String emailObservador,
                                                         String solicitudId,
                                                         ObservacionSolicitudDTO observacionSolicitudDTO) {
