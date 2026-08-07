@@ -14,6 +14,4 @@ import java.util.UUID;
 public interface UsuarioRepository extends BaseEntityRepository<Usuario, UUID>{
     @Query("select u from Usuario u where lower(u.email) = lower(:email) and u.fechaHoraBaja is null")
     Optional<Usuario> findActiveByEmail(@Param("email") String email);
-
-    String email(String email);
 }
