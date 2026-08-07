@@ -1,9 +1,6 @@
 package com.mza_agrotours.backend.services;
+import com.mza_agrotours.backend.dtos.receta.*;
 import com.mza_agrotours.backend.mappers.RectaMapper;
-import com.mza_agrotours.backend.dtos.receta.DTORecetaAM;
-import com.mza_agrotours.backend.dtos.receta.DTORecetaAMResponse;
-import com.mza_agrotours.backend.dtos.receta.DTORecetaDetalleCultivoM;
-import com.mza_agrotours.backend.dtos.receta.DTORecetaDetalleM;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.receta.Duracion;
 import com.mza_agrotours.backend.entities.receta.Ingrediente;
@@ -19,6 +16,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -161,6 +159,17 @@ public class RecetaService {
         response.setMensaje("Se guardaron los cambios de la receta " + guardada.getNombre() + ".");
         return response;
     }
+    // BAJA RECETA
+    @Transactional
+    public DTORectaBResponse bajaReceta(UUID id) {
+        Receta receta = obtenerReceta(id);
+        receta.setFechaHoraBaja(LocalDateTime.now());
+        recetaRepository.save(receta);
+        DTORectaBResponse response = new DTORectaBResponse();
+        response.setIdReceta(receta.getId());
+        response.setMensaje("Se eliminó la receta " + receta.getNombre() + " del catágolo de recetas.");
+        return response;
+    }
 
 
 
@@ -233,5 +242,6 @@ public class RecetaService {
                     throw new EntityAlreadyExistsException("Ya existe una receta con ese nombre");
                 });
     }
+
 
 }
