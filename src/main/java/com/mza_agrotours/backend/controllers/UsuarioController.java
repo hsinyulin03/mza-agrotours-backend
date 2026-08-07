@@ -1,7 +1,6 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.*;
-import com.mza_agrotours.backend.exceptions.UserDeleteConditionNotMetException;
 import com.mza_agrotours.backend.services.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -49,10 +48,6 @@ public class UsuarioController {
     public ResponseEntity<?> getCondicionesDeleteUsuarioMeByEmail(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) throws Exception {
         String email = usuarioAuthDetails.getEmail();
         List<CondicionDTO> condiciones = this.usuarioService.getCondicionesDeleteUsuario(email);
-        if (!condiciones.isEmpty()) {
-            throw new UserDeleteConditionNotMetException("No se puede eliminar el usuario", condiciones);
-        }
-
         return ResponseEntity.ok(ApiResponse.ok(condiciones));
     }
 
@@ -61,5 +56,12 @@ public class UsuarioController {
         String email = usuarioAuthDetails.getEmail();
         boolean res = this.usuarioService.deleteUsuarioByEmail(email);
         return ResponseEntity.ok(ApiResponse.ok(res));
+    }
+
+    // TODO: check, mepa que en su lugar habría que pedirleselo por body
+    @GetMapping("/card/{email}")
+    public ResponseEntity<?> getCardUsuarioByEmail(@PathVariable String email) {
+        UsuarioCardDTO usuarioCardDTO = this.usuarioService.getUsuarioCardByEmail(email);
+        return ResponseEntity.ok(ApiResponse.ok(usuarioCardDTO));
     }
 }

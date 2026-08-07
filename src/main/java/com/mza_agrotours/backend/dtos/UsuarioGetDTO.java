@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -15,4 +17,5 @@ public class UsuarioGetDTO {
     private String fechaNacimiento;
     private String identificacion;
     private String tipoIdentificacion;
+    private List<AccesoDTO> accesos;
 }
