@@ -39,6 +39,10 @@ public class SecurityConfig {
                         .requestMatchers("/administradores-sistemas/").hasAuthority(PermisoNombre.LEER_ADMIN.name())
                         .requestMatchers("/administradores-sistemas/**").hasAuthority(PermisoNombre.GESTIONAR_ADMIN.name())
 
+                        // Pais y departamento
+                        .requestMatchers("/paises/**").permitAll()
+                        .requestMatchers("/departamentos/**").permitAll()
+
                         // Usuario
                         .requestMatchers("/usuario/**").authenticated()
 
