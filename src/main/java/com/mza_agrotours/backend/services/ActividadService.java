@@ -139,9 +139,8 @@ public class ActividadService {
 
     //US-ACT-02:  Consultar detalle de una actividad
     @Transactional(readOnly = true)
-    public DTOActividadDetalleResponse obtenerDetallePorId(UUID id) {
-        Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + id));
+    public DTOActividadDetalleResponse obtenerDetallePorId(UUID idActividad) {
+        Actividad actividad = obtenerActividad(idActividad);
         DTOActividadDetalleResponse response = actividadMapper.actividadToDTOActividadDetalle(actividad);
         response.setFotos(obtenerUrlsDeDescarga(response.getFotos()));
         return response;
@@ -160,17 +159,16 @@ public class ActividadService {
 
     //US-ACT-07: Consultar todos los días disponibles para una actividad
     @Transactional(readOnly = true)
-    public DTOCalendarioActividadDiaResponse obtenerDetalleCalendario(UUID actividadId, int mes, int anio){
+    public DTOCalendarioActividadDiaResponse obtenerDetalleCalendario(UUID idActividad, int mes, int anio){
 
-        Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(actividadId)
-                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + actividadId));
+        Actividad actividad = obtenerActividad(idActividad);
         int anioActual = java.time.LocalDate.now().getYear();
 
         if (anio < anioActual) {
             throw new ValidacionNegocioException("El año no puede ser menor al año actual (" + anioActual + ")");
         }
 
-        LocalDateTime ultimaFechaConDisponibilidad = actividadRepository.findUltimaFechaByActividadId(actividadId)
+        LocalDateTime ultimaFechaConDisponibilidad = actividadRepository.findUltimaFechaByActividadId(idActividad)
                 .orElseThrow(() -> new ValidacionNegocioException("La actividad no tiene días programados"));
 
 
@@ -230,8 +228,7 @@ public class ActividadService {
     @Transactional
     public DTOActividadGetResponse modificarActividad(UUID idActividad, DTOActividadUpdate dto) {
 
-        Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(idActividad)
-                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
+        Actividad actividad = obtenerActividad(idActividad);
 
         List<String> errores = actividadValidaciones.obtenerErroresValidacionModificacion(idActividad, dto);
 
@@ -300,8 +297,7 @@ public class ActividadService {
     }
     @Transactional(readOnly = true)
     public DTOActividadGetResponse obtenerActividadPorId(UUID idActividad) {
-        Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(idActividad)
-                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
+        Actividad actividad = obtenerActividad(idActividad);
         DTOActividadGetResponse response = actividadMapper.actividadToDTOActividadGetResponse(actividad);
 
         response.setFotosGuardadas(obtenerUrlsDeDescarga(response.getFotosGuardadas()));
@@ -630,6 +626,10 @@ public class ActividadService {
             );
         }
         return fotos; // Retornamos la misma lista, pero con las URLs cargadas
+    }
+    private Actividad obtenerActividad(UUID idActividad){
+        return actividadRepository.findByIdAndFechaHoraBajaIsNull(idActividad)
+                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
     }
 
 
