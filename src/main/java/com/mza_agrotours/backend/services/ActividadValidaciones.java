@@ -175,7 +175,7 @@ public class ActividadValidaciones {
             return errores;
         }
         //TODO-  confiamos lo que envía el usuario en fileSize, pero cuando hace el PUT de la imagen permitimos hasta 10MB
-        long maxSizeActividad = 5 * 1024 * 1024; //5MB
+        long maxSizeActividad = 5L * 1024 * 1024; //5MB
         for (ArchivoUploadRequest foto : fotosNuevas) {
             if (foto.getFileSize() > maxSizeActividad) {
                 errores.add("La imagen '" + foto.getFilename() + "' supera el límite permitido de 5MB.");
