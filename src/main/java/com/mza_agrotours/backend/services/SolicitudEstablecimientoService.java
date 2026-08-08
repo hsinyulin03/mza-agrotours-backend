@@ -193,6 +193,7 @@ public class SolicitudEstablecimientoService {
 
 
         if (solicitudFueValidada(solicitudEstablecimiento)) {
+            // TODO: validar si existen otros je
             Establecimiento nuevoEstablecimiento = this.establecimientoService.crearEstablecimiento(
                     this.solicitudEstablecimientoMapper
                             .solicitudEstablecimientoToEstablecimiento(solicitudEstablecimiento),
