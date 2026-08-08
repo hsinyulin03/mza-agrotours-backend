@@ -166,7 +166,7 @@ public class SolicitudEstablecimientoService {
         SolicitudEstablecimiento solicitudEstablecimiento = this.solicitudEstablecimientoRepository
                 .findById(UUID.fromString(id))
                 .orElseThrow(() -> new AppException(SolicitudEstablecimientoError.NOT_FOUND));
-
+        // TODO: mandarle datos del solicitante
         return this.solicitudEstablecimientoMapper.solicitudEstablecimientoToDTO(solicitudEstablecimiento);
     }
 
