@@ -13,7 +13,6 @@ public class DTORecetaDetalleM {
     private String nombre;
     private List<DTORecetaDetalleCultivoM> cultivos;
     private Dificultad dificultad;
-    private DuracionNombre duracion;
     private Integer tiempoMinsAprox;
     private Integer porciones;
     private String descripcion;
