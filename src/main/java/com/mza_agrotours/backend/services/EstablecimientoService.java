@@ -2,11 +2,11 @@ package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.establecimiento.*;
 import com.mza_agrotours.backend.entities.Departamento;
-import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
-import com.mza_agrotours.backend.entities.establecimiento.EstadoEstablecimiento;
+import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.establecimiento.EstablecimientoEstado;
+import com.mza_agrotours.backend.entities.establecimiento.EstadoEstablecimiento;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
 import com.mza_agrotours.backend.exceptions.EntityAlreadyExistsException;
@@ -14,9 +14,9 @@ import com.mza_agrotours.backend.exceptions.EntityNotFoundException;
 import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
 import com.mza_agrotours.backend.mappers.EstablecimientoMapper;
 import com.mza_agrotours.backend.repositories.DepartamentoRepository;
-import com.mza_agrotours.backend.repositories.EstadoEstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.EstablecimientoEstadoRepository;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
+import com.mza_agrotours.backend.repositories.EstadoEstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,11 +60,25 @@ public class EstablecimientoService  {
         Establecimiento establecimiento = establecimientoMapper.dtoEstablecimientoAltaToEstablecimiento(dto);
         establecimiento.setDepartamento(departamento);
         establecimiento.setTiposCultivos(cultivos);
-        EstablecimientoEstado estadoInicial = crearEstadoInicial();
-        establecimiento.getEstados().add(estadoInicial);
-        establecimiento.setEstadoActual(estadoInicial);
-        establecimientoRepository.save(establecimiento);
+
+        establecimiento = crearEstablecimiento(establecimiento, "Alta de establecimiento");
+
         return mapearADatosEstablecimiento(establecimiento);
+    }
+
+    /**
+     * Completa un Establecimiento recien construido (aun sin persistir) con su estado inicial
+     * ACTIVO y lo guarda. Es el unico punto de nacimiento de un Establecimiento: lo usan tanto
+     * el alta directa como la validacion de una SolicitudEstablecimiento, de modo que ningun
+     * establecimiento pueda quedar sin estado.
+     */
+    @Transactional
+    public Establecimiento crearEstablecimiento(Establecimiento nuevoEstablecimiento, String motivoAlta) {
+        EstablecimientoEstado estadoInicial = crearEstadoInicial(motivoAlta);
+        nuevoEstablecimiento.getEstados().add(estadoInicial);
+        nuevoEstablecimiento.setEstadoActual(estadoInicial);
+
+        return establecimientoRepository.save(nuevoEstablecimiento);
     }
 
     // Obtener datos establecimiento (panel productor)
@@ -184,7 +198,7 @@ public class EstablecimientoService  {
         return cultivos;
     }
 
-    private EstablecimientoEstado crearEstadoInicial() {
+    private EstablecimientoEstado crearEstadoInicial(String motivo) {
         EstadoEstablecimiento estadoActivo = estadoEstablecimientoRepository
                 .findByNombreAndFechaBajaIsNull(EstadoEstablecimientoNombre.ACTIVO)
                 .orElseThrow(() -> new ValidacionNegocioException("No se encuentra configurado el estado ACTIVO"));
@@ -192,7 +206,7 @@ public class EstablecimientoService  {
         EstablecimientoEstado estadoInicial = new EstablecimientoEstado();
         estadoInicial.setFechaInicio(LocalDateTime.now());
         estadoInicial.setFechaFin(null);
-        estadoInicial.setMotivo("Alta de establecimiento");
+        estadoInicial.setMotivo(motivo);
         estadoInicial.setEstadoEstablecimiento(estadoActivo);
         return estadoInicial;
     }

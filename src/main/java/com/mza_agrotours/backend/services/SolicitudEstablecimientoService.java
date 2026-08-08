@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.ObservacionSolicitudDTO;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
+import com.mza_agrotours.backend.dtos.productor.Productor;
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.*;
 import com.mza_agrotours.backend.entities.AdministradorSistemas;
 import com.mza_agrotours.backend.entities.Archivo;
@@ -36,6 +37,8 @@ public class SolicitudEstablecimientoService {
     private final ArchivoService archivoService;
     private final ArchivoMapper archivoMapper;
     private final AdministradorSistemasRepository administradorSistemasRepository;
+    private final ProductorService productorService;
+    private final EstablecimientoService establecimientoService;
 
     public SolicitudEstablecimientoService(SolicitudEstablecimientoRepository solicitudEstablecimientoRepository,
                                            SolicitudEstablecimientoMapper solicitudEstablecimientoMapper,
@@ -45,7 +48,9 @@ public class SolicitudEstablecimientoService {
                                            EstablecimientoRepository establecimientoRepository,
                                            ArchivoService archivoService,
                                            ArchivoMapper archivoMapper,
-                                           AdministradorSistemasRepository administradorSistemasRepository) {
+                                           AdministradorSistemasRepository administradorSistemasRepository,
+                                           ProductorService productorService,
+                                           EstablecimientoService establecimientoService) {
         this.solicitudEstablecimientoRepository = solicitudEstablecimientoRepository;
         this.solicitudEstablecimientoMapper = solicitudEstablecimientoMapper;
         this.estadoSolicitudEstablecimientoRepository = estadoSolicitudEstablecimientoRepository;
@@ -55,13 +60,14 @@ public class SolicitudEstablecimientoService {
         this.archivoService = archivoService;
         this.archivoMapper = archivoMapper;
         this.administradorSistemasRepository = administradorSistemasRepository;
+        this.productorService = productorService;
+        this.establecimientoService = establecimientoService;
     }
 
     @Transactional
     public SolicitudEstablecimientoCreateResp crearSolicitudEstablecimiento(
             SolicitudEstablecimientoCreateReq solicitudEstablecimientoCreateReq,
-            String emailUsuario)
-            throws Exception {
+            String emailUsuario) {
         // -1. Encontrar si existen establecimientos vigentes con el cuit de la solicitud
         if (establecimientoRepository.existsByCuitAndFechaHoraBajaIsNull(solicitudEstablecimientoCreateReq.getCuit())) {
             throw new AppException(SolicitudEstablecimientoError.ESTABLECIMIENTO_ALREADY_EXISTS);
@@ -187,9 +193,15 @@ public class SolicitudEstablecimientoService {
 
 
         if (solicitudFueValidada(solicitudEstablecimiento)) {
-            Establecimiento nuevoEstablecimiento = this.obtenerNuevoEstablecimientoPorSolicitud(solicitudEstablecimiento);
-            nuevoEstablecimiento = this.establecimientoRepository.save(nuevoEstablecimiento);
+            Establecimiento nuevoEstablecimiento = this.establecimientoService.crearEstablecimiento(
+                    this.solicitudEstablecimientoMapper
+                            .solicitudEstablecimientoToEstablecimiento(solicitudEstablecimiento),
+                    "Validacion de solicitud de establecimiento");
 
+            Productor productorLider = this.productorService
+                    .crearProductorLider(solicitudEstablecimiento.getUsuario(), nuevoEstablecimiento);
+
+            nuevoEstablecimiento.setTitular(productorLider);
             solicitudEstablecimiento.setEstablecimientoCreado(nuevoEstablecimiento);
         }
 
@@ -224,10 +236,5 @@ public class SolicitudEstablecimientoService {
                 .getEstadoSolicitudEstablecimiento()
                 .getNombre()
                 .equals(EstadoSolicitudEstablecimientoNombre.VALIDADA);
-    }
-
-    private Establecimiento obtenerNuevoEstablecimientoPorSolicitud(SolicitudEstablecimiento solicitudEstablecimiento) {
-        return this.solicitudEstablecimientoMapper
-                .solicitudEstablecimientoToEstablecimiento(solicitudEstablecimiento);
     }
 }
