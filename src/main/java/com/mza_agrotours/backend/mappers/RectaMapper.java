@@ -9,7 +9,6 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface RectaMapper {
     @Mapping(target = "cultivos", ignore = true)
-    @Mapping(source = "duracion.nombre", target = "duracion")
     @Mapping(target = "ingredientes", ignore = true)
     @Mapping(target = "pasos", ignore = true)
     DTORecetaDetalleM recetaToDtoDetalle(Receta receta);
