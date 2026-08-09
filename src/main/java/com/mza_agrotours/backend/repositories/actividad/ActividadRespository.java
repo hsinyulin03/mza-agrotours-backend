@@ -2,7 +2,6 @@ package com.mza_agrotours.backend.repositories.actividad;
 
 import com.mza_agrotours.backend.dtos.reservas.DiaActividadReservaDTO;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
-import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.repositories.BaseEntityRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -11,9 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.List;
 

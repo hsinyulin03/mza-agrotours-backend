@@ -24,8 +24,7 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
     Long getCuposReservadosActividadDia(@Param("uuid") UUID uuidActividadDia);
 
     @Query("SELECT er FROM EstadoReserva er " +
-            "JOIN er.nombre nom " +
-            "WHERE nom = :reservaEstadoNombre")
+            "WHERE er.nombre = :reservaEstadoNombre")
     Optional<EstadoReserva> findEstadoReservaByEstadoReservaNombre(@Param("reservaEstadoNombre") EstadoReservaNombre reservaEstadoNombre);
 
     @Query("SELECT DISTINCT r FROM Reserva r " +
