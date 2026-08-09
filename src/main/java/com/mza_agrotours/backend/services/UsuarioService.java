@@ -3,10 +3,7 @@ package com.mza_agrotours.backend.services;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
-import com.mza_agrotours.backend.dtos.CondicionDTO;
-import com.mza_agrotours.backend.dtos.UsuarioCreateReq;
-import com.mza_agrotours.backend.dtos.UsuarioGetDTO;
-import com.mza_agrotours.backend.dtos.UsuarioUpdateReq;
+import com.mza_agrotours.backend.dtos.*;
 import com.mza_agrotours.backend.entities.*;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
@@ -28,6 +25,7 @@ public class UsuarioService {
     private static final Logger log = LoggerFactory.getLogger(UsuarioService.class);
 
     private final UsuarioPersistenceService usuarioPersistenceService;
+    private final UsuarioAccesoService usuarioAccesoService;
 
     private final UsuarioRepository usuarioRepository;
     private final TipoIdentificacionRepository tipoIdentificacionRepository;
@@ -47,7 +45,8 @@ public class UsuarioService {
                         PaisRepository paisRepository,
                         ReservaRepository reservaRepository,
                         EstadoReservaRepository estadoReservaRepository,
-                        AdministradorSistemasRepository administradorSistemasRepository) {
+                        AdministradorSistemasRepository administradorSistemasRepository,
+                           UsuarioAccesoService usuarioAccesoService) {
         this.usuarioPersistenceService = usuarioPersistenceService;
         this.usuarioRepository = usuarioRepository;
         this.tipoIdentificacionRepository = tipoIdentificacionRepository;
@@ -57,6 +56,7 @@ public class UsuarioService {
         this.reservaRepository = reservaRepository;
         this.estadoReservaRepository = estadoReservaRepository;
         this.administradorSistemasRepository = administradorSistemasRepository;
+        this.usuarioAccesoService = usuarioAccesoService;
     }
 
     public UsuarioGetDTO createUsuario(UsuarioCreateReq usuarioCreateReq) throws Exception {
@@ -76,9 +76,12 @@ public class UsuarioService {
             Usuario nuevoUsuario = usuarioMapper.usuarioCreateReqToUsuario(usuarioCreateReq);
             nuevoUsuario.setFirebaseUID(record.getUid());
             nuevoUsuario.setTipoIdentificacion(tipoIdentificacion);
-            Usuario usuario = usuarioPersistenceService.saveUsuarioConVisitante(nuevoUsuario, pais);
 
-            return usuarioMapper.usuarioToUsuarioGetDTO(usuario);
+            Visitante visitante = getNewVisitante(nuevoUsuario, pais);
+
+            Usuario usuario = usuarioPersistenceService.saveUsuarioConVisitante(nuevoUsuario, visitante);
+
+            return this.usuarioMapper.usuarioToUsuarioGetDTO(usuario, visitante, List.of());
         } catch (Exception e) {
             if (record != null) {
                 try {
@@ -120,13 +123,13 @@ public class UsuarioService {
         Usuario usuario = usuarioRepository.findActiveByEmail(normalizedEmail)
                 .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
 
-        UsuarioGetDTO usuarioGetDTO = usuarioMapper.usuarioToUsuarioGetDTO(usuario);
         Visitante visitante = visitanteRepository.findByUsuario(usuario)
                 .orElseThrow(() -> new IllegalStateException(
                         "El usuario no tiene un visitante asociado: " + usuario.getId()));
-        usuarioGetDTO.setPaisIso2(visitante.getPais().getIso2());
 
-        return usuarioGetDTO;
+        return this.usuarioMapper.usuarioToUsuarioGetDTO(usuario,
+                visitante,
+                usuarioAccesoService.obtenerAccesosUsuario(usuario));
     }
 
     public UsuarioGetDTO updateUsuarioByEmail(String email, UsuarioUpdateReq usuarioUpdateReq) throws Exception {
@@ -156,7 +159,7 @@ public class UsuarioService {
         // Firebase ya se actualizo. Si la persistencia en la base de datos falla, Firebase y la base
         // de datos quedan desincronizados: por ahora solo lo registramos para reconciliacion manual.
         try {
-            usuario = usuarioPersistenceService.updateUsuarioConVisitante(usuario, visitante);
+            usuario = usuarioPersistenceService.saveUsuarioConVisitante(usuario, visitante);
         } catch (Exception e) {
             log.error(
                     "USUARIO INCONSISTENTE: se actualizo el usuario en Firebase con UID={} (email nuevo={}) " +
@@ -168,7 +171,9 @@ public class UsuarioService {
             );
         }
 
-        return usuarioMapper.usuarioToUsuarioGetDTO(usuario);
+        return this.usuarioMapper.usuarioToUsuarioGetDTO(usuario,
+                visitante,
+                usuarioAccesoService.obtenerAccesosUsuario(usuario));
     }
 
     public boolean deleteUsuarioByEmail(String email) throws Exception {
@@ -202,6 +207,12 @@ public class UsuarioService {
         return true;
     }
 
+    public UsuarioCardDTO getUsuarioCardByEmail(String email) {
+        Usuario usuario = usuarioRepository.findActiveByEmail(email)
+                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+        return usuarioMapper.usuarioToUsuarioCardDTO(usuario);
+    }
+
     @Transactional
     public List<CondicionDTO> getCondicionesDeleteUsuario(String email) throws Exception {
         Usuario usuario = usuarioRepository.findActiveByEmail(email)
@@ -228,7 +239,7 @@ public class UsuarioService {
         }
 
         // 2. Usuario no es administrador (TODO)
-        Optional<AdministradorSistemas> administradorSistemasOptional = administradorSistemasRepository.findByUsuarioId(usuario.getId());
+        Optional<AdministradorSistemas> administradorSistemasOptional = administradorSistemasRepository.findByUsuarioAndFechaHoraBajaIsNull(usuario);
         if (administradorSistemasOptional.isPresent()) {
             condiciones.add(
                     new CondicionDTO(
@@ -240,5 +251,12 @@ public class UsuarioService {
         // 3. Usuario no es productor lider de un establecimiento vigente (TODO)
 
         return condiciones;
+    }
+
+    private Visitante getNewVisitante(Usuario usuario, Pais pais) {
+        Visitante visitante = new Visitante();
+        visitante.setUsuario(usuario);
+        visitante.setPais(pais);
+        return visitante;
     }
 }

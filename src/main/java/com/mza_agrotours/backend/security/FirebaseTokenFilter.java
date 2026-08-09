@@ -5,6 +5,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
+import com.mza_agrotours.backend.services.RolService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,6 +22,12 @@ import java.util.List;
 
 @Component
 public class FirebaseTokenFilter extends OncePerRequestFilter {
+    private final RolService rolService;
+
+    public FirebaseTokenFilter(RolService rolService) {
+        this.rolService = rolService;
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String header = request.getHeader("Authorization");
@@ -29,8 +36,8 @@ public class FirebaseTokenFilter extends OncePerRequestFilter {
 
             try {
                 FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(token);
-
-                var authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
+                // TODO: split on two filters AdminAuthoritiesFilter and ProductoresAuthoritiesFilter or something
+                var authorities = getAdminAuthorities(decodedToken.getEmail());
 
                 UsuarioAuthDetails usuarioAuthDetails = UsuarioAuthDetails.builder()
                         .email(decodedToken.getEmail())
@@ -45,5 +52,12 @@ public class FirebaseTokenFilter extends OncePerRequestFilter {
             }
         }
         filterChain.doFilter(request, response);
+    }
+
+    private List<SimpleGrantedAuthority> getAdminAuthorities(String email) {
+        return this.rolService
+                .obtenerPermisosAdminPorEmail(email)
+                .stream()
+                .map(p -> new SimpleGrantedAuthority(p.name())).toList();
     }
 }
