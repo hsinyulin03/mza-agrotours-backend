@@ -23,6 +23,7 @@ public interface TipoCultivoRepository
 
     Optional<TipoCultivo> findByIdAndFechaHoraBajaIsNull(UUID id);
     Optional<TipoCultivo> findByNombreIgnoreCaseAndFechaHoraBajaIsNull(String nombre);
+    List<TipoCultivo> findAllByFechaHoraBajaIsNull();
     List<TipoCultivo> findByRecetasId(UUID recetaId);
     @Query("SELECT COUNT(DISTINCT tc) FROM TipoCultivo tc JOIN tc.recetas r WHERE r.fechaHoraBaja IS NULL")
     long contarCultivosConRecetaActiva();
