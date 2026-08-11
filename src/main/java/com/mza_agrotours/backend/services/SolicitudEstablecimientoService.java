@@ -162,12 +162,11 @@ public class SolicitudEstablecimientoService {
                 .solicitudEstablecimientoToShortDTOs(solicitudesPendientes);
     }
 
-    public SolicitudEstablecimientoDTO obtenerSolicitudPorId(String id) {
+    public SolicitudEstAdminDetalleDTO obtenerSolicitudPorId(String id) {
         SolicitudEstablecimiento solicitudEstablecimiento = this.solicitudEstablecimientoRepository
                 .findById(UUID.fromString(id))
                 .orElseThrow(() -> new AppException(SolicitudEstablecimientoError.NOT_FOUND));
-        // TODO: mandarle datos del solicitante
-        return this.solicitudEstablecimientoMapper.solicitudEstablecimientoToDTO(solicitudEstablecimiento);
+        return this.solicitudEstablecimientoMapper.solicitudEstablecimientoToDTOAdmin(solicitudEstablecimiento);
     }
 
     @Transactional

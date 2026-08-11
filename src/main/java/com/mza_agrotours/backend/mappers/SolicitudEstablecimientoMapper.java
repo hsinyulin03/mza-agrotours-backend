@@ -34,6 +34,13 @@ public interface SolicitudEstablecimientoMapper {
     @Mapping(target="departamento", source = "departamento.nombre")
     SolicitudEstablecimientoDTO solicitudEstablecimientoToDTO(SolicitudEstablecimiento solicitudEstablecimiento);
 
+    @Mapping(target = "estado", source = "estadoActual.estadoSolicitudEstablecimiento.nombre")
+    @Mapping(target = "departamento", source = "departamento.nombre")
+    @Mapping(target = "nombreSolicitante", source = "usuario.nombre")
+    @Mapping(target = "emailSolicitante", source = "usuario.email")
+    @Mapping(target = "identificacionSolicitante", source = "usuario.identificacion")
+    SolicitudEstAdminDetalleDTO solicitudEstablecimientoToDTOAdmin(SolicitudEstablecimiento solicitudEstablecimiento);
+
     // TODO: revisar
     @Mapping(target="estado", source = "estadoSolicitudEstablecimiento.nombre")
     @Mapping(target="fecha", source = "fechaHoraRevision")
