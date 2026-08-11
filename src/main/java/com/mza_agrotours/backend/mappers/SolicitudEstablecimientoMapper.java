@@ -39,6 +39,7 @@ public interface SolicitudEstablecimientoMapper {
     @Mapping(target = "nombreSolicitante", source = "usuario.nombre")
     @Mapping(target = "emailSolicitante", source = "usuario.email")
     @Mapping(target = "identificacionSolicitante", source = "usuario.identificacion")
+    @Mapping(target = "fechaHoraAltaSolicitante", source = "usuario.fechaHoraAlta")
     SolicitudEstAdminDetalleDTO solicitudEstablecimientoToDTOAdmin(SolicitudEstablecimiento solicitudEstablecimiento);
 
     // TODO: revisar
@@ -53,5 +54,6 @@ public interface SolicitudEstablecimientoMapper {
     @Mapping(target = "ubicacion", source = "domicilioLegal")
     @Mapping(target = "estados", ignore = true)
     @Mapping(target = "estadoActual", ignore = true)
+    @Mapping(target = "id", ignore = true)
     Establecimiento solicitudEstablecimientoToEstablecimiento(SolicitudEstablecimiento solicitudEstablecimiento);
 }

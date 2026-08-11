@@ -28,4 +28,5 @@ public class SolicitudEstAdminDetalleDTO {
     private String nombreSolicitante;
     private String identificacionSolicitante;
     private String emailSolicitante;
+    private String fechaHoraAltaSolicitante;
 }

@@ -50,6 +50,9 @@ public class SecurityConfig {
                         .requestMatchers("/solicitudes-establecimiento/me/**").authenticated()
                         .requestMatchers("/solicitudes-establecimiento/").hasAuthority(PermisoNombre.LEER_SOLICITUD_ESTABLECIMIENTO.name())
                         .requestMatchers("/solicitudes-establecimiento/observar/**").hasAuthority(PermisoNombre.GESTIONAR_SOLICITUD_ESTABLECIMIENTO.name())
+
+                        // Archivos
+                        .requestMatchers("/object-storage/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(firebaseTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
