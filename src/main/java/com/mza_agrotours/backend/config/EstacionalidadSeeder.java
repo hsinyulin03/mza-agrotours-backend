@@ -27,9 +27,9 @@ public class EstacionalidadSeeder implements CommandLineRunner {
 
     private String colorPorDefecto(EstacionalidadNombre nombre) {
         return switch (nombre) {
-            case COSECHA -> "#8C9A4A";
-            case CRECIMIENTO -> "#5C7849";
-            case REPOSO -> "#A6794F";
+            case COSECHA -> "#154212";
+            case CRECIMIENTO -> "#C9A227";
+            case REPOSO -> "#8C7A55";
         };
     }
 }
