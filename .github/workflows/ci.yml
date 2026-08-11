@@ -31,6 +31,9 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
       # Tests are skipped on purpose: the only test is BackendApplicationTests
       # (@SpringBootTest), which needs Postgres, Redis and a real Firebase
       # service-account file. Drop `-x test` once tests can run without them.
