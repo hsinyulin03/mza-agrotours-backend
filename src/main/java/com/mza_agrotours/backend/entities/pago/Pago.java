@@ -36,7 +36,7 @@ public class Pago extends BaseEntity {
     private PagoEstado estadoActual;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
-    @JoinColumn(name = "pago_id", nullable = false)
+    @JoinColumn(name = "pago_id")
     private List<PagoEstado> estados = new ArrayList<>();
 
     /**

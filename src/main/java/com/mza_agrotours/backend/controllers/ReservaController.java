@@ -22,7 +22,7 @@ public class ReservaController {
         this.service = service;
     }
 
-    @GetMapping("/{uuid}")
+    @GetMapping("/get/{uuid}")
     public ResponseEntity<ApiResponse<ConsultarReservaDTO>> getReserva(
             @PathVariable UUID uuid,
             @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
@@ -30,6 +30,16 @@ public class ReservaController {
         String email = usuarioAuthDetails.getEmail();
         ConsultarReservaDTO dto = service.getConsultarReserva(uuid,email);
         ApiResponse<ConsultarReservaDTO> response = ApiResponse.ok(dto);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/get")
+    public ResponseEntity<ApiResponse<List<ListarReservaDTO>>> getReservaList(
+            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
+    ) {
+        String email = usuarioAuthDetails.getEmail();
+        List<ListarReservaDTO> dtos = service.getListarReservas(email);
+        ApiResponse<List<ListarReservaDTO>> response = ApiResponse.ok(dtos);
         return ResponseEntity.ok(response);
     }
 
@@ -44,13 +54,4 @@ public class ReservaController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/")
-    public ResponseEntity<ApiResponse<List<ListarReservaDTO>>> getReservaList(
-            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
-    ) {
-        String email = usuarioAuthDetails.getEmail();
-        List<ListarReservaDTO> dtos = service.getListarReservas(email);
-        ApiResponse<List<ListarReservaDTO>> response = ApiResponse.ok(dtos);
-        return ResponseEntity.ok(response);
-    }
 }

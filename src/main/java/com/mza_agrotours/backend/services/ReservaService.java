@@ -174,7 +174,7 @@ public class ReservaService {
                         ad.getEstadoActual().getEstado().getNombre() == EstadoActividadDiaNombre.ACTIVA ||
                         ad.getEstadoActual().getEstado().getNombre() == EstadoActividadDiaNombre.REPROGRAMADA
                 )
-                .filter(ad -> ad.getFechaHoraInicio().isBefore(fechaHoraActual))    // NOTE una actividad reprogramada se le cambia la fechaHoraInicio, no?
+                .filter(ad -> ad.getFechaHoraInicio().isAfter(fechaHoraActual))    // NOTE una actividad reprogramada se le cambia la fechaHoraInicio, no?
                 .findFirst().
                 orElseThrow(ActividadDiaNotFound::new);
 
@@ -230,9 +230,13 @@ public class ReservaService {
         // Si el pago ya fue aprobado (manual), la reserva pasa a pagada.
         // Si queda pendiente (Mercado Pago), la reserva sigue pendiente hasta la confirmación por webhook (otro método).
         if (pago.getEstadoActual().getEstadoPago().getNombre() == EstadoPagoNombre.APROBADO) {
+            // Cambiar estado
             EstadoReserva estadoPagada = reservaRepository.findEstadoReservaByEstadoReservaNombre(PAGADA)
                     .orElseThrow(() -> new EstadoReservaNotFoundException(EstadoReservaNombre.PAGADA));
             nuevaReserva.cambiarEstado(estadoPagada, fechaHoraActual);
+
+            // Eliminar la fecha de expiración
+            nuevaReserva.setFechaHoraExpiracion(null);
         }
 
         reservaRepository.save(nuevaReserva);
