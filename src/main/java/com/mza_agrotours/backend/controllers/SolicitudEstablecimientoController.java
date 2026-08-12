@@ -61,7 +61,7 @@ public class SolicitudEstablecimientoController {
     @PostMapping("/observar/{solicitudId}")
     public ResponseEntity<?> observarSolicitud(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails,
                                                @UUID @PathVariable String solicitudId,
-                                               @RequestBody ObservacionSolicitudDTO observacionSolicitudDTO) {
+                                               @Valid @RequestBody ObservacionSolicitudDTO observacionSolicitudDTO) {
         String emailObservador = usuarioAuthDetails.getEmail();
         return ResponseEntity.ok().body(ApiResponse.ok(solicitudEstablecimientoService.observarSolicitud(emailObservador, solicitudId, observacionSolicitudDTO)));
     }
