@@ -7,7 +7,7 @@ import com.mza_agrotours.backend.dtos.reservas.InfoParaReservarDTO;
 import com.mza_agrotours.backend.dtos.reservas.RangoEtarioReservaDTO;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
-import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
+import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.enums.Dia;
 import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;

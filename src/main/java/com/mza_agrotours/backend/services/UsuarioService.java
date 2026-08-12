@@ -6,7 +6,7 @@ import com.google.firebase.auth.UserRecord;
 import com.mza_agrotours.backend.dtos.*;
 import com.mza_agrotours.backend.entities.*;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
-import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
+import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.mappers.UsuarioMapper;

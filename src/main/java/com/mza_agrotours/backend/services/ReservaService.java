@@ -9,11 +9,11 @@ import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
-import com.mza_agrotours.backend.entities.pago.EstadoPagoNombre;
-import com.mza_agrotours.backend.entities.pago.MetodoPago;
+import com.mza_agrotours.backend.enums.EstadoPagoNombre;
+import com.mza_agrotours.backend.enums.MetodoPago;
 import com.mza_agrotours.backend.entities.pago.Pago;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
-import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
+import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
 import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
@@ -48,9 +48,9 @@ import java.util.UUID;
 
 import java.util.*;
 
-import static com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.EXPIRADA;
-import static com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.PAGADA;
-import static com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.PENDIENTE;
+import static com.mza_agrotours.backend.enums.EstadoReservaNombre.EXPIRADA;
+import static com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA;
+import static com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE;
 
 @Service
 public class ReservaService {

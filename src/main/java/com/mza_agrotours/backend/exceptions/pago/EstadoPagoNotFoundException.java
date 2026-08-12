@@ -1,6 +1,6 @@
 package com.mza_agrotours.backend.exceptions.pago;
 
-import com.mza_agrotours.backend.entities.pago.EstadoPagoNombre;
+import com.mza_agrotours.backend.enums.EstadoPagoNombre;
 
 public class EstadoPagoNotFoundException extends RuntimeException {
     public EstadoPagoNotFoundException(String message) {

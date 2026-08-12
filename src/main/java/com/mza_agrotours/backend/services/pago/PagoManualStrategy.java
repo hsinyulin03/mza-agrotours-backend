@@ -1,8 +1,8 @@
 package com.mza_agrotours.backend.services.pago;
 
 import com.mza_agrotours.backend.entities.pago.EstadoPago;
-import com.mza_agrotours.backend.entities.pago.EstadoPagoNombre;
-import com.mza_agrotours.backend.entities.pago.MetodoPago;
+import com.mza_agrotours.backend.enums.EstadoPagoNombre;
+import com.mza_agrotours.backend.enums.MetodoPago;
 import com.mza_agrotours.backend.entities.pago.Pago;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.exceptions.pago.EstadoPagoNotFoundException;
