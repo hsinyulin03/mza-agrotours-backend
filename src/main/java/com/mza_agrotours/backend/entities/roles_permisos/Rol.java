@@ -16,7 +16,8 @@ import java.util.List;
 @Getter
 @Setter
 public class Rol extends BaseEntity {
-    @Column(nullable = false, unique = true)
+    // TODO: unique index with fechaHoraBaja = NULL
+    @Column(nullable = false)
     private String nombre;
 
     @Column(nullable = false)
