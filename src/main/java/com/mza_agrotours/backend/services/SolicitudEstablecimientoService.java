@@ -155,11 +155,11 @@ public class SolicitudEstablecimientoService {
     }
 
     public List<SolicitudEstablecimientoShortDTO> obtenerTodasLasSolicitudes() {
-        List<SolicitudEstablecimiento> solicitudesPendientes = this.solicitudEstablecimientoRepository
+        List<SolicitudEstablecimiento> solicitudes = this.solicitudEstablecimientoRepository
                 .findAll();
 
         return this.solicitudEstablecimientoMapper
-                .solicitudEstablecimientoToShortDTOs(solicitudesPendientes);
+                .solicitudEstablecimientoToShortDTOs(solicitudes);
     }
 
     public SolicitudEstAdminDetalleDTO obtenerSolicitudPorId(String id) {
