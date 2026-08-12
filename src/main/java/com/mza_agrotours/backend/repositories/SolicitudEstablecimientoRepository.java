@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.repositories;
 
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimiento;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
@@ -18,4 +19,8 @@ public interface SolicitudEstablecimientoRepository extends BaseEntityRepository
     List<SolicitudEstablecimiento> findAllByUsuario(Usuario usuario);
 
     Optional<SolicitudEstablecimiento> findByIdAndUsuario(UUID id, Usuario usuario);
+
+    @Query("select se from SolicitudEstablecimiento se " +
+            "where se.estadoActual.estadoSolicitudEstablecimiento.nombre = EstadoSolicitudEstablecimientoNombre.PENDIENTE")
+    Optional<SolicitudEstablecimiento> findByIdAndPendiente(@Param("solicitudId") UUID solicitudId);
 }

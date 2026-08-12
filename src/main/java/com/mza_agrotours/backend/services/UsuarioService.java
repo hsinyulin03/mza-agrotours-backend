@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -76,6 +77,7 @@ public class UsuarioService {
             Usuario nuevoUsuario = usuarioMapper.usuarioCreateReqToUsuario(usuarioCreateReq);
             nuevoUsuario.setFirebaseUID(record.getUid());
             nuevoUsuario.setTipoIdentificacion(tipoIdentificacion);
+            nuevoUsuario.setFechaHoraAlta(LocalDateTime.now());
 
             Visitante visitante = getNewVisitante(nuevoUsuario, pais);
 

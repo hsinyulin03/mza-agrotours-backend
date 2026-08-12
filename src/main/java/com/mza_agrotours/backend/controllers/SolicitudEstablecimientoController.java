@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
+import com.mza_agrotours.backend.dtos.ObservacionSolicitudDTO;
 import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateReq;
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateResp;
@@ -44,5 +45,24 @@ public class SolicitudEstablecimientoController {
                                                                @UUID @PathVariable String solicitudId) {
         String emailUsuario = usuarioAuthDetails.getEmail();
         return ResponseEntity.ok().body(ApiResponse.ok(solicitudEstablecimientoService.obtenerSolicitudPorUsuario(emailUsuario, solicitudId)));
+    }
+
+    @GetMapping("/")
+    public ResponseEntity<?> obtenerTodasLasSolicitudes() {
+        return ResponseEntity.ok().body(ApiResponse.ok(solicitudEstablecimientoService.obtenerTodasLasSolicitudes()));
+    }
+
+    @GetMapping("/{solicitudId}")
+    public ResponseEntity<?> obtenerSolicitudDetalle(@UUID @PathVariable String solicitudId) {
+        return ResponseEntity.ok().body(ApiResponse.ok(solicitudEstablecimientoService
+                .obtenerSolicitudPorId(solicitudId)));
+    }
+
+    @PostMapping("/observar/{solicitudId}")
+    public ResponseEntity<?> observarSolicitud(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails,
+                                               @UUID @PathVariable String solicitudId,
+                                               @Valid @RequestBody ObservacionSolicitudDTO observacionSolicitudDTO) {
+        String emailObservador = usuarioAuthDetails.getEmail();
+        return ResponseEntity.ok().body(ApiResponse.ok(solicitudEstablecimientoService.observarSolicitud(emailObservador, solicitudId, observacionSolicitudDTO)));
     }
 }

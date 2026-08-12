@@ -8,4 +8,8 @@ public enum PermisoNombre {
     // Productor
     GESTIONAR_PRODUCTOR,
     LEER_PRODUCTOR,
+
+    // Solicitud Establecimiento
+    LEER_SOLICITUD_ESTABLECIMIENTO,
+    GESTIONAR_SOLICITUD_ESTABLECIMIENTO,
 }

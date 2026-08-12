@@ -39,7 +39,11 @@ public class PermisoSeeder implements CommandLineRunner {
             entry(PermisoNombre.GESTIONAR_PRODUCTOR,
                     new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Crear, modificar y eliminar productores")),
             entry(PermisoNombre.LEER_PRODUCTOR,
-                    new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Ver productores"))
+                    new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Ver productores")),
+            entry(PermisoNombre.LEER_SOLICITUD_ESTABLECIMIENTO,
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Ver solicitudes de establecimiento")),
+            entry(PermisoNombre.GESTIONAR_SOLICITUD_ESTABLECIMIENTO,
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "\"Aceptar o rechazar solicitudes de establecimientos pendientes"))
     );
 
     private final PermisoRepository permisoRepository;
