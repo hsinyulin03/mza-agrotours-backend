@@ -17,5 +17,7 @@ public interface RolRepository extends BaseEntityRepository<Rol, UUID> {
     List<Rol> findByTipoPermiso_NombreAndFechaHoraBajaIsNullAndNombreIsNotContaining(TipoPermisoNombre tipoPermiso_nombre, String nombre);
 
     Optional<Rol> findByNombreAndFechaHoraBajaIsNull(String nombre);
+
+    List<Rol> findByTipoPermiso_NombreAndFechaHoraBajaIsNull(TipoPermisoNombre tipoPermisoNombre);
 }
 
