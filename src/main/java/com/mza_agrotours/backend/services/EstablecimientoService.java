@@ -68,9 +68,7 @@ public class EstablecimientoService  {
 
     /**
      * Completa un Establecimiento recien construido (aun sin persistir) con su estado inicial
-     * ACTIVO y lo guarda. Es el unico punto de nacimiento de un Establecimiento: lo usan tanto
-     * el alta directa como la validacion de una SolicitudEstablecimiento, de modo que ningun
-     * establecimiento pueda quedar sin estado.
+     * ACTIVO y lo guarda. Es el unico punto de nacimiento de un Establecimiento.
      */
     @Transactional
     public Establecimiento crearEstablecimiento(Establecimiento nuevoEstablecimiento, String motivoAlta) {
