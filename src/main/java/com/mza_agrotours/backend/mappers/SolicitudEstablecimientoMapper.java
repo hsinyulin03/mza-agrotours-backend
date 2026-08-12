@@ -46,6 +46,7 @@ public interface SolicitudEstablecimientoMapper {
     @Mapping(target="estado", source = "estadoSolicitudEstablecimiento.nombre")
     @Mapping(target="fecha", source = "fechaHoraRevision")
     @Mapping(target="observaciones", source = "razonRevision")
+    @Mapping(target="revisor", source = "revisor.usuario.nombre")
     SolicitudEstablecimientoEstadoDTO solicitudEstablecimientoEstadoToDTO(SolicitudEstablecimientoEstado solicitudEstablecimientoEstado);
 
     SolicitudEstablecimientoPruebaDTO archivoToPruebaDTO(Archivo archivo);
