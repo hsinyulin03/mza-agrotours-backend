@@ -192,7 +192,10 @@ public class SolicitudEstablecimientoService {
 
 
         if (solicitudFueValidada(solicitudEstablecimiento)) {
-            // TODO: validar si existen otros je
+            if (existeEstablecimientoVigenteByCuit(solicitudEstablecimiento.getCuit())) {
+                throw new AppException(SolicitudEstablecimientoError.ESTABLECIMIENTO_ALREADY_EXISTS);
+            }
+
             Establecimiento nuevoEstablecimiento = this.establecimientoService.crearEstablecimiento(
                     this.solicitudEstablecimientoMapper
                             .solicitudEstablecimientoToEstablecimiento(solicitudEstablecimiento),
@@ -236,5 +239,9 @@ public class SolicitudEstablecimientoService {
                 .getEstadoSolicitudEstablecimiento()
                 .getNombre()
                 .equals(EstadoSolicitudEstablecimientoNombre.VALIDADA);
+    }
+
+    private boolean existeEstablecimientoVigenteByCuit(String cuit) {
+        return establecimientoRepository.existsByCuitAndFechaHoraBajaIsNull(cuit);
     }
 }
