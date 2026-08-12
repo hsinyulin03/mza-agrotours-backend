@@ -7,6 +7,7 @@ import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import com.mza_agrotours.backend.enums.EstadoProductorNombre;
+import com.mza_agrotours.backend.enums.RolProtegido;
 import com.mza_agrotours.backend.exceptions.AppException;
 import com.mza_agrotours.backend.exceptions.ProductorError;
 import com.mza_agrotours.backend.repositories.EstadoProductorRepository;
@@ -19,8 +20,6 @@ import java.time.LocalDateTime;
 
 @Service
 public class ProductorService {
-    private static final String ROL_PRODUCTOR_LIDER = "PRODUCTOR_LIDER";
-
     private final EstadoProductorRepository estadoProductorRepository;
     private final RolRepository rolRepository;
     private final ProductorRepository productorRepository;
@@ -48,7 +47,7 @@ public class ProductorService {
         productorLider.setFechaHoraAlta(LocalDateTime.now());
         productorLider.setEstablecimiento(establecimiento);
         productorLider.setUsuario(usuarioProductor);
-        productorLider.setRol(obtenerRolProductorByNombre(ROL_PRODUCTOR_LIDER));
+        productorLider.setRol(obtenerRolProductorByNombre(RolProtegido.PRODUCTOR_LIDER.getNombre()));
         productorLider.getEstados().add(productorEstado);
         productorLider.setEstadoActual(estadoActivo);
 

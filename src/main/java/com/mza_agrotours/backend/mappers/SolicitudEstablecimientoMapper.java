@@ -55,5 +55,6 @@ public interface SolicitudEstablecimientoMapper {
     @Mapping(target = "estados", ignore = true)
     @Mapping(target = "estadoActual", ignore = true)
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "descripcion", constant = "")
     Establecimiento solicitudEstablecimientoToEstablecimiento(SolicitudEstablecimiento solicitudEstablecimiento);
 }
