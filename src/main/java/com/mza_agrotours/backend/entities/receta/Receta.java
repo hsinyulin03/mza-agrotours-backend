@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,6 +30,8 @@ public class Receta extends BaseEntity {
 
     @Column(name = "tiempo_mins_aprox", nullable = false)
     private int tiempoMinsAprox;
+
+    private LocalDateTime fechaHoraBaja;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
