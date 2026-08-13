@@ -1,13 +1,17 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.dtos.roles_permisos.RolCreateRequest;
+import com.mza_agrotours.backend.dtos.roles_permisos.RolCreateResponse;
 import com.mza_agrotours.backend.dtos.roles_permisos.RolGetCatalogoDTO;
+import com.mza_agrotours.backend.entities.roles_permisos.Permiso;
 import com.mza_agrotours.backend.entities.roles_permisos.Rol;
+import com.mza_agrotours.backend.entities.roles_permisos.TipoPermiso;
 import com.mza_agrotours.backend.enums.PermisoNombre;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
+import com.mza_agrotours.backend.exceptions.AppException;
+import com.mza_agrotours.backend.exceptions.RolError;
 import com.mza_agrotours.backend.mappers.RolMapper;
-import com.mza_agrotours.backend.repositories.AdministradorSistemasRepository;
-import com.mza_agrotours.backend.repositories.RolRepository;
-import com.mza_agrotours.backend.repositories.UsuarioRepository;
+import com.mza_agrotours.backend.repositories.*;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -19,16 +23,22 @@ public class RolService {
     private final UsuarioRepository usuarioRepository;
     private final AdministradorSistemasRepository administradorSistemasRepository;
     private final RolMapper rolMapper;
+    private final TipoPermisoRepository tipoPermisoRepository;
+    private final PermisoRepository permisoRepository;
     // TODO: ProductorRepository soon
 
     public RolService(RolRepository rolRepository,
                       UsuarioRepository usuarioRepository,
                       AdministradorSistemasRepository administradorSistemasRepository,
-                      RolMapper rolMapper) {
+                      RolMapper rolMapper,
+                      TipoPermisoRepository tipoPermisoRepository,
+                      PermisoRepository permisoRepository) {
         this.rolRepository = rolRepository;
         this.usuarioRepository = usuarioRepository;
         this.administradorSistemasRepository = administradorSistemasRepository;
         this.rolMapper = rolMapper;
+        this.tipoPermisoRepository = tipoPermisoRepository;
+        this.permisoRepository = permisoRepository;
     }
 
     public List<PermisoNombre> obtenerPermisosAdminPorEmail(String email) {
@@ -37,6 +47,33 @@ public class RolService {
 
     public List<RolGetCatalogoDTO> obtenerRolesAdminCatalogo() {
         return this.obtenerRolesCatalogoByTipoPermisoNombre(TipoPermisoNombre.ADMIN);
+    }
+
+    public RolCreateResponse crearRolAdmin(RolCreateRequest rolCreateRequest) {
+        Rol rolCreado = crearRol(rolCreateRequest, TipoPermisoNombre.ADMIN);
+        return this.rolMapper.rolToRolCreateResponse(rolCreado);
+    }
+
+    private Rol crearRol(RolCreateRequest rolCreateRequest, TipoPermisoNombre tipoPermisoNombre) {
+        TipoPermiso tipoPermiso = this.tipoPermisoRepository
+                .findByNombre(tipoPermisoNombre)
+                .orElseThrow(() -> new IllegalStateException("Invalidaso"));
+
+        List<Permiso> permisos = this.permisoRepository
+                .findByTipoPermisoAndNombreIn(tipoPermiso, rolCreateRequest.getPermisos());
+
+        if (permisos.size() != rolCreateRequest.getPermisos().size()) {
+            throw new AppException(RolError.PERMISO_INVALIDO);
+        }
+
+        Rol nuevoRol = new Rol();
+        nuevoRol.setNombre(rolCreateRequest.getNombre());
+        nuevoRol.setDescripcion(rolCreateRequest.getDescripcion());
+        nuevoRol.setEsProtegido(false);
+        nuevoRol.setPermisos(permisos);
+        nuevoRol.setTipoPermiso(tipoPermiso);
+
+        return this.rolRepository.save(nuevoRol);
     }
 
     private List<RolGetCatalogoDTO> obtenerRolesCatalogoByTipoPermisoNombre(TipoPermisoNombre tipoPermisoNombre) {
