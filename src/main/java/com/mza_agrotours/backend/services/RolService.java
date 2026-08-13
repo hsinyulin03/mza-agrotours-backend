@@ -1,8 +1,6 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.dtos.roles_permisos.RolCreateRequest;
-import com.mza_agrotours.backend.dtos.roles_permisos.RolCreateResponse;
-import com.mza_agrotours.backend.dtos.roles_permisos.RolGetCatalogoDTO;
+import com.mza_agrotours.backend.dtos.roles_permisos.*;
 import com.mza_agrotours.backend.entities.roles_permisos.Permiso;
 import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import com.mza_agrotours.backend.entities.roles_permisos.TipoPermiso;
@@ -16,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class RolService {
@@ -54,6 +53,11 @@ public class RolService {
         return this.rolMapper.rolToRolCreateResponse(rolCreado);
     }
 
+    public RolUpdateResponse modificarRolAdmin(String rolId, RolUpdateRequest rolUpdateRequest) {
+        Rol rolModificado = modificarRol(rolId, rolUpdateRequest, TipoPermisoNombre.ADMIN);
+        return this.rolMapper.rolToRolUpdateResponse(rolModificado);
+    }
+
     private Rol crearRol(RolCreateRequest rolCreateRequest, TipoPermisoNombre tipoPermisoNombre) {
         TipoPermiso tipoPermiso = this.tipoPermisoRepository
                 .findByNombre(tipoPermisoNombre)
@@ -74,6 +78,44 @@ public class RolService {
         nuevoRol.setTipoPermiso(tipoPermiso);
 
         return this.rolRepository.save(nuevoRol);
+    }
+
+    private Rol modificarRol(String rolId, RolUpdateRequest rolUpdateRequest, TipoPermisoNombre tipoPermisoNombre) {
+        TipoPermiso tipoPermiso = this.tipoPermisoRepository
+                .findByNombre(tipoPermisoNombre)
+                .orElseThrow(() -> new IllegalStateException("Invalidaso"));
+        /** TODO para pensar
+         * Actualmente se permite que el administrador modifique los
+         * permisos para su propio rol, algo que podría ser un tiro
+         * en el pié, creo que lo voy a evitar.
+         *
+         * Pero cualquier cosa, puede suceder tranquilamente el muchcacho
+         * ponerse de acuerdo con otro y elevar el rol del otro, después el otro
+         * el de él y así pueden adquirir más permisos de los que debería. Lo
+         * que practicamente hacer que esto de gestionar roles sea inútil.
+         *
+         * Hay varias soluciones (enumerados arbitrariamente):
+         * 1. Hacerselo un poco más difícil evitando que pueda modificar su propio rol
+         * 2. Que sólo pueda asignar los permisos que él tenga
+         * 3. Que solo el ADMIN_LIDER tenga permisos para gestionar los roles
+         */
+
+
+        Rol rol = this.rolRepository
+                .findVigenteByIdAndTipoPermisoNombre(UUID.fromString(rolId), tipoPermisoNombre)
+                .orElseThrow(() -> new AppException(RolError.NOT_FOUND));
+
+        List<Permiso> permisos = this.permisoRepository
+                .findByTipoPermisoAndNombreIn(tipoPermiso, rolUpdateRequest.getPermisos());
+
+        if (permisos.size() != rolUpdateRequest.getPermisos().size()) {
+            throw new AppException(RolError.PERMISO_INVALIDO);
+        }
+
+        rol.setNombre(rolUpdateRequest.getNombre());
+        rol.setDescripcion(rolUpdateRequest.getDescripcion());
+        rol.setPermisos(permisos);
+        return this.rolRepository.save(rol);
     }
 
     private List<RolGetCatalogoDTO> obtenerRolesCatalogoByTipoPermisoNombre(TipoPermisoNombre tipoPermisoNombre) {
