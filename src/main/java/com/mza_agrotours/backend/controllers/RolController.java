@@ -1,9 +1,7 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
-import com.mza_agrotours.backend.dtos.roles_permisos.RolCreateRequest;
-import com.mza_agrotours.backend.dtos.roles_permisos.RolCreateResponse;
-import com.mza_agrotours.backend.dtos.roles_permisos.RolGetCatalogoDTO;
+import com.mza_agrotours.backend.dtos.roles_permisos.*;
 import com.mza_agrotours.backend.services.RolService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -32,5 +30,14 @@ public class RolController {
             @RequestBody RolCreateRequest rolCreateRequest) {
         return ResponseEntity.ok(ApiResponse.ok(this.rolService
                 .crearRolAdmin(rolCreateRequest)));
+    }
+
+    @PutMapping("/admin/{rolId}")
+    public ResponseEntity<ApiResponse<RolUpdateResponse>> modificarRolAdmin(
+            @PathVariable String rolId,
+            @Valid
+            @RequestBody RolUpdateRequest rolUpdateRequest) {
+        return ResponseEntity.ok(ApiResponse.ok(this.rolService
+                .modificarRolAdmin(rolId, rolUpdateRequest)));
     }
 }
