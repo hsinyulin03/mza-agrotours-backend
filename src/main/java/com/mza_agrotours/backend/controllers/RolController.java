@@ -40,4 +40,11 @@ public class RolController {
         return ResponseEntity.ok(ApiResponse.ok(this.rolService
                 .modificarRolAdmin(rolId, rolUpdateRequest)));
     }
+
+    @DeleteMapping("/admin/{rolId}")
+    public ResponseEntity<ApiResponse<Boolean>> bajaRolAdmin(
+            @PathVariable String rolId) {
+        return ResponseEntity.ok(ApiResponse.ok(this.rolService
+                .bajaRolAdmin(rolId)));
+    }
 }

@@ -5,6 +5,7 @@ import com.mza_agrotours.backend.entities.roles_permisos.Permiso;
 import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import com.mza_agrotours.backend.entities.roles_permisos.TipoPermiso;
 import com.mza_agrotours.backend.enums.PermisoNombre;
+import com.mza_agrotours.backend.enums.RolProtegido;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
 import com.mza_agrotours.backend.exceptions.AppException;
 import com.mza_agrotours.backend.exceptions.RolError;
@@ -12,6 +13,7 @@ import com.mza_agrotours.backend.mappers.RolMapper;
 import com.mza_agrotours.backend.repositories.*;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -58,6 +60,10 @@ public class RolService {
         return this.rolMapper.rolToRolUpdateResponse(rolModificado);
     }
 
+    public boolean bajaRolAdmin(String rolId) {
+        return bajaRol(rolId, TipoPermisoNombre.ADMIN);
+    }
+
     private Rol crearRol(RolCreateRequest rolCreateRequest, TipoPermisoNombre tipoPermisoNombre) {
         TipoPermiso tipoPermiso = this.tipoPermisoRepository
                 .findByNombre(tipoPermisoNombre)
@@ -69,6 +75,8 @@ public class RolService {
         if (permisos.size() != rolCreateRequest.getPermisos().size()) {
             throw new AppException(RolError.PERMISO_INVALIDO);
         }
+        // TODO: fetchear roles existentess
+
 
         Rol nuevoRol = new Rol();
         nuevoRol.setNombre(rolCreateRequest.getNombre());
@@ -116,6 +124,26 @@ public class RolService {
         rol.setDescripcion(rolUpdateRequest.getDescripcion());
         rol.setPermisos(permisos);
         return this.rolRepository.save(rol);
+    }
+
+    private boolean bajaRol(String rolId, TipoPermisoNombre tipoPermisoNombre) {
+        String rolExcluido = getRolExcluidoByTipoPermisoNombre(tipoPermisoNombre);
+
+        Rol rol = this.rolRepository
+                .findVigenteByIdScoped(UUID.fromString(rolId), tipoPermisoNombre, rolExcluido)
+                .orElseThrow(() -> new AppException(RolError.NOT_FOUND));
+
+        rol.setFechaHoraBaja(LocalDateTime.now());
+        this.rolRepository.save(rol);
+        return true;
+    }
+
+    private String getRolExcluidoByTipoPermisoNombre(TipoPermisoNombre tipoPermisoNombre) {
+        return switch (tipoPermisoNombre) {
+            case ADMIN -> RolProtegido.ADMIN_LIDER.getNombre();
+            case PRODUCTOR -> RolProtegido.PRODUCTOR_LIDER.getNombre();
+            default -> throw new IllegalStateException("Unexpected value: " + tipoPermisoNombre);
+        };
     }
 
     private List<RolGetCatalogoDTO> obtenerRolesCatalogoByTipoPermisoNombre(TipoPermisoNombre tipoPermisoNombre) {

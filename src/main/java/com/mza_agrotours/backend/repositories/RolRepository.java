@@ -30,5 +30,12 @@ public interface RolRepository extends BaseEntityRepository<Rol, UUID> {
             @Param("id") UUID id,
             @Param("tipoPermisoNombre") TipoPermisoNombre tipoPermisoNombre
     );
+    @Query("select r from Rol r " +
+            "where r.id = :id " +
+            "and r.tipoPermiso.nombre = :tipoPermisoNombre " +
+            "and r.nombre <> :nombreExcluido")
+    Optional<Rol> findVigenteByIdScoped(UUID id, TipoPermisoNombre tipoPermisoNombre, String nombreExcluido);
+
+    Boolean existsByNombreAndTipoPermiso_NombreAndFechaHoraBajaIsNull(String nombre, TipoPermisoNombre tipoPermisoNombre);
 }
 
