@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.mappers;
 
+import com.mza_agrotours.backend.dtos.roles_permisos.RolCreateResponse;
 import com.mza_agrotours.backend.dtos.roles_permisos.RolGetCatalogoDTO;
 import com.mza_agrotours.backend.dtos.roles_permisos.RolGetShortDTO;
 import com.mza_agrotours.backend.entities.roles_permisos.Rol;
@@ -12,6 +13,8 @@ public interface RolMapper {
     RolGetShortDTO rolToRolGetShortDTO(Rol rol);
 
     List<RolGetShortDTO> rolListToRolGetShortDTOList(List<Rol> roles);
+
+    RolCreateResponse rolToRolCreateResponse(Rol rol);
 
     default RolGetCatalogoDTO rolToRolGetCatalogoDTO(Rol rol) {
         RolGetCatalogoDTO rolGetCatalogoDTO = new RolGetCatalogoDTO();
