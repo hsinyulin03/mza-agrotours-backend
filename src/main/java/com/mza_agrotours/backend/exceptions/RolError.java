@@ -12,6 +12,9 @@ public enum RolError implements ErrorCode{
     NOT_FOUND("rol.notFound",
             HttpStatus.NOT_FOUND,
             "El rol no fue encontrado"),
+    ROL_ALREADY_EXISTS("rol.rolAlreadyExists",
+            HttpStatus.FORBIDDEN,
+            "Ya existe un rol con ese nombre"),
     PERMISO_INVALIDO(
             "rol.permisoInvalido",
             HttpStatus.BAD_REQUEST,

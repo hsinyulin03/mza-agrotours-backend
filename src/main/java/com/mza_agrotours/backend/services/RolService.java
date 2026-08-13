@@ -64,10 +64,15 @@ public class RolService {
         return bajaRol(rolId, TipoPermisoNombre.ADMIN);
     }
 
+    // TODO: guarda con los establecimientos, no es tan reutilizable
     private Rol crearRol(RolCreateRequest rolCreateRequest, TipoPermisoNombre tipoPermisoNombre) {
         TipoPermiso tipoPermiso = this.tipoPermisoRepository
                 .findByNombre(tipoPermisoNombre)
                 .orElseThrow(() -> new IllegalStateException("Invalidaso"));
+
+        if (this.rolRepository.existsByNombreScoped(rolCreateRequest.getNombre(), tipoPermisoNombre)) {
+            throw new AppException(RolError.ROL_ALREADY_EXISTS);
+        }
 
         List<Permiso> permisos = this.permisoRepository
                 .findByTipoPermisoAndNombreIn(tipoPermiso, rolCreateRequest.getPermisos());
@@ -75,8 +80,6 @@ public class RolService {
         if (permisos.size() != rolCreateRequest.getPermisos().size()) {
             throw new AppException(RolError.PERMISO_INVALIDO);
         }
-        // TODO: fetchear roles existentess
-
 
         Rol nuevoRol = new Rol();
         nuevoRol.setNombre(rolCreateRequest.getNombre());
