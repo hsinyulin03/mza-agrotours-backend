@@ -26,7 +26,7 @@ public interface RolRepository extends BaseEntityRepository<Rol, UUID> {
             "where r.id = :id " +
             "and r.tipoPermiso.nombre = :tipoPermisoNombre " +
             "and r.fechaHoraBaja is null")
-    Optional<Rol> findVigenteByIdAndTipoPermisoNombre(
+    Optional<Rol> find(
             @Param("id") UUID id,
             @Param("tipoPermisoNombre") TipoPermisoNombre tipoPermisoNombre
     );

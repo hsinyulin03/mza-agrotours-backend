@@ -113,7 +113,10 @@ public class RolService {
 
 
         Rol rol = this.rolRepository
-                .findVigenteByIdAndTipoPermisoNombre(UUID.fromString(rolId), tipoPermisoNombre)
+                .findVigenteByIdScoped(
+                        UUID.fromString(rolId),
+                        tipoPermisoNombre,
+                        getRolExcluidoByTipoPermisoNombre(tipoPermisoNombre))
                 .orElseThrow(() -> new AppException(RolError.NOT_FOUND));
 
         List<Permiso> permisos = this.permisoRepository
