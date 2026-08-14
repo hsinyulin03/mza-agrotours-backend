@@ -3,7 +3,7 @@ package com.mza_agrotours.backend.config;
 import com.mza_agrotours.backend.entities.roles_permisos.GrupoPermiso;
 import com.mza_agrotours.backend.entities.roles_permisos.Permiso;
 import com.mza_agrotours.backend.entities.roles_permisos.TipoPermiso;
-import com.mza_agrotours.backend.enums.PermisoNombre;
+import com.mza_agrotours.backend.enums.PermisoCodigo;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
 import com.mza_agrotours.backend.repositories.GrupoPermisoRepository;
 import com.mza_agrotours.backend.repositories.PermisoRepository;
@@ -26,18 +26,18 @@ import static java.util.Map.entry;
 public class GrupoPermisoSeeder implements CommandLineRunner {
 
     /**
-     * Datos iniciales de un grupo de permisos.
+     * Datos iniciales de un grupo de permisoCodigos.
      */
     private record SeedGrupoPermiso(TipoPermisoNombre tipoPermiso,
                                     String descripcion,
                                     String icono,
-                                    List<PermisoNombre> permisos) {}
+                                    List<PermisoCodigo> permisoCodigos) {}
 
     /**
      * Valores iniciales de cada grupo. Al igual que en {@link PermisoSeeder} y {@link RolSeeder},
      * la descripcion es editable por un administrador en runtime, asi que solo se usa al crear el
      * grupo y despues la fuente de verdad es la base de datos. El tipo de permiso, el icono y los
-     * permisos son estructurales y se sincronizan en cada arranque.
+     * permisoCodigos son estructurales y se sincronizan en cada arranque.
      */
     private static final Map<String, SeedGrupoPermiso> SEEDS = Map.ofEntries(
             entry("Gestión de administradores",
@@ -45,15 +45,15 @@ public class GrupoPermisoSeeder implements CommandLineRunner {
                             TipoPermisoNombre.ADMIN,
                             "Altas bajas y cambios de los roles de administradores del sistema.",
                             "user-cog",
-                            List.of(PermisoNombre.GESTIONAR_ADMIN,
-                                    PermisoNombre.LEER_ADMIN))),
+                            List.of(PermisoCodigo.GESTIONAR_ADMIN,
+                                    PermisoCodigo.LEER_ADMIN))),
             entry("Gestión de solicitudes de establecimientos",
                     new SeedGrupoPermiso(
                             TipoPermisoNombre.ADMIN,
                             "Revisar, aceptar o rechazar solicitudes de creación de establecimientos",
                             "clipboard-check",
-                            List.of(PermisoNombre.LEER_SOLICITUD_ESTABLECIMIENTO,
-                                    PermisoNombre.GESTIONAR_SOLICITUD_ESTABLECIMIENTO)))
+                            List.of(PermisoCodigo.LEER_SOLICITUD_ESTABLECIMIENTO,
+                                    PermisoCodigo.GESTIONAR_SOLICITUD_ESTABLECIMIENTO)))
     );
 
     private final GrupoPermisoRepository grupoPermisoRepository;
@@ -104,10 +104,10 @@ public class GrupoPermisoSeeder implements CommandLineRunner {
     }
 
     private List<Permiso> resolvePermisos(String grupoNombre, SeedGrupoPermiso seed) {
-        return seed.permisos().stream()
-                .map(permisoNombre -> this.permisoRepository.findByNombre(permisoNombre)
+        return seed.permisoCodigos().stream()
+                .map(codigo -> this.permisoRepository.findByCodigo(codigo)
                         .orElseThrow(() -> new IllegalStateException(
-                                "Permiso no encontrado: " + permisoNombre
+                                "Permiso no encontrado: " + codigo
                                         + " (requerido por " + grupoNombre + ")")))
                 .collect(Collectors.toCollection(ArrayList::new));
     }
