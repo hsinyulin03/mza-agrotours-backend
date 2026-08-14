@@ -4,7 +4,7 @@ import com.mza_agrotours.backend.dtos.roles_permisos.*;
 import com.mza_agrotours.backend.entities.roles_permisos.Permiso;
 import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import com.mza_agrotours.backend.entities.roles_permisos.TipoPermiso;
-import com.mza_agrotours.backend.enums.PermisoNombre;
+import com.mza_agrotours.backend.enums.PermisoCodigo;
 import com.mza_agrotours.backend.enums.RolProtegido;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
 import com.mza_agrotours.backend.exceptions.AppException;
@@ -42,8 +42,8 @@ public class RolService {
         this.permisoRepository = permisoRepository;
     }
 
-    public List<PermisoNombre> obtenerPermisosAdminPorEmail(String email) {
-        return this.administradorSistemasRepository.findPermisoNombresByEmailActivo(email);
+    public List<PermisoCodigo> obtenerPermisoCodigosAdminPorEmail(String email) {
+        return this.administradorSistemasRepository.findPermisoCodigosByEmailActivo(email);
     }
 
     public List<RolGetCatalogoDTO> obtenerRolesAdminCatalogo() {
@@ -75,7 +75,7 @@ public class RolService {
         }
 
         List<Permiso> permisos = this.permisoRepository
-                .findByTipoPermisoAndNombreIn(tipoPermiso, rolCreateRequest.getPermisos());
+                .findByTipoPermisoAndCodigoIn(tipoPermiso, rolCreateRequest.getPermisos());
 
         if (permisos.size() != rolCreateRequest.getPermisos().size()) {
             throw new AppException(RolError.PERMISO_INVALIDO);
@@ -120,7 +120,7 @@ public class RolService {
                 .orElseThrow(() -> new AppException(RolError.NOT_FOUND));
 
         List<Permiso> permisos = this.permisoRepository
-                .findByTipoPermisoAndNombreIn(tipoPermiso, rolUpdateRequest.getPermisos());
+                .findByTipoPermisoAndCodigoIn(tipoPermiso, rolUpdateRequest.getPermisos());
 
         if (permisos.size() != rolUpdateRequest.getPermisos().size()) {
             throw new AppException(RolError.PERMISO_INVALIDO);
