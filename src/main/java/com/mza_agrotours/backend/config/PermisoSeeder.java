@@ -43,7 +43,7 @@ public class PermisoSeeder implements CommandLineRunner {
             entry(PermisoNombre.LEER_SOLICITUD_ESTABLECIMIENTO,
                     new SeedPermiso(TipoPermisoNombre.ADMIN, "Ver solicitudes de establecimiento")),
             entry(PermisoNombre.GESTIONAR_SOLICITUD_ESTABLECIMIENTO,
-                    new SeedPermiso(TipoPermisoNombre.ADMIN, "\"Aceptar o rechazar solicitudes de establecimientos pendientes"))
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Aceptar o rechazar solicitudes de establecimientos pendientes"))
     );
 
     private final PermisoRepository permisoRepository;
