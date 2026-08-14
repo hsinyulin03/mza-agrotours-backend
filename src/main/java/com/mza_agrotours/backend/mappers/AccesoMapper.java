@@ -25,6 +25,6 @@ public interface AccesoMapper {
     AccesoDTO  rolToAccesoDTO(Rol rol);
 
     default String permisoToString(Permiso permiso) {
-        return permiso.getNombre().name();
+        return permiso.getCodigo().name();
     }
 }
