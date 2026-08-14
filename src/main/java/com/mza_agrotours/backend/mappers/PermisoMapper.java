@@ -2,8 +2,8 @@ package com.mza_agrotours.backend.mappers;
 
 import com.mza_agrotours.backend.dtos.roles_permisos.GrupoPermisoDTO;
 import com.mza_agrotours.backend.entities.roles_permisos.GrupoPermiso;
+import com.mza_agrotours.backend.entities.roles_permisos.Permiso;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 
 import java.util.List;
 
@@ -11,6 +11,9 @@ import java.util.List;
 public interface PermisoMapper {
     List<GrupoPermisoDTO> grupoPermisoListToGrupoPermisoDTOList(List<GrupoPermiso> grupoPermisos);
 
-    @Mapping(target = "permisos", ignore = true)
-    GrupoPermisoDTO grupoPermisoToGrupoPermisoDTO(GrupoPermisoDTO grupoPermiso);
+    GrupoPermisoDTO grupoPermisoToGrupoPermisoDTO(GrupoPermiso grupoPermiso);
+
+    default String permisoToNombre(Permiso permiso) {
+        return permiso.getNombre().name();
+    }
 }
