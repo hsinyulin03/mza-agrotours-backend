@@ -25,6 +25,6 @@ public interface RolMapper {
     RolGetCatalogoDTO rolToRolGetCatalogoDTO(Rol rol);
 
     default String permisoToString(Permiso permiso) {
-        return permiso.getNombre().name();
+        return permiso.getCodigo().name();
     }
 }
