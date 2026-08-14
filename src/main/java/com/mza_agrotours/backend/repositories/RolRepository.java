@@ -36,7 +36,10 @@ public interface RolRepository extends BaseEntityRepository<Rol, UUID> {
             "and r.nombre <> :nombreExcluido")
     Optional<Rol> findVigenteByIdScoped(UUID id, TipoPermisoNombre tipoPermisoNombre, String nombreExcluido);
 
-    @Query("select case when r.nombre = :nombre and r.tipoPermiso.nombre = :tipoPermisoNombre and r.fechaHoraBaja is null then true else false end from Rol r")
-    Boolean existsByNombreScoped(String nombre, TipoPermisoNombre tipoPermisoNombre);
+    @Query("select case when r.nombre = :nombre " +
+            "and r.tipoPermiso.nombre = :tipoPermisoNombre " +
+            "and r.fechaHoraBaja is null then true else false end " +
+            "from Rol r")
+    boolean existsByNombreScoped(String nombre, TipoPermisoNombre tipoPermisoNombre);
 }
 
