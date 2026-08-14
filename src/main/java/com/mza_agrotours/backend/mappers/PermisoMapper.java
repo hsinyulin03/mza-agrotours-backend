@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.mappers;
 
+import com.mza_agrotours.backend.dtos.roles_permisos.GPPermisoDTO;
 import com.mza_agrotours.backend.dtos.roles_permisos.GrupoPermisoDTO;
 import com.mza_agrotours.backend.entities.roles_permisos.GrupoPermiso;
 import com.mza_agrotours.backend.entities.roles_permisos.Permiso;
@@ -13,7 +14,6 @@ public interface PermisoMapper {
 
     GrupoPermisoDTO grupoPermisoToGrupoPermisoDTO(GrupoPermiso grupoPermiso);
 
-    default String permisoToNombre(Permiso permiso) {
-        return permiso.getNombre().name();
-    }
+
+    GPPermisoDTO permisoToGPPermisoDTO(Permiso permiso);
 }

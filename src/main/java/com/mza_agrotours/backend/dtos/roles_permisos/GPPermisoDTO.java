@@ -4,14 +4,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.List;
-
 @NoArgsConstructor
 @Getter
 @Setter
-public class GrupoPermisoDTO {
+public class GPPermisoDTO {
     private String nombre;
     private String descripcion;
-    private String icono;
-    private List<GPPermisoDTO> permisos;
+    private String codigo;
 }
