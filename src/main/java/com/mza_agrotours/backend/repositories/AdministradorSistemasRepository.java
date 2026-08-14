@@ -20,7 +20,7 @@ public interface AdministradorSistemasRepository extends BaseEntityRepository<Ad
 
     List<AdministradorSistemas> findByFechaHoraBajaIsNull();
 
-    @Query("SELECT p.nombre FROM AdministradorSistemas a JOIN a.rol r JOIN r.permisos p WHERE a.usuario.email = :email AND a.fechaHoraBaja IS NULL")
+    @Query("SELECT p.codigo FROM AdministradorSistemas a JOIN a.rol r JOIN r.permisos p WHERE a.usuario.email = :email AND a.fechaHoraBaja IS NULL")
     List<PermisoCodigo> findPermisoCodigosByEmailActivo(@Param("email") String email);
 
     Integer countByRolAndFechaHoraBajaIsNull(Rol rol);
