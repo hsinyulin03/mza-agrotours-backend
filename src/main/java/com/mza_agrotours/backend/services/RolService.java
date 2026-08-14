@@ -139,6 +139,12 @@ public class RolService {
                 .findVigenteByIdScoped(UUID.fromString(rolId), tipoPermisoNombre, rolExcluido)
                 .orElseThrow(() -> new AppException(RolError.NOT_FOUND));
 
+
+        Integer cantidadUsers = obtenerCantidadUsuariosPorRol(rol);
+        if (cantidadUsers > 0) {
+            throw new AppException(RolError.BAJA_ROL_CON_USUARIOS);
+        }
+
         rol.setFechaHoraBaja(LocalDateTime.now());
         this.rolRepository.save(rol);
         return true;

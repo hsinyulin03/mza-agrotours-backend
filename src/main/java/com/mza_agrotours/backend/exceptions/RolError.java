@@ -15,6 +15,9 @@ public enum RolError implements ErrorCode{
     ROL_ALREADY_EXISTS("rol.rolAlreadyExists",
             HttpStatus.FORBIDDEN,
             "Ya existe un rol con ese nombre"),
+    BAJA_ROL_CON_USUARIOS("rol.bajaTieneUsuarios",
+            HttpStatus.FORBIDDEN,
+            "No se puede dar de baja un rol con usuarios asignados"),
     PERMISO_INVALIDO(
             "rol.permisoInvalido",
             HttpStatus.BAD_REQUEST,
