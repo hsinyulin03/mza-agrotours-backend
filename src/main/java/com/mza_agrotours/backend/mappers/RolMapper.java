@@ -4,8 +4,10 @@ import com.mza_agrotours.backend.dtos.roles_permisos.RolCreateResponse;
 import com.mza_agrotours.backend.dtos.roles_permisos.RolGetCatalogoDTO;
 import com.mza_agrotours.backend.dtos.roles_permisos.RolGetShortDTO;
 import com.mza_agrotours.backend.dtos.roles_permisos.RolUpdateResponse;
+import com.mza_agrotours.backend.entities.roles_permisos.Permiso;
 import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 import java.util.List;
 
@@ -19,18 +21,10 @@ public interface RolMapper {
 
     RolUpdateResponse rolToRolUpdateResponse(Rol rol);
 
-    default RolGetCatalogoDTO rolToRolGetCatalogoDTO(Rol rol) {
-        RolGetCatalogoDTO rolGetCatalogoDTO = new RolGetCatalogoDTO();
-        rolGetCatalogoDTO.setId(rol.getId().toString());
-        rolGetCatalogoDTO.setNombre(rol.getNombre());
-        rolGetCatalogoDTO.setDescripcion(rol.getDescripcion());
-        rolGetCatalogoDTO.setEsProtegido(rol.getEsProtegido());
-        rolGetCatalogoDTO.setPermisos(
-                rol.getPermisos()
-                        .stream()
-                        .map(permiso -> permiso.getNombre().name())
-                        .toList()
-        );
-        return rolGetCatalogoDTO;
+    @Mapping(target = "cantidadUsuarios", ignore = true)
+    RolGetCatalogoDTO rolToRolGetCatalogoDTO(Rol rol);
+
+    default String permisoToString(Permiso permiso) {
+        return permiso.getNombre().name();
     }
 }
