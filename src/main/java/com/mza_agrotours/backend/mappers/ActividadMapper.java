@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+
 @Mapper(componentModel = "spring")
 public interface ActividadMapper {
     // US-ACT-02
@@ -56,6 +57,7 @@ public interface ActividadMapper {
     @Mapping(target = "faqs", ignore = true)
     @Mapping(target = "rangosEtarios", ignore = true)
     @Mapping(target = "cultivos", ignore = true)
+    @Mapping(source = "fotos", target = "fotosGuardadas")
     DTOActividadGetResponse actividadToDTOActividadGetResponse(Actividad actividad);
 
     //US-RESE-01
@@ -130,6 +132,8 @@ public interface ActividadMapper {
         dto.setRangosEtarios(tarifas);
         dto.setCultivos(cultivosAsociados);
     }
+
+
 
     //Métodos auxiliares
     private BigDecimal obtenerPrecioBaseVigente(Actividad actividad) {
