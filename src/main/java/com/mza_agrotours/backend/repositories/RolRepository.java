@@ -2,6 +2,8 @@ package com.mza_agrotours.backend.repositories;
 
 import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,5 +19,27 @@ public interface RolRepository extends BaseEntityRepository<Rol, UUID> {
     List<Rol> findByTipoPermiso_NombreAndFechaHoraBajaIsNullAndNombreIsNotContaining(TipoPermisoNombre tipoPermiso_nombre, String nombre);
 
     Optional<Rol> findByNombreAndFechaHoraBajaIsNull(String nombre);
+
+    List<Rol> findByTipoPermiso_NombreAndFechaHoraBajaIsNull(TipoPermisoNombre tipoPermisoNombre);
+
+    @Query("select r from Rol r " +
+            "where r.id = :id " +
+            "and r.tipoPermiso.nombre = :tipoPermisoNombre " +
+            "and r.fechaHoraBaja is null")
+    Optional<Rol> find(
+            @Param("id") UUID id,
+            @Param("tipoPermisoNombre") TipoPermisoNombre tipoPermisoNombre
+    );
+    @Query("select r from Rol r " +
+            "where r.id = :id " +
+            "and r.tipoPermiso.nombre = :tipoPermisoNombre " +
+            "and r.nombre <> :nombreExcluido")
+    Optional<Rol> findVigenteByIdScoped(UUID id, TipoPermisoNombre tipoPermisoNombre, String nombreExcluido);
+
+    @Query("select case when r.nombre = :nombre " +
+            "and r.tipoPermiso.nombre = :tipoPermisoNombre " +
+            "and r.fechaHoraBaja is null then true else false end " +
+            "from Rol r")
+    boolean existsByNombreScoped(String nombre, TipoPermisoNombre tipoPermisoNombre);
 }
 

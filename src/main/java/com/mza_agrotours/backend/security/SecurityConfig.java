@@ -1,6 +1,6 @@
 package com.mza_agrotours.backend.security;
 
-import com.mza_agrotours.backend.enums.PermisoNombre;
+import com.mza_agrotours.backend.enums.PermisoCodigo;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -36,8 +36,8 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Administradores
-                        .requestMatchers("/administradores-sistemas/").hasAuthority(PermisoNombre.LEER_ADMIN.name())
-                        .requestMatchers("/administradores-sistemas/**").hasAuthority(PermisoNombre.GESTIONAR_ADMIN.name())
+                        .requestMatchers("/administradores-sistemas/").hasAuthority(PermisoCodigo.LEER_ADMIN.name())
+                        .requestMatchers("/administradores-sistemas/**").hasAuthority(PermisoCodigo.GESTIONAR_ADMIN.name())
 
                         // Pais y departamento
                         .requestMatchers("/pais/**").permitAll()
@@ -48,8 +48,8 @@ public class SecurityConfig {
 
                         // Solicitudes
                         .requestMatchers("/solicitudes-establecimiento/me/**").authenticated()
-                        .requestMatchers("/solicitudes-establecimiento/").hasAuthority(PermisoNombre.LEER_SOLICITUD_ESTABLECIMIENTO.name())
-                        .requestMatchers("/solicitudes-establecimiento/observar/**").hasAuthority(PermisoNombre.GESTIONAR_SOLICITUD_ESTABLECIMIENTO.name())
+                        .requestMatchers("/solicitudes-establecimiento/").hasAuthority(PermisoCodigo.LEER_SOLICITUD_ESTABLECIMIENTO.name())
+                        .requestMatchers("/solicitudes-establecimiento/observar/**").hasAuthority(PermisoCodigo.GESTIONAR_SOLICITUD_ESTABLECIMIENTO.name())
 
                         // Archivos
                         .requestMatchers("/object-storage/**").permitAll()

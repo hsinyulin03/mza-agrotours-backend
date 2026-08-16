@@ -56,7 +56,7 @@ public class FirebaseTokenFilter extends OncePerRequestFilter {
 
     private List<SimpleGrantedAuthority> getAdminAuthorities(String email) {
         return this.rolService
-                .obtenerPermisosAdminPorEmail(email)
+                .obtenerPermisoCodigosAdminPorEmail(email)
                 .stream()
                 .map(p -> new SimpleGrantedAuthority(p.name())).toList();
     }
