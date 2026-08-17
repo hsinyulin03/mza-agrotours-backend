@@ -46,6 +46,7 @@ public class RolProductorController {
     }
 
     @DeleteMapping("/{rolId}")
+    @PreAuthorize("@estAuth.esTitular(authentication, #establecimientoId)")
     public ResponseEntity<ApiResponse<Boolean>> bajaRolProductor(
             @PathVariable UUID establecimientoId,
             @PathVariable String rolId) {
