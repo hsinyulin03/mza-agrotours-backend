@@ -25,7 +25,7 @@ public interface RolMapper {
     @Mapping(target = "permisos", source = "permisos")
     @Mapping(target = "establecimiento", source = "rolScopeSolved.establecimiento")
     @Mapping(target = "tipoPermiso", source = "rolScopeSolved.tipoPermiso")
-    @Mapping(target = "esProtegido", defaultValue = "false")
+    @Mapping(target = "esProtegido", constant = "false")
     Rol rolScopeSolvedAndCreateRequestAndPermisosToRol(RolCreateRequest rolCreateRequest, RolScopeSolved rolScopeSolved, List<Permiso> permisos);
 
     default String permisoToString(Permiso permiso) {
