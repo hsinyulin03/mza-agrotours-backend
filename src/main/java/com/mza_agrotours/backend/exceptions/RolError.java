@@ -18,6 +18,9 @@ public enum RolError implements ErrorCode{
     BAJA_ROL_CON_USUARIOS("rol.bajaTieneUsuarios",
             HttpStatus.FORBIDDEN,
             "No se puede dar de baja un rol con usuarios asignados"),
+    MALA_REQUEST("rol.malaRequest",
+            HttpStatus.BAD_REQUEST,
+            "No se pudo procesar la solicitud por parámetros inválidos"),
     PERMISO_INVALIDO(
             "rol.permisoInvalido",
             HttpStatus.BAD_REQUEST,
