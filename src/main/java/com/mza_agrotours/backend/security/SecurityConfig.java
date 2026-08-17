@@ -3,6 +3,8 @@ package com.mza_agrotours.backend.security;
 import com.mza_agrotours.backend.enums.PermisoCodigo;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -15,6 +17,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
     private final FirebaseTokenFilter firebaseTokenFilter;
 
@@ -44,6 +47,7 @@ public class SecurityConfig {
                         .requestMatchers("/departamentos/**").permitAll()
 
                         // Usuario
+                        .requestMatchers("/usuario/create").permitAll()
                         .requestMatchers("/usuario/**").authenticated()
 
                         // Solicitudes
@@ -53,6 +57,10 @@ public class SecurityConfig {
 
                         // Archivos
                         .requestMatchers("/object-storage/**").permitAll()
+
+                        //Permisos
+                        .requestMatchers( "/permisos/grupos-permisos/admin").hasAuthority(PermisoCodigo.LEER_ADMIN.name())
+                        .requestMatchers("/permisos/grupos-permisos/productor").authenticated()
                         .anyRequest().authenticated())
                 .addFilterBefore(firebaseTokenFilter, UsernamePasswordAuthenticationFilter.class);
 

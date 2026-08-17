@@ -20,8 +20,6 @@ public interface RolRepository extends BaseEntityRepository<Rol, UUID> {
 
     Optional<Rol> findByNombreAndFechaHoraBajaIsNull(String nombre);
 
-    List<Rol> findByTipoPermiso_NombreAndFechaHoraBajaIsNull(TipoPermisoNombre tipoPermisoNombre);
-
     @Query("select r from Rol r " +
             "where r.id = :id " +
             "and r.tipoPermiso.nombre = :tipoPermisoNombre " +
@@ -33,13 +31,27 @@ public interface RolRepository extends BaseEntityRepository<Rol, UUID> {
     @Query("select r from Rol r " +
             "where r.id = :id " +
             "and r.tipoPermiso.nombre = :tipoPermisoNombre " +
-            "and r.nombre <> :nombreExcluido")
-    Optional<Rol> findVigenteByIdScoped(UUID id, TipoPermisoNombre tipoPermisoNombre, String nombreExcluido);
+            "and r.nombre <> :nombreExcluido " +
+            "and ((:estId is null and r.establecimiento is null) " +
+            "       or r.establecimiento.id = :estId) " +
+            "and r.fechaHoraBaja is null ")
+    Optional<Rol> findVigenteByIdScoped(UUID id, TipoPermisoNombre tipoPermisoNombre, String nombreExcluido, UUID estId);
 
-    @Query("select case when r.nombre = :nombre " +
-            "and r.tipoPermiso.nombre = :tipoPermisoNombre " +
-            "and r.fechaHoraBaja is null then true else false end " +
-            "from Rol r")
-    boolean existsByNombreScoped(String nombre, TipoPermisoNombre tipoPermisoNombre);
+    @Query("select r from Rol r " +
+            "where r.tipoPermiso.nombre = :tipo " +
+            "and r.fechaHoraBaja is null " +
+            "and ((:estId is null and r.establecimiento is null) " +
+            "     or r.establecimiento.id = :estId)")
+    List<Rol> findVigentesEnScope(@Param("tipo") TipoPermisoNombre tipo,
+                                  @Param("estId") UUID estId);
+
+    @Query("SELECT COUNT(r) > 0 FROM Rol r WHERE r.nombre = :nombre " +
+            "AND r.tipoPermiso.nombre = :tipo "+
+            "AND (r.establecimiento.id = :estId OR (:estId IS NULL AND r.establecimiento IS NULL))  "+
+            "AND r.fechaHoraBaja IS NULL")
+    boolean existsByNombreAndTipoPermisoAndEstablecimiento(
+            @Param("nombre") String nombre,
+            @Param("tipo") TipoPermisoNombre tipo,
+            @Param("estId") UUID estId);
 }
 

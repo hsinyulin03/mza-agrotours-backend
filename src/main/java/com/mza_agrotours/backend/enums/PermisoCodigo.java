@@ -8,6 +8,7 @@ public enum PermisoCodigo {
     // Productor
     GESTIONAR_PRODUCTOR,
     LEER_PRODUCTOR,
+    LEER_ROLES_PRODUCTOR,
 
     // Solicitud Establecimiento
     LEER_SOLICITUD_ESTABLECIMIENTO,

@@ -25,6 +25,10 @@ public class PermisoService {
         return this.obtenerPermisosAgrupados(TipoPermisoNombre.ADMIN);
     }
 
+    public List<GrupoPermisoDTO> obtenerPermisosProductor() {
+        return this.obtenerPermisosAgrupados(TipoPermisoNombre.PRODUCTOR);
+    }
+
     private List<GrupoPermisoDTO> obtenerPermisosAgrupados(TipoPermisoNombre tipoPermisoNombre) {
         List<GrupoPermiso> gruposPermisos = this.grupoPermisoRepository
                 .findAllByTipoPermiso_Nombre(tipoPermisoNombre);

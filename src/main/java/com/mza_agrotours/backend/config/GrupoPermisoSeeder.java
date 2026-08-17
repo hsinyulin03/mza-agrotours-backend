@@ -53,7 +53,21 @@ public class GrupoPermisoSeeder implements CommandLineRunner {
                             "Revisar, aceptar o rechazar solicitudes de creación de establecimientos",
                             "clipboard-check",
                             List.of(PermisoCodigo.LEER_SOLICITUD_ESTABLECIMIENTO,
-                                    PermisoCodigo.GESTIONAR_SOLICITUD_ESTABLECIMIENTO)))
+                                    PermisoCodigo.GESTIONAR_SOLICITUD_ESTABLECIMIENTO))),
+            entry("Gestión de productores",
+                    new SeedGrupoPermiso(
+                            TipoPermisoNombre.PRODUCTOR,
+                            "Altas, bajas y modificación de los productores",
+                            "user-pen",
+                            List.of(PermisoCodigo.LEER_PRODUCTOR,
+                                    PermisoCodigo.GESTIONAR_PRODUCTOR))),
+            entry("Gestión de roles de productor",
+                    new SeedGrupoPermiso(
+                            TipoPermisoNombre.PRODUCTOR,
+                            "Ver y administrar los roles de productor del establecimiento",
+                            "user-check",
+                            List.of(PermisoCodigo.LEER_ROLES_PRODUCTOR)))
+
     );
 
     private final GrupoPermisoRepository grupoPermisoRepository;

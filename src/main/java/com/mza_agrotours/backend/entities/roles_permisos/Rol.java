@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.entities.roles_permisos;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
+import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -38,4 +39,8 @@ public class Rol extends BaseEntity {
 
     @ManyToOne(optional = false)
     private TipoPermiso tipoPermiso;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "establecimiento_id")
+    private Establecimiento establecimiento;
 }

@@ -24,4 +24,9 @@ public class PermisoController {
         return ResponseEntity.ok(ApiResponse.ok(this.permisoService
                 .obtenerPermisosAdmin()));
     }
+    @GetMapping("/grupos-permisos/productor")
+    public ResponseEntity<ApiResponse<List<GrupoPermisoDTO>>> obtenerPermisosProductor() {
+        return ResponseEntity.ok(ApiResponse.ok(this.permisoService
+                .obtenerPermisosProductor()));
+    }
 }
