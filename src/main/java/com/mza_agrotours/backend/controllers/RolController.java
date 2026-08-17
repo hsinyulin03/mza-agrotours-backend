@@ -2,7 +2,7 @@ package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.roles_permisos.*;
-import com.mza_agrotours.backend.services.RolService;
+import com.mza_agrotours.backend.services.roles_permisos.RolService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
