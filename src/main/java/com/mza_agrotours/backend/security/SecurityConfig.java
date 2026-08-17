@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.security;
 import com.mza_agrotours.backend.enums.PermisoCodigo;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -50,6 +51,10 @@ public class SecurityConfig {
                         .requestMatchers("/solicitudes-establecimiento/me/**").authenticated()
                         .requestMatchers("/solicitudes-establecimiento/").hasAuthority(PermisoCodigo.LEER_SOLICITUD_ESTABLECIMIENTO.name())
                         .requestMatchers("/solicitudes-establecimiento/observar/**").hasAuthority(PermisoCodigo.GESTIONAR_SOLICITUD_ESTABLECIMIENTO.name())
+
+                        // Roles
+                        .requestMatchers(HttpMethod.GET,"/roles/admin").hasAuthority(PermisoCodigo.LEER_ADMIN.name())
+                        .requestMatchers("/roles/admin/**").hasAuthority(PermisoCodigo.GESTIONAR_PRODUCTOR.name())
 
                         // Archivos
                         .requestMatchers("/object-storage/**").permitAll()
