@@ -4,6 +4,7 @@ import com.mza_agrotours.backend.dtos.actividad.DTOActividadAlta;
 import com.mza_agrotours.backend.dtos.actividad.DTOActividadUpdate;
 import com.mza_agrotours.backend.dtos.actividad.DTODiaDisponibilidad;
 import com.mza_agrotours.backend.dtos.actividad.DTOTarifa;
+import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadRequest;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
@@ -35,6 +36,7 @@ public class ActividadValidaciones {
                 !EstadoActividadNombre.PUBLICADO.name().equalsIgnoreCase(estadoRecibido))) {
             errores.add("Una actividad nueva no puede crearse en estado '" + dto.getEstado() + "'. Solo se permite en estado BORRADOR o PUBLICADO.");
         }
+        errores.addAll(validarTamanioImagenes(dto.getFotos()));
         errores.addAll(validarFechas(dto));
         errores.addAll(validarTarifas(dto.getTarifas()));
         errores.addAll(validarDisponibilidad(dto));
@@ -50,8 +52,10 @@ public class ActividadValidaciones {
         if (estadoRecibido == null ||
                 (!EstadoActividadNombre.BORRADOR.name().equalsIgnoreCase(estadoRecibido) &&
                         !EstadoActividadNombre.PUBLICADO.name().equalsIgnoreCase(estadoRecibido))) {
-            errores.add("Una actividad no puede modificarse en estado '" + dto.getEstado()+ "'");
+            errores.add("Una actividad no puede modificarse en estado '" + dto.getEstado() + "'");
         }
+        errores.addAll(validarCantidadFotosModificacion(dto, idActividadActual));
+        errores.addAll(validarTamanioImagenes(dto.getFotosNuevas()));
         errores.addAll(validarNombreUnico(dto.getNombre(), idActividadActual));
         errores.addAll(validarTarifas(dto.getTarifas()));
         return errores;
@@ -160,6 +164,53 @@ public class ActividadValidaciones {
                 errores.add("Error en la configuración del día " + configDia.getDia() +
                         ": La hora de inicio debe ser anterior a la hora de fin.");
             }
+        }
+        return errores;
+    }
+
+    private List<String> validarTamanioImagenes(List<ArchivoUploadRequest> fotosNuevas) {
+        List<String> errores = new ArrayList<>();
+
+        if (fotosNuevas == null || fotosNuevas.isEmpty()) {
+            return errores;
+        }
+        //TODO-  confiamos lo que envía el usuario en fileSize, pero cuando hace el PUT de la imagen permitimos hasta 10MB
+        long maxSizeActividad = 5L * 1024 * 1024; //5MB
+        for (ArchivoUploadRequest foto : fotosNuevas) {
+            if (foto.getFileSize() > maxSizeActividad) {
+                errores.add("La imagen '" + foto.getFilename() + "' supera el límite permitido de 5MB.");
+            }
+        }
+
+        return errores;
+    }
+
+    public List<String> validarCantidadFotosModificacion(DTOActividadUpdate dto, UUID idActividad) {
+        List<String> errores = new ArrayList<>();
+        Optional <Actividad> actividadOpt = actividadRepository.findByIdAndFechaHoraBajaIsNull(idActividad);
+        if (actividadOpt.isEmpty()) {
+            errores.add("No se encontró la actividad con el ID especificado.");
+            return errores;
+        }
+        Actividad actividadActual = actividadOpt.get();
+        int cantidadNuevas = (dto.getFotosNuevas() != null) ? dto.getFotosNuevas().size() : 0;
+
+        int cantidadExistentesQueQuedan;
+
+        if (dto.getFotosExistentes() == null) {
+           // Si el front mandó null, significa "no borres nada".
+           // Por lo tanto, se quedan todas las que la actividad ya tenía.
+           cantidadExistentesQueQuedan = actividadActual.getFotos().size();
+        } else {
+           // Si mandó una lista (incluso vacía), contamos cuántas de las que
+           // tiene actualmente la entidad hacen "match" con lo que mandó el front.
+           cantidadExistentesQueQuedan = (int) actividadActual.getFotos().stream()
+                   .filter(foto -> dto.getFotosExistentes().contains(foto.getKey()))
+                   .count();
+        }
+
+        if ((cantidadExistentesQueQuedan + cantidadNuevas) > 10) {
+            errores.add("La actividad no puede tener más de 10 imágenes en total.");
         }
         return errores;
     }

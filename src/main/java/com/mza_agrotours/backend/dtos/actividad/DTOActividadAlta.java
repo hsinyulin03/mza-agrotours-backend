@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.dtos.actividad;
 
 
+import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadRequest;
 import com.mza_agrotours.backend.entities.actividad.EstadoActividad;
 import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
 import jakarta.validation.Valid;
@@ -31,6 +32,9 @@ public class DTOActividadAlta {
 
     @NotNull(message = "El estado de la actividad es requerido")
     private String estado; // Enum: BORRADOR o PUBLICADO
+
+    @Valid @Size(max = 10)
+    private List<ArchivoUploadRequest> fotos;
 
     //  PASO 2: Detalles de la experiencia
     private List<@Size(min = 5, max = 200, message = "El ítem debe tener entre 5 y 200 caracteres") String> incluye;
