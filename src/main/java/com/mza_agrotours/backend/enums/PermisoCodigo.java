@@ -12,4 +12,8 @@ public enum PermisoCodigo {
     // Solicitud Establecimiento
     LEER_SOLICITUD_ESTABLECIMIENTO,
     GESTIONAR_SOLICITUD_ESTABLECIMIENTO,
+
+    // Rol
+    LEER_ROL,
+    GESTIONAR_ROL,
 }
