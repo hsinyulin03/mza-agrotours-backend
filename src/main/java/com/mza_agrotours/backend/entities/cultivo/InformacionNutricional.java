@@ -1,10 +1,12 @@
 package com.mza_agrotours.backend.entities.cultivo;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
+import com.mza_agrotours.backend.enums.UnidadNutricional;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,7 +22,7 @@ public class InformacionNutricional extends BaseEntity {
     private String nombre;
 
     @Column(nullable = false, length = 30)
-    private float valor;
+    private String valor;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)

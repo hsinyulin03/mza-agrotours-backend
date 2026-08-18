@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.dtos.tipoCultivo.*;
 import com.mza_agrotours.backend.entities.cultivo.Estacionalidad;
 import com.mza_agrotours.backend.entities.cultivo.EstacionalidadMes;
+import com.mza_agrotours.backend.entities.cultivo.InformacionNutricional;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.enums.EstacionalidadNombre;
 import com.mza_agrotours.backend.enums.Mes;
@@ -55,7 +56,9 @@ public class TipoCultivoService {
         tipoCultivo.setDescripcion(dto.getDescripcion());
         tipoCultivo.setBeneficios(dto.getBeneficios());
         tipoCultivo.setEstacionalidadMeses(construirEstacionalidadMeses(dto.getEstacionalidadPorMes()));
-        // todo informacion nutricional
+        tipoCultivo.setPorcionReferencia(dto.getPorcionReferencia());
+        tipoCultivo.setInformacionNutricional(construirInformacionNutricional(dto.getInformacionNutricional()));
+
         TipoCultivo guardado = tipoCultivoRepository.save(tipoCultivo);
 
         return mapearADatos(guardado);
@@ -77,6 +80,16 @@ public class TipoCultivoService {
         tipoCultivo.setBeneficios(dto.getBeneficios());
 
         actualizarEstacionalidad(tipoCultivo, dto.getEstacionalidadPorMes());
+
+        List<InformacionNutricional> informacionActual =
+                tipoCultivo.getInformacionNutricional();
+
+        List<InformacionNutricional> informacionNueva =
+                construirInformacionNutricional(dto.getInformacionNutricional());
+
+        informacionActual.clear();
+        informacionActual.addAll(informacionNueva);
+
 
         TipoCultivo guardado = tipoCultivoRepository.save(tipoCultivo);
         return mapearADatos(guardado);
@@ -195,6 +208,25 @@ public class TipoCultivoService {
         if (!tieneCosecha) {
             throw new ValidacionNegocioException("El cultivo debe tener al menos un mes en estado de cosecha");
         }
+    }
+    private List<InformacionNutricional> construirInformacionNutricional(
+            List<DTOTipoCultivoInfoNutriAM> informacionNutricionalDTO
+    ) {
+        if (informacionNutricionalDTO == null) {
+            return new ArrayList<>();
+        }
+
+        return informacionNutricionalDTO.stream()
+                .map(dto -> {
+                    InformacionNutricional info = new InformacionNutricional();
+
+                    info.setNombre(dto.getNombre());
+                    info.setValor(dto.getValor());
+                    info.setUnidad(dto.getUnidad());
+
+                    return info;
+                })
+                .toList();
     }
     // DETALLE / EDITAR
     private DTOTipoCultivoEditarDetalle mapearADatos(TipoCultivo tipoCultivo) {
