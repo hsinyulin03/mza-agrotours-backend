@@ -20,7 +20,7 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "JOIN r.reservaDetalles rd " +
             "WHERE ad.id = :uuid " +
             "AND r.estadoActual.estadoReserva.nombre " +
-            "IN (com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.PENDIENTE, com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.PAGADA)")
+            "IN (com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE, com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA)")
     Long getCuposReservadosActividadDia(@Param("uuid") UUID uuidActividadDia);
 
     @Query("SELECT er FROM EstadoReserva er " +
@@ -30,7 +30,7 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
     @Query("SELECT DISTINCT r FROM Reserva r " +
             "LEFT JOIN FETCH r.estados " +
             "JOIN r.estadoActual estado " +
-            "WHERE estado.estadoReserva.nombre = com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.PENDIENTE " +
+            "WHERE estado.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE " +
             "AND r.fechaHoraExpiracion < :currTime")
     List<Reserva> findReservasExpiradas(@Param("currTime")LocalDateTime currTime);
 

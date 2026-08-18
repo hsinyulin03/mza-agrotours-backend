@@ -146,7 +146,7 @@ public class ReservaService {
     }
 
     @Transactional
-    public ConsultarReservaDTO handleIniciarReserva(RealizarReservaDTO realizarReservaDTO, String emailUsuario){
+    public IniciarReservaDTO handleIniciarReserva(RealizarReservaDTO realizarReservaDTO, String emailUsuario){
         LocalDateTime fechaHoraActual = LocalDateTime.now();
 
         // Gettear al usuario y visitante
@@ -225,7 +225,9 @@ public class ReservaService {
         MetodoPago metodoPago = MetodoPago.MANUAL;  // TODO Cambiar esto para cuando se use el medio de pago real
 
         EstrategiaPago estrategiaPago = estrategiaPagoFactory.get(metodoPago);
-        Pago pago = estrategiaPago.procesarPago(nuevaReserva);
+        PagoStrategyDTO pagoStratDTO = estrategiaPago.procesarPago(nuevaReserva);
+        Pago pago = pagoStratDTO.pago();
+        String preferenceID = pagoStratDTO.preferenceID();
 
         // Si el pago ya fue aprobado (manual), la reserva pasa a pagada.
         // Si queda pendiente (Mercado Pago), la reserva sigue pendiente hasta la confirmación por webhook (otro método).
@@ -245,7 +247,7 @@ public class ReservaService {
                 .orElseThrow(EstablecimientoNotFoundException::new);
 
         // Avisar al frontend de qué pasó
-        return reservaMapper.reservaToConsultarReservaDTO(nuevaReserva, establecimiento);
+        return new IniciarReservaDTO(reservaMapper.reservaToConsultarReservaDTO(nuevaReserva, establecimiento), preferenceID);
     }
 
     @Transactional(readOnly = true)

@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.services.pago;
 
+import com.mza_agrotours.backend.dtos.reservas.PagoStrategyDTO;
 import com.mza_agrotours.backend.entities.pago.EstadoPago;
 import com.mza_agrotours.backend.enums.EstadoPagoNombre;
 import com.mza_agrotours.backend.enums.MetodoPago;
@@ -31,7 +32,7 @@ public class PagoManualStrategy implements EstrategiaPago{
     }
 
     @Override
-    public Pago procesarPago(Reserva reserva) {
+    public PagoStrategyDTO procesarPago(Reserva reserva) {
         LocalDateTime ahora = LocalDateTime.now();
         Pago pago = new Pago();
 
@@ -59,6 +60,6 @@ public class PagoManualStrategy implements EstrategiaPago{
 
         reserva.setPago(pago);
 
-        return pago;
+        return new PagoStrategyDTO(pago, null);
     }
 }

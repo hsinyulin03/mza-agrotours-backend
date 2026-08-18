@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.controllers;
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
 import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDTO;
+import com.mza_agrotours.backend.dtos.reservas.IniciarReservaDTO;
 import com.mza_agrotours.backend.dtos.reservas.ListarReservaDTO;
 import com.mza_agrotours.backend.dtos.reservas.RealizarReservaDTO;
 import com.mza_agrotours.backend.services.ReservaService;
@@ -44,13 +45,13 @@ public class ReservaController {
     }
 
     @PostMapping("/reservar")
-    public ResponseEntity<ApiResponse<ConsultarReservaDTO>> iniciarReserva(
+    public ResponseEntity<ApiResponse<IniciarReservaDTO>> iniciarReserva(
             @Valid @RequestBody RealizarReservaDTO dtoEntrada,
             @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
     ) {
         String email = usuarioAuthDetails.getEmail();
-        ConsultarReservaDTO dtoSalida = service.handleIniciarReserva(dtoEntrada, email);
-        ApiResponse<ConsultarReservaDTO> response = ApiResponse.ok(dtoSalida);
+        IniciarReservaDTO dtoSalida = service.handleIniciarReserva(dtoEntrada, email);
+        ApiResponse<IniciarReservaDTO> response = ApiResponse.ok(dtoSalida);
         return ResponseEntity.ok(response);
     }
 
