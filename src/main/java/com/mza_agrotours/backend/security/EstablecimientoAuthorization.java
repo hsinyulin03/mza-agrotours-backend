@@ -22,7 +22,7 @@ public class EstablecimientoAuthorization {
     }
 
     @Transactional(readOnly = true)
-    public boolean tienePermiso(Authentication authentication, UUID establecimientoId, String permisoDeseado) {
+    public boolean tienePermiso(Authentication authentication, UUID establecimientoId, PermisoCodigo permiso ) {
         // 1. Validamos que haya una sesión activa
         if (authentication == null || !(authentication.getPrincipal() instanceof UsuarioAuthDetails usuario)) {
             return false; // Si no hay token o no es del tipo esperado, se bloquea
@@ -31,7 +31,7 @@ public class EstablecimientoAuthorization {
         return this.productorRepository.tienePermisoEnEstablecimiento(
                 usuario.getEmail(),
                 establecimientoId,
-                PermisoCodigo.valueOf(permisoDeseado)
+                permiso
         );
     }
 

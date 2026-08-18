@@ -20,7 +20,7 @@ public class RolProductorController {
         this.rolService = rolService;
     }
     @GetMapping
-    @PreAuthorize("@estAuth.tienePermiso(authentication, #establecimientoId, 'LEER_ROLES_PRODUCTOR')")
+    @PreAuthorize("@estAuth.tienePermiso(authentication, #establecimientoId, T(com.mza_agrotours.backend.enums.PermisoCodigo).LEER_ROLES_PRODUCTOR)")
     public ResponseEntity<ApiResponse<List<RolGetCatalogoDTO>>> obtenerRolesProductorCatalogo(
             @PathVariable UUID establecimientoId) {
         return ResponseEntity.ok(ApiResponse.ok(this.rolService.obtenerRolesProductorCatalogo(establecimientoId)));
