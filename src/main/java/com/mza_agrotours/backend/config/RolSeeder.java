@@ -48,6 +48,10 @@ public class RolSeeder implements CommandLineRunner {
      * editable por un administrador en runtime, asi que solo se usa al crear el rol y despues
      * la fuente de verdad es la base de datos. El tipo de permiso, el flag de protegido y los
      * permisoCodigos son estructurales y se sincronizan en cada arranque.
+     *
+     * <p>Aca solo van roles globales (scope ADMIN). Los roles PRODUCTOR estan scopeados a un
+     * establecimiento, asi que no se pueden sembrar: el lider de cada establecimiento lo crea
+     * {@code RolService.crearRolProductorLider} cuando se aprueba su solicitud.
      */
     private static final Map<String, SeedRol> SEEDS = Map.ofEntries(
             entry(RolProtegido.ADMIN_LIDER.getNombre(),
@@ -59,12 +63,7 @@ public class RolSeeder implements CommandLineRunner {
                     SeedRol.conTodosLosPermisos(
                             TipoPermisoNombre.ADMIN,
                             "Rol administrador con todos los permisoCodigos",
-                            false)),
-            entry(RolProtegido.PRODUCTOR_LIDER.getNombre(),
-                    SeedRol.conTodosLosPermisos(
-                            TipoPermisoNombre.PRODUCTOR,
-                            "Rol productor con todos los permisoCodigos",
-                            true))
+                            false))
     );
 
     private final RolRepository rolRepository;
