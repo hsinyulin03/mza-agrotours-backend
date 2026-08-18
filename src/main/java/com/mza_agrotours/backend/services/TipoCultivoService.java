@@ -36,6 +36,14 @@ public class TipoCultivoService {
     private RecetaRepository recetaRepository;
     @Autowired
     private EstablecimientoRepository establecimientoRepository;
+
+    // US-EST-05 Modificar establecimiento cultivos
+    public List<TipoCultivoShortDTO> obtenerTipoCultivosDisponibles() {
+        List<TipoCultivo> tipoCultivos = this.tipoCultivoRepository.findAllByFechaHoraBajaIsNull();
+        return this.tipoCultivoMapper.tipoCultivoToShortDto(tipoCultivos);
+    }
+
+
     ////US-CULT-06 ABM tipo cultivo (AM)
     // ALTA TIPO DE CULTIVO
     @Transactional
