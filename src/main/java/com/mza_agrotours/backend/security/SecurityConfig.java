@@ -1,8 +1,10 @@
 package com.mza_agrotours.backend.security;
 
-import com.mza_agrotours.backend.enums.PermisoNombre;
+import com.mza_agrotours.backend.enums.PermisoCodigo;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -15,6 +17,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
     private final FirebaseTokenFilter firebaseTokenFilter;
 
@@ -36,23 +39,28 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Administradores
-                        .requestMatchers("/administradores-sistemas/").hasAuthority(PermisoNombre.LEER_ADMIN.name())
-                        .requestMatchers("/administradores-sistemas/**").hasAuthority(PermisoNombre.GESTIONAR_ADMIN.name())
+                        .requestMatchers("/administradores-sistemas/").hasAuthority(PermisoCodigo.LEER_ADMIN.name())
+                        .requestMatchers("/administradores-sistemas/**").hasAuthority(PermisoCodigo.GESTIONAR_ADMIN.name())
 
                         // Pais y departamento
                         .requestMatchers("/pais/**").permitAll()
                         .requestMatchers("/departamentos/**").permitAll()
 
                         // Usuario
+                        .requestMatchers("/usuario/create").permitAll()
                         .requestMatchers("/usuario/**").authenticated()
 
                         // Solicitudes
                         .requestMatchers("/solicitudes-establecimiento/me/**").authenticated()
-                        .requestMatchers("/solicitudes-establecimiento/").hasAuthority(PermisoNombre.LEER_SOLICITUD_ESTABLECIMIENTO.name())
-                        .requestMatchers("/solicitudes-establecimiento/observar/**").hasAuthority(PermisoNombre.GESTIONAR_SOLICITUD_ESTABLECIMIENTO.name())
+                        .requestMatchers("/solicitudes-establecimiento/").hasAuthority(PermisoCodigo.LEER_SOLICITUD_ESTABLECIMIENTO.name())
+                        .requestMatchers("/solicitudes-establecimiento/observar/**").hasAuthority(PermisoCodigo.GESTIONAR_SOLICITUD_ESTABLECIMIENTO.name())
 
                         // Archivos
                         .requestMatchers("/object-storage/**").permitAll()
+
+                        //Permisos
+                        .requestMatchers( "/permisos/grupos-permisos/admin").hasAuthority(PermisoCodigo.LEER_ADMIN.name())
+                        .requestMatchers("/permisos/grupos-permisos/productor").authenticated()
                         .anyRequest().authenticated())
                 .addFilterBefore(firebaseTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
