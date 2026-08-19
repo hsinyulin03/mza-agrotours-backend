@@ -14,6 +14,7 @@ import com.mza_agrotours.backend.mappers.TipoCultivoMapper;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.EstacionalidadRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
+import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
 import com.mza_agrotours.backend.repositories.receta.RecetaRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,8 @@ public class TipoCultivoService {
     private RecetaRepository recetaRepository;
     @Autowired
     private EstablecimientoRepository establecimientoRepository;
+    @Autowired
+    private ActividadRespository actividadRepository;
 
     // US-EST-05 Modificar establecimiento cultivos
     public List<TipoCultivoShortDTO> obtenerTipoCultivosDisponibles() {
@@ -130,8 +133,7 @@ public class TipoCultivoService {
             throw new ValidacionNegocioException("No se puede eliminar el cultivo porque posee recetas asociadas");
         }
 
-        //todo agregar contaractividadespublciadasporculivo
-        long cantidadActividades = 0;
+        long cantidadActividades = actividadRepository.contarActividadesPublicadasPorCultivo(tipoCultivo.getId());
         if (cantidadActividades > 0) {
             throw new ValidacionNegocioException("Existen actividades vigentes que cosechan esos cultivos");
         }
@@ -301,8 +303,7 @@ public class TipoCultivoService {
                 .filter(r -> r.getFechaHoraBaja() == null)
                 // Cuenta cuántas recetas cumplen
                 .count();
-        // TODO CONTAR ACTIVADADES POR CULTIVO
-        Integer cantidadActividades = 0;
+        Integer cantidadActividades = (int) actividadRepository.contarActividadesPublicadasPorCultivo(tipoCultivo.getId());
         boolean tieneEstablecimientosAsociados = establecimientoRepository
                 .existsByTiposCultivosIdAndFechaHoraBajaIsNull(tipoCultivo.getId());
 

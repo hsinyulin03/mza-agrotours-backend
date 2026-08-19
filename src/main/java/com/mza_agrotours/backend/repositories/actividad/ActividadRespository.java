@@ -57,4 +57,13 @@ public interface ActividadRespository extends BaseEntityRepository<Actividad, UU
             "AND ad.estadoActual.estado.nombre IN (com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.ACTIVA,com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.REPROGRAMADA)" +
             "GROUP BY ad.id, ad.cuposMax, ad.fechaHoraInicio, ad.fechaHoraFin")
     List<DiaActividadReservaDTO> getDiaActividadReservaDTO(@Param("uuid") UUID uuidActividad);
+
+    @Query("""
+        SELECT COUNT(DISTINCT a) FROM Actividad a
+        JOIN a.cultivos tc
+        WHERE tc.id = :tipoCultivoId
+        AND a.fechaHoraBaja IS NULL
+        AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO
+        """)
+    long contarActividadesPublicadasPorCultivo(@Param("tipoCultivoId") UUID tipoCultivoId);
 }
