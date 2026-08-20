@@ -25,7 +25,7 @@ public class GrupoPermiso extends BaseEntity {
     private String icono;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "tipo_permiso_id")
+    @JoinColumn(name = "grupo_permiso_id")
     private TipoPermiso tipoPermiso;
 
     @ManyToMany

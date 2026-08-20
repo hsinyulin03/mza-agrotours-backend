@@ -1,15 +1,13 @@
 package com.mza_agrotours.backend.enums;
 
-public enum PermisoCodigo {
+public enum PermisoNombre {
     // Administrador
     GESTIONAR_ADMIN,
     LEER_ADMIN,
-    LEER_ROLES_ADMIN,
 
     // Productor
     GESTIONAR_PRODUCTOR,
     LEER_PRODUCTOR,
-    LEER_ROLES_PRODUCTOR,
 
     // Solicitud Establecimiento
     LEER_SOLICITUD_ESTABLECIMIENTO,

@@ -3,7 +3,7 @@ package com.mza_agrotours.backend.config;
 import com.mza_agrotours.backend.entities.roles_permisos.Permiso;
 import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import com.mza_agrotours.backend.entities.roles_permisos.TipoPermiso;
-import com.mza_agrotours.backend.enums.PermisoCodigo;
+import com.mza_agrotours.backend.enums.PermisoNombre;
 import com.mza_agrotours.backend.enums.RolProtegido;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
 import com.mza_agrotours.backend.repositories.PermisoRepository;
@@ -27,14 +27,14 @@ import static java.util.Map.entry;
 public class RolSeeder implements CommandLineRunner {
 
     /**
-     * Datos iniciales de un rol. Un {@code permisoCodigos} nulo significa "todos los permisoCodigos del
+     * Datos iniciales de un rol. Un {@code permisos} nulo significa "todos los permisos del
      * tipo", que es como se definen los roles lideres: al agregar un permiso nuevo al enum,
      * el rol lider lo toma solo en el siguiente arranque.
      */
     private record SeedRol(TipoPermisoNombre tipoPermiso,
                            String descripcion,
                            boolean esProtegido,
-                           List<PermisoCodigo> permisoCodigos) {
+                           List<PermisoNombre> permisos) {
 
         static SeedRol conTodosLosPermisos(TipoPermisoNombre tipoPermiso,
                                            String descripcion,
@@ -47,23 +47,23 @@ public class RolSeeder implements CommandLineRunner {
      * Valores iniciales de cada rol. Al igual que en {@link PermisoSeeder}, la descripcion es
      * editable por un administrador en runtime, asi que solo se usa al crear el rol y despues
      * la fuente de verdad es la base de datos. El tipo de permiso, el flag de protegido y los
-     * permisoCodigos son estructurales y se sincronizan en cada arranque.
+     * permisos son estructurales y se sincronizan en cada arranque.
      */
     private static final Map<String, SeedRol> SEEDS = Map.ofEntries(
             entry(RolProtegido.ADMIN_LIDER.getNombre(),
                     SeedRol.conTodosLosPermisos(
                             TipoPermisoNombre.ADMIN,
-                            "Rol administrador con todos los permisoCodigos",
+                            "Rol administrador con todos los permisos",
                             true)),
             entry("Admin prueba",
                     SeedRol.conTodosLosPermisos(
                             TipoPermisoNombre.ADMIN,
-                            "Rol administrador con todos los permisoCodigos",
+                            "Rol administrador con todos los permisos",
                             false)),
             entry(RolProtegido.PRODUCTOR_LIDER.getNombre(),
                     SeedRol.conTodosLosPermisos(
                             TipoPermisoNombre.PRODUCTOR,
-                            "Rol productor con todos los permisoCodigos",
+                            "Rol productor con todos los permisos",
                             true))
     );
 
@@ -115,14 +115,14 @@ public class RolSeeder implements CommandLineRunner {
     }
 
     private List<Permiso> resolvePermisos(String rolNombre, SeedRol seed, TipoPermiso tipoPermiso) {
-        if (seed.permisoCodigos() == null) {
+        if (seed.permisos() == null) {
             return new ArrayList<>(this.permisoRepository.findByTipoPermiso(tipoPermiso));
         }
 
-        return seed.permisoCodigos().stream()
-                .map(codigo -> this.permisoRepository.findByCodigo(codigo)
+        return seed.permisos().stream()
+                .map(permisoNombre -> this.permisoRepository.findByNombre(permisoNombre)
                         .orElseThrow(() -> new IllegalStateException(
-                                "Permiso no encontrado: " + codigo
+                                "Permiso no encontrado: " + permisoNombre
                                         + " (requerido por " + rolNombre + ")")))
                 .collect(Collectors.toCollection(ArrayList::new));
     }

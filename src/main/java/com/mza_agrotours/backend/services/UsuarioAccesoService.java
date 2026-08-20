@@ -1,13 +1,11 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.AccesoDTO;
-import com.mza_agrotours.backend.dtos.productor.Productor;
 import com.mza_agrotours.backend.entities.AdministradorSistemas;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.mappers.AccesoMapper;
 import com.mza_agrotours.backend.repositories.AdministradorSistemasRepository;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
-import com.mza_agrotours.backend.repositories.ProductorRepository;
 import com.mza_agrotours.backend.repositories.RolRepository;
 import org.springframework.stereotype.Service;
 
@@ -20,18 +18,15 @@ public class UsuarioAccesoService {
     private final AdministradorSistemasRepository administradorSistemasRepository;
     private final EstablecimientoRepository establecimientoRepository;
     private final AccesoMapper accesoMapper;
-    private final ProductorRepository productorRepository;
 
     public UsuarioAccesoService(RolRepository rolRepository,
                                 EstablecimientoRepository establecimientoRepository,
                                 AdministradorSistemasRepository administradorSistemasRepository,
-                                AccesoMapper accesoMapper,
-                                ProductorRepository productorRepository) {
+                                AccesoMapper accesoMapper) {
         this.rolRepository = rolRepository;
         this.establecimientoRepository = establecimientoRepository;
         this.administradorSistemasRepository = administradorSistemasRepository;
         this.accesoMapper = accesoMapper;
-        this.productorRepository = productorRepository;
     }
 
     public List<AccesoDTO> obtenerAccesosUsuario(Usuario usuario) {
@@ -67,13 +62,7 @@ public class UsuarioAccesoService {
     }
 
     private List<AccesoDTO> obtenerAccesosProductor(Usuario usuario) {
-        List<Productor> productores = this.productorRepository
-                .findByUsuarioAndFechaHoraBajaIsNull(usuario);
-
-        return productores
-                .stream()
-                .map(p -> this.accesoMapper
-                                .rolToAccesoDTO(p.getRol())
-                ).toList();
+        // TODO: Implementar
+        return List.of();
     }
 }
