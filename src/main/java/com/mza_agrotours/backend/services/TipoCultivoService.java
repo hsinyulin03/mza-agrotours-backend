@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.dtos.receta.DTORecetaAMResponse;
 import com.mza_agrotours.backend.dtos.tipoCultivo.*;
 import com.mza_agrotours.backend.entities.cultivo.Estacionalidad;
 import com.mza_agrotours.backend.entities.cultivo.EstacionalidadMes;
@@ -51,7 +52,7 @@ public class TipoCultivoService {
     ////US-CULT-06 ABM tipo cultivo (AM)
     // ALTA TIPO DE CULTIVO
     @Transactional
-    public DTOTipoCultivoEditarDetalle altaTipoCultivo(DTOTipoCultivoAM dto) {
+    public DTOtcAMResponse altaTipoCultivo(DTOTipoCultivoAM dto) {
         validarNombreDisponible(dto.getNombre());
 
         TipoCultivo tipoCultivo = new TipoCultivo();
@@ -64,7 +65,10 @@ public class TipoCultivoService {
 
         TipoCultivo guardado = tipoCultivoRepository.save(tipoCultivo);
 
-        return mapearADatos(guardado);
+        DTOtcAMResponse response = new DTOtcAMResponse();
+        response.setIdTipoCultivo(guardado.getId());
+        response.setMensaje("Se agregó el cultivo " + guardado.getNombre() + " al catálogo.");
+        return response;
     }
     // OBTENER DATOS TIPO CULTIVO (para prellenar el formulario de editar)
     @Transactional
@@ -74,7 +78,7 @@ public class TipoCultivoService {
     }
     // MODIFICAR TIPO CULTIVO
     @Transactional
-    public DTOTipoCultivoEditarDetalle modificarTipoCultivo(UUID id, DTOTipoCultivoAM dto) {
+    public DTOtcAMResponse modificarTipoCultivo(UUID id, DTOTipoCultivoAM dto) {
         TipoCultivo tipoCultivo = obtenerTipoCultivo(id);
         validarNombreDisponibleParaModificar(id, dto.getNombre());
 
@@ -95,7 +99,10 @@ public class TipoCultivoService {
 
 
         TipoCultivo guardado = tipoCultivoRepository.save(tipoCultivo);
-        return mapearADatos(guardado);
+        DTOtcAMResponse response = new DTOtcAMResponse();
+        response.setIdTipoCultivo(guardado.getId());
+        response.setMensaje("Se guardaron los cambios del cultivo" + guardado.getNombre() + ".");
+        return response;
     }
 
     // CONSULTAR ESTACIONALIDADES (catálogo fijo, para poblar el selector del formulario de cultivos)
@@ -123,7 +130,7 @@ public class TipoCultivoService {
 
     // BAJA TIPO DE CULTIVO
     @Transactional
-    public void bajaTipoCultivo(UUID id) {
+    public DTOtcBResponse bajaTipoCultivo(UUID id) {
         TipoCultivo tipoCultivo = obtenerTipoCultivo(id);
 
         boolean tieneRecetasActivas = tipoCultivo.getRecetas().stream()
@@ -146,7 +153,11 @@ public class TipoCultivoService {
 
 
         tipoCultivo.setFechaHoraBaja(LocalDateTime.now());
-        tipoCultivoRepository.save(tipoCultivo);
+        TipoCultivo eliminado = tipoCultivoRepository.save(tipoCultivo);
+        DTOtcBResponse response = new DTOtcBResponse();
+        response.setIdTipoCultivo(eliminado.getId());
+        response.setMensaje("Se eliminó el cultivo " + eliminado.getNombre() + " catálogo.");
+        return response;
     }
 
 
