@@ -31,11 +31,10 @@ public interface RolRepository extends BaseEntityRepository<Rol, UUID> {
     @Query("select r from Rol r " +
             "where r.id = :id " +
             "and r.tipoPermiso.nombre = :tipoPermisoNombre " +
-            "and r.nombre <> :nombreExcluido " +
-            "and ((:estId is null and r.establecimiento is null) " +
-            "       or r.establecimiento.id = :estId) " +
-            "and r.fechaHoraBaja is null ")
-    Optional<Rol> findVigenteByIdScoped(UUID id, TipoPermisoNombre tipoPermisoNombre, String nombreExcluido, UUID estId);
+            "and r.esProtegido = false " +
+            "and (:estId is null and r.establecimiento is null or r.establecimiento.id = :estId) " +
+            "and r.fechaHoraBaja is null")
+    Optional<Rol> findVigenteMutableByIdScoped(UUID id, TipoPermisoNombre tipoPermisoNombre, UUID estId);
 
     @Query("select r from Rol r " +
             "where r.tipoPermiso.nombre = :tipo " +
