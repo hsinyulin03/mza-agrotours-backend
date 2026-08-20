@@ -36,6 +36,8 @@ public class PermisoSeeder implements CommandLineRunner {
                     new SeedPermiso(TipoPermisoNombre.ADMIN, "Gestionar Administradores", "Crear, modificar y eliminar administradores")),
             entry(PermisoCodigo.LEER_ADMIN,
                     new SeedPermiso(TipoPermisoNombre.ADMIN, "Lectura de Administradores","Ver administradores")),
+            entry(PermisoCodigo.LEER_ROLES_ADMIN,
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Lectura de roles de administradores", "Ver los roles de administrador del sistema")),
             entry(PermisoCodigo.GESTIONAR_PRODUCTOR,
                     new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Gestionar Productores","Crear, modificar y eliminar productores")),
             entry(PermisoCodigo.LEER_PRODUCTOR,
