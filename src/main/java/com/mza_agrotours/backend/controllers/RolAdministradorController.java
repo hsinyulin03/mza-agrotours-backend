@@ -2,7 +2,7 @@ package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.roles_permisos.*;
-import com.mza_agrotours.backend.services.RolService;
+import com.mza_agrotours.backend.services.roles_permisos.RolService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,21 +10,21 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/roles")
-public class RolController {
+@RequestMapping("/admin/roles")
+public class RolAdministradorController {
     private final RolService rolService;
 
-    public RolController(RolService rolService) {
+    public RolAdministradorController(RolService rolService) {
         this.rolService = rolService;
     }
 
-    @GetMapping("/admin")
+    @GetMapping
     public ResponseEntity<ApiResponse<List<RolGetCatalogoDTO>>> obtenerRolesAdminCatalogo() {
         return ResponseEntity.ok(ApiResponse.ok(this.rolService
                                 .obtenerRolesAdminCatalogo()));
     }
 
-    @PostMapping("/admin")
+    @PostMapping
     public ResponseEntity<ApiResponse<RolCreateResponse>> crearRolAdmin(
             @Valid
             @RequestBody RolCreateRequest rolCreateRequest) {
@@ -32,7 +32,7 @@ public class RolController {
                 .crearRolAdmin(rolCreateRequest)));
     }
 
-    @PutMapping("/admin/{rolId}")
+    @PutMapping("/{rolId}")
     public ResponseEntity<ApiResponse<RolUpdateResponse>> modificarRolAdmin(
             @PathVariable String rolId,
             @Valid
@@ -41,7 +41,7 @@ public class RolController {
                 .modificarRolAdmin(rolId, rolUpdateRequest)));
     }
 
-    @DeleteMapping("/admin/{rolId}")
+    @DeleteMapping("/{rolId}")
     public ResponseEntity<ApiResponse<Boolean>> bajaRolAdmin(
             @PathVariable String rolId) {
         return ResponseEntity.ok(ApiResponse.ok(this.rolService
