@@ -9,7 +9,6 @@ import com.mza_agrotours.backend.enums.PermisoCodigo;
 import com.mza_agrotours.backend.enums.RolProtegido;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
 import com.mza_agrotours.backend.exceptions.AppException;
-import com.mza_agrotours.backend.exceptions.EstablecimientoNotFoundException;
 import com.mza_agrotours.backend.exceptions.RolError;
 import com.mza_agrotours.backend.mappers.RolMapper;
 import com.mza_agrotours.backend.repositories.*;
@@ -19,13 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 @Service
 public class RolService {
     private final RolRepository rolRepository;
-    private final UsuarioRepository usuarioRepository;
     private final AdministradorSistemasRepository administradorSistemasRepository;
     private final RolMapper rolMapper;
     private final TipoPermisoRepository tipoPermisoRepository;
@@ -34,7 +31,6 @@ public class RolService {
     private final EstablecimientoRepository establecimientoRepository;
 
     public RolService(RolRepository rolRepository,
-                      UsuarioRepository usuarioRepository,
                       AdministradorSistemasRepository administradorSistemasRepository,
                       RolMapper rolMapper,
                       TipoPermisoRepository tipoPermisoRepository,
@@ -42,14 +38,12 @@ public class RolService {
                       ProductorRepository productorRepository,
                       EstablecimientoRepository establecimientoRepository) {
         this.rolRepository = rolRepository;
-        this.usuarioRepository = usuarioRepository;
         this.administradorSistemasRepository = administradorSistemasRepository;
         this.rolMapper = rolMapper;
         this.tipoPermisoRepository = tipoPermisoRepository;
         this.permisoRepository = permisoRepository;
         this.productorRepository = productorRepository;
         this.establecimientoRepository = establecimientoRepository;
-
     }
 
     @Transactional(readOnly = true)
