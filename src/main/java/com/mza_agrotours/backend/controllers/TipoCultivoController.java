@@ -1,10 +1,7 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
-import com.mza_agrotours.backend.dtos.tipoCultivo.DTOCatalogoTipoCultivo;
-import com.mza_agrotours.backend.dtos.tipoCultivo.DTOEstacionalidad;
-import com.mza_agrotours.backend.dtos.tipoCultivo.DTOTipoCultivoAM;
-import com.mza_agrotours.backend.dtos.tipoCultivo.DTOTipoCultivoEditarDetalle;
+import com.mza_agrotours.backend.dtos.tipoCultivo.*;
 import com.mza_agrotours.backend.services.TipoCultivoService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +18,11 @@ public class TipoCultivoController {
 
     @Autowired
     private TipoCultivoService tipoCultivoService;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<TipoCultivoShortDTO>>> obtenerCultivosDisponibles() {
+        return ResponseEntity.ok(ApiResponse.ok(tipoCultivoService.obtenerTipoCultivosDisponibles()));
+    }
 
     @PostMapping("/alta")
     public ResponseEntity<ApiResponse<DTOTipoCultivoEditarDetalle>> altaTipoCultivo(
@@ -48,11 +50,13 @@ public class TipoCultivoController {
         List<DTOEstacionalidad> resultado = tipoCultivoService.consultarEstacionalidades();
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(resultado));
     }
-    @GetMapping
+
+    @GetMapping("/catalogo")
     public ResponseEntity<ApiResponse<DTOCatalogoTipoCultivo>> consultarCatalogoTipoCultivo() {
         DTOCatalogoTipoCultivo resultado = tipoCultivoService.consultarCatalogoTipoCultivo();
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(resultado));
     }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> bajaTipoCultivo(
             @PathVariable UUID id) {
