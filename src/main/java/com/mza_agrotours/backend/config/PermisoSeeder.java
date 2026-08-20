@@ -2,7 +2,7 @@ package com.mza_agrotours.backend.config;
 
 import com.mza_agrotours.backend.entities.roles_permisos.Permiso;
 import com.mza_agrotours.backend.entities.roles_permisos.TipoPermiso;
-import com.mza_agrotours.backend.enums.PermisoNombre;
+import com.mza_agrotours.backend.enums.PermisoCodigo;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
 import com.mza_agrotours.backend.repositories.PermisoRepository;
 import com.mza_agrotours.backend.repositories.TipoPermisoRepository;
@@ -23,7 +23,7 @@ public class PermisoSeeder implements CommandLineRunner {
     /**
      * Datos iniciales de un permiso.
      */
-    private record SeedPermiso(TipoPermisoNombre scope, String descripcion) {}
+    private record SeedPermiso(TipoPermisoNombre scope, String nombre, String descripcion) {}
 
     /**
      * Valores iniciales de cada permiso. Es privado a propósito: la descripción es editable
@@ -31,19 +31,23 @@ public class PermisoSeeder implements CommandLineRunner {
      * es la base de datos y no este mapa. El scope, en cambio, es estructural y se sincroniza
      * en cada arranque.
      */
-    private static final Map<PermisoNombre, SeedPermiso> SEEDS = Map.ofEntries(
-            entry(PermisoNombre.GESTIONAR_ADMIN,
-                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Crear, modificar y eliminar administradores")),
-            entry(PermisoNombre.LEER_ADMIN,
-                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Ver administradores")),
-            entry(PermisoNombre.GESTIONAR_PRODUCTOR,
-                    new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Crear, modificar y eliminar productores")),
-            entry(PermisoNombre.LEER_PRODUCTOR,
-                    new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Ver productores")),
-            entry(PermisoNombre.LEER_SOLICITUD_ESTABLECIMIENTO,
-                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Ver solicitudes de establecimiento")),
-            entry(PermisoNombre.GESTIONAR_SOLICITUD_ESTABLECIMIENTO,
-                    new SeedPermiso(TipoPermisoNombre.ADMIN, "\"Aceptar o rechazar solicitudes de establecimientos pendientes"))
+    private static final Map<PermisoCodigo, SeedPermiso> SEEDS = Map.ofEntries(
+            entry(PermisoCodigo.GESTIONAR_ADMIN,
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Gestionar Administradores", "Crear, modificar y eliminar administradores")),
+            entry(PermisoCodigo.LEER_ADMIN,
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Lectura de Administradores","Ver administradores")),
+            entry(PermisoCodigo.LEER_ROLES_ADMIN,
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Lectura de roles de administradores", "Ver los roles de administrador del sistema")),
+            entry(PermisoCodigo.GESTIONAR_PRODUCTOR,
+                    new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Gestionar Productores","Crear, modificar y eliminar productores")),
+            entry(PermisoCodigo.LEER_PRODUCTOR,
+                    new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Lectura de Productores","Ver productores")),
+            entry(PermisoCodigo.LEER_ROLES_PRODUCTOR,
+                    new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Lectura de roles de productores", "Ver los roles de productor del establecimiento")),
+            entry(PermisoCodigo.GESTIONAR_SOLICITUD_ESTABLECIMIENTO,
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Gestionar solicitudes de establecimientos","Ver solicitudes de establecimiento")),
+            entry(PermisoCodigo.LEER_SOLICITUD_ESTABLECIMIENTO,
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Lectura de solicitudes de establecimiento","Aceptar o rechazar solicitudes de establecimientos pendientes"))
     );
 
     private final PermisoRepository permisoRepository;
@@ -58,19 +62,19 @@ public class PermisoSeeder implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        for (PermisoNombre permisoNombre : PermisoNombre.values()) {
-            SeedPermiso seed = SEEDS.get(permisoNombre);
+        for (PermisoCodigo permisoCodigo : PermisoCodigo.values()) {
+            SeedPermiso seed = SEEDS.get(permisoCodigo);
 
             if (seed == null) {
-                throw new IllegalStateException("Falta el seed de: " + permisoNombre.name());
+                throw new IllegalStateException("Falta el seed de: " + permisoCodigo.name());
             }
 
             TipoPermiso tipoPermiso = this.tipoPermisoRepository.findByNombre(seed.scope())
                     .orElseThrow(() -> new IllegalStateException(
                             "Tipo de permiso no encontrado: " + seed.scope()
-                                    + " (requerido por " + permisoNombre.name() + ")"));
+                                    + " (requerido por " + permisoCodigo.name() + ")"));
 
-            Optional<Permiso> permisoExistente = permisoRepository.findByNombre(permisoNombre);
+            Optional<Permiso> permisoExistente = permisoRepository.findByCodigo(permisoCodigo);
 
             if (permisoExistente.isPresent()) {
                 // No se toca la descripción: puede haber sido editada por un administrador.
@@ -79,7 +83,8 @@ public class PermisoSeeder implements CommandLineRunner {
             }
 
             Permiso permiso = new Permiso();
-            permiso.setNombre(permisoNombre);
+            permiso.setCodigo(permisoCodigo);
+            permiso.setNombre(seed.nombre());
             permiso.setDescripcion(seed.descripcion());
             permiso.setTipoPermiso(tipoPermiso);
             permisoRepository.save(permiso);
