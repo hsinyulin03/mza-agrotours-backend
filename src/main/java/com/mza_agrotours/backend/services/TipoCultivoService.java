@@ -235,6 +235,9 @@ public class TipoCultivoService {
         DTOTipoCultivoEditarDetalle dto = tipoCultivoMapper.tipoCultivoToDtoEditarDetalle(tipoCultivo);
 
         dto.setEstacionalidadPorMes(obtenerEstacionalidadPorMes(tipoCultivo));
+        dto.setPorcionReferencia(tipoCultivo.getPorcionReferencia());
+        dto.setInformacionNutricional(tipoCultivoMapper.informacionNutricionalToDto(tipoCultivo.getInformacionNutricional()));
+
         return dto;
     }
 

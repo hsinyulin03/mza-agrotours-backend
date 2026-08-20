@@ -12,4 +12,6 @@ public class DTOTipoCultivoEditarDetalle {
     private String descripcion;
     private List<String> beneficios;
     private List<DTOEstacionalidadMes> estacionalidadPorMes;
+    private String porcionReferencia;
+    private List<DTOInformacionNutricionalDatos> informacionNutricional;
 }
