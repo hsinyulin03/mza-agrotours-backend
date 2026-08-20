@@ -1,10 +1,10 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.dtos.productor.EstadoProductor;
-import com.mza_agrotours.backend.dtos.productor.Productor;
-import com.mza_agrotours.backend.dtos.productor.ProductorEstado;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
+import com.mza_agrotours.backend.entities.productor.EstadoProductor;
+import com.mza_agrotours.backend.entities.productor.Productor;
+import com.mza_agrotours.backend.entities.productor.ProductorEstado;
 import com.mza_agrotours.backend.enums.EstadoProductorNombre;
 import com.mza_agrotours.backend.exceptions.AppException;
 import com.mza_agrotours.backend.exceptions.ProductorError;

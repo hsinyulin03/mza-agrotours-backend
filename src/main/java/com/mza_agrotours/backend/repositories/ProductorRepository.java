@@ -1,11 +1,11 @@
 package com.mza_agrotours.backend.repositories;
 
-import com.mza_agrotours.backend.dtos.productor.Productor;
+import com.mza_agrotours.backend.entities.Usuario;
+import com.mza_agrotours.backend.entities.productor.Productor;
 import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import com.mza_agrotours.backend.enums.PermisoCodigo;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import com.mza_agrotours.backend.entities.Usuario;
 
 import java.util.List;
 import java.util.UUID;

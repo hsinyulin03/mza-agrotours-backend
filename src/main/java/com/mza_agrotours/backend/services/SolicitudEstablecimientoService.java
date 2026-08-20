@@ -2,13 +2,13 @@ package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.ObservacionSolicitudDTO;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
-import com.mza_agrotours.backend.dtos.productor.Productor;
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.*;
 import com.mza_agrotours.backend.entities.AdministradorSistemas;
 import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
+import com.mza_agrotours.backend.entities.productor.Productor;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolicitudEstablecimiento;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolicitudEstablecimientoNombre;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimiento;

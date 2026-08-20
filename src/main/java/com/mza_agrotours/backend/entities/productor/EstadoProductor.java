@@ -1,4 +1,4 @@
-package com.mza_agrotours.backend.dtos.productor;
+package com.mza_agrotours.backend.entities.productor;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
 import com.mza_agrotours.backend.enums.EstadoProductorNombre;

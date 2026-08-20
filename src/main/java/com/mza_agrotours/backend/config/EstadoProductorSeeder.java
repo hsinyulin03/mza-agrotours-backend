@@ -1,6 +1,6 @@
 package com.mza_agrotours.backend.config;
 
-import com.mza_agrotours.backend.dtos.productor.EstadoProductor;
+import com.mza_agrotours.backend.entities.productor.EstadoProductor;
 import com.mza_agrotours.backend.enums.EstadoProductorNombre;
 import com.mza_agrotours.backend.repositories.EstadoProductorRepository;
 import org.springframework.boot.CommandLineRunner;
