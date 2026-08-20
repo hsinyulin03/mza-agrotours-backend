@@ -124,6 +124,20 @@ public class RolService {
         return bajaRol(rolId, RolScope.productor(establecimientoId));
     }
 
+    @Transactional(readOnly = true)
+    public AdminAuthoritiesDTO obtenerRolAdminVigenteByEmail(String email) {
+        Rol rol = this.rolRepository.findRolAdminVigenteByUsuarioEmail(email)
+                .orElse(null);
+        if (rol == null) {
+            return null;
+        }
+        List<String> permisosCodigoString = rol.getPermisos()
+                .stream().map(p -> p.getCodigo().toString())
+                .toList();
+
+        return new AdminAuthoritiesDTO(rol.getNombre(), permisosCodigoString);
+    }
+
     private Rol crearRol(RolCreateRequest rolCreateRequest, RolScope scope) {
         RolScopeSolved rolScopeSolved = this.resolverRolScope(scope);
 

@@ -18,6 +18,11 @@ public interface RolRepository extends BaseEntityRepository<Rol, UUID> {
 
     List<Rol> findByTipoPermiso_NombreAndFechaHoraBajaIsNullAndNombreIsNotContaining(TipoPermisoNombre tipoPermiso_nombre, String nombre);
 
+    @Query("SELECT a.rol FROM AdministradorSistemas a " +
+            "WHERE a.fechaHoraBaja is null " +
+            "and a.usuario.email = :email")
+    Optional<Rol> findRolAdminVigenteByUsuarioEmail(String email);
+
     Optional<Rol> findByNombreAndFechaHoraBajaIsNull(String nombre);
 
     @Query("select r from Rol r " +
