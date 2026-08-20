@@ -5,7 +5,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
 import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
-import com.mza_agrotours.backend.services.RolService;
+import com.mza_agrotours.backend.services.roles_permisos.RolService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
