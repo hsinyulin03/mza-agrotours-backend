@@ -5,14 +5,12 @@ import com.mza_agrotours.backend.dtos.productor.Productor;
 import com.mza_agrotours.backend.dtos.productor.ProductorEstado;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
-import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import com.mza_agrotours.backend.enums.EstadoProductorNombre;
-import com.mza_agrotours.backend.enums.RolProtegido;
 import com.mza_agrotours.backend.exceptions.AppException;
 import com.mza_agrotours.backend.exceptions.ProductorError;
 import com.mza_agrotours.backend.repositories.EstadoProductorRepository;
 import com.mza_agrotours.backend.repositories.ProductorRepository;
-import com.mza_agrotours.backend.repositories.RolRepository;
+import com.mza_agrotours.backend.services.roles_permisos.RolService;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -21,14 +19,14 @@ import java.time.LocalDateTime;
 @Service
 public class ProductorService {
     private final EstadoProductorRepository estadoProductorRepository;
-    private final RolRepository rolRepository;
+    private final RolService rolService;
     private final ProductorRepository productorRepository;
 
     public ProductorService(EstadoProductorRepository estadoProductorRepository,
-                            RolRepository rolRepository,
+                            RolService rolService,
                             ProductorRepository productorRepository) {
         this.estadoProductorRepository = estadoProductorRepository;
-        this.rolRepository = rolRepository;
+        this.rolService = rolService;
         this.productorRepository = productorRepository;
     }
 
@@ -47,7 +45,7 @@ public class ProductorService {
         productorLider.setFechaHoraAlta(LocalDateTime.now());
         productorLider.setEstablecimiento(establecimiento);
         productorLider.setUsuario(usuarioProductor);
-        productorLider.setRol(obtenerRolProductorByNombre(RolProtegido.PRODUCTOR_LIDER.getNombre()));
+        productorLider.setRol(this.rolService.crearRolProductorLider(establecimiento));
         productorLider.getEstados().add(productorEstado);
         productorLider.setEstadoActual(estadoActivo);
 
@@ -58,11 +56,5 @@ public class ProductorService {
         return this.estadoProductorRepository
                 .findByNombreAndFechaHoraBajaIsNull(estadoNombre)
                 .orElseThrow(() -> new AppException(ProductorError.ESTADO_NO_CONFIGURADO));
-    }
-
-    private Rol obtenerRolProductorByNombre(String nombre) {
-        return this.rolRepository
-                .findByNombreAndFechaHoraBajaIsNull(nombre)
-                .orElseThrow(() -> new AppException(ProductorError.ROL_NO_CONFIGURADO));
     }
 }

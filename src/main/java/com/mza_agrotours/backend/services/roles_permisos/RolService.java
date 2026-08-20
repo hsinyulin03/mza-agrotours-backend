@@ -1,4 +1,4 @@
-package com.mza_agrotours.backend.services;
+package com.mza_agrotours.backend.services.roles_permisos;
 
 import com.mza_agrotours.backend.dtos.roles_permisos.*;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
@@ -79,6 +79,33 @@ public class RolService {
         return bajaRol(rolId, RolScope.admin());
     }
 
+    /**
+     * Crea el rol lider de un establecimiento: protegido y con todos los permisos del tipo
+     * PRODUCTOR. Cada establecimiento tiene el suyo, porque el rol no queda definido solo por
+     * sus permisos sino tambien por su scope, asi que dos establecimientos no pueden compartir
+     * uno aunque los permisos sean identicos.
+     *
+     * <p>No pasa por {@link #crearRol}: ese camino nace de un {@link RolCreateRequest} de la API
+     * y fuerza {@code esProtegido = false}.
+     *
+     * @param establecimiento establecimiento ya persistido al que se le asocia el rol.
+     */
+    @Transactional
+    public Rol crearRolProductorLider(Establecimiento establecimiento) {
+        TipoPermiso tipoPermiso = this.obtenerTipoPermiso(TipoPermisoNombre.PRODUCTOR);
+        RolScopeSolved rolScopeSolved = new RolScopeSolved(tipoPermiso, establecimiento);
+
+        Rol rolLider = new Rol();
+        rolLider.setNombre(RolProtegido.PRODUCTOR_LIDER.getNombre());
+        rolLider.setDescripcion("Rol productor con todos los permisos");
+        rolLider.setEsProtegido(true);
+        rolLider.setTipoPermiso(rolScopeSolved.tipoPermiso());
+        rolLider.setEstablecimiento(rolScopeSolved.establecimiento());
+        rolLider.setPermisos(new ArrayList<>(
+                this.permisoRepository.findByTipoPermiso(rolScopeSolved.tipoPermiso())));
+
+        return this.rolRepository.save(rolLider);
+    }
 
     //Gestión de roles de productor
     @Transactional(readOnly = true)
