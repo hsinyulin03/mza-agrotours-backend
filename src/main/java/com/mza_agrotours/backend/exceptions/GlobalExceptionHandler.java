@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.exceptions;
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadDiaNotFound;
@@ -9,8 +10,10 @@ import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleExceptio
 import com.mza_agrotours.backend.exceptions.reservas.FechaNacimientoInvalidaException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -18,10 +21,12 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import java.util.stream.Collectors;
+@Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler {
     // --- INICIO EXCEPCIONES USUARIO
@@ -183,5 +188,25 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(FechaNacimientoInvalidaException.class)
     public ResponseEntity<?> handleFechaNacimientoInvalida(FechaNacimientoInvalidaException ex){
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("bornDateInvalid", ex.getMessage()));
+    }
+    /**
+     * Maneja errores al parsear el body de la solicitud cuando
+     *  * el JSON está mal formado o tiene un valor que no corresponde al tipo esperado
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<?> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+        Throwable causa = ex.getCause();
+
+        if (causa instanceof InvalidFormatException ife && ife.getTargetType().isEnum()) {
+            String valorInvalido = String.valueOf(ife.getValue());
+            String valoresValidos = Arrays.stream(ife.getTargetType().getEnumConstants())
+                    .map(Object::toString)
+                    .collect(Collectors.joining(", "));
+            String mensaje = "El valor '" + valorInvalido + "' no es válido. Valores permitidos: " + valoresValidos;
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.fail("badRequest", mensaje));
+        }
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.fail("badRequest", ex.getMessage()));
     }
 }
