@@ -293,7 +293,20 @@ public class TipoCultivoService {
                     InformacionNutricional info = new InformacionNutricional();
 
                     info.setNombre(dto.getNombre());
-                    info.setValor(dto.getValor());
+                    String valor = dto.getValor();
+
+                    if (valor != null) {
+                        valor = valor.trim();
+
+                        valor = switch (valor.toLowerCase()) {
+                            case "alto" -> "Alto";
+                            case "medio" -> "Medio";
+                            case "bajo" -> "Bajo";
+                            default -> valor;
+                        };
+                    }
+
+                    info.setValor(valor);
                     info.setUnidad(dto.getUnidad());
 
                     return info;

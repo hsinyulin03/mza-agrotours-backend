@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.dtos.tipoCultivo;
 
 import com.mza_agrotours.backend.enums.UnidadNutricional;
+import com.mza_agrotours.backend.validation.ValorNutricionalValido;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -14,6 +15,7 @@ public class DTOTipoCultivoInfoNutriAM {
 
     @NotBlank(message = "El valor nutricional es requerido")
     @Size(max = 30, message = "Máximo 30 caracteres")
+    @ValorNutricionalValido
     private String valor;
 
     @NotNull(message = "La unidad es requerida")
