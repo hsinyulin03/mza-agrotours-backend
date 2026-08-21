@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.mappers;
 import com.mza_agrotours.backend.dtos.productor.ProductorGetDTO;
 import com.mza_agrotours.backend.entities.productor.Productor;
 import com.mza_agrotours.backend.entities.productor.ProductorEstado;
+import com.mza_agrotours.backend.enums.EstadoProductorNombre;
 import org.mapstruct.Mapper;
 
 import java.util.List;
@@ -31,11 +32,16 @@ public interface ProductorMapper {
 
         // Data estado
         dto.setEstadoActual(productor.getEstadoActual().getNombre().name());
-        dto.setFechaHoraFinSuspension(productor.getEstados().stream()
+        ProductorEstado ultimoEstado = productor.getEstados().stream()
                 .filter(tramo -> tramo.getFechaHoraFin() == null)
                 .findFirst()
-                .map(ProductorEstado::getFechaHoraFinPrevista)
-                .orElse(null));
+                .orElse(null);
+
+        if (ultimoEstado != null && ultimoEstado.getEstadoProductor().getNombre().equals(EstadoProductorNombre.LICENCIA)) {
+            dto.setFechaHoraFinSuspension(ultimoEstado.getFechaHoraFinPrevista());
+            dto.setMotivoSuspension(ultimoEstado.getMotivo());
+            dto.setFechaHoraInicioSuspension(ultimoEstado.getFechaHoraInicio());
+        }
 
         return dto;
     }

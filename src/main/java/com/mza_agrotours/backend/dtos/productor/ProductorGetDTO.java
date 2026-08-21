@@ -22,5 +22,7 @@ public class ProductorGetDTO {
 
     // Solo viaja cuando el productor esta suspendido: es el vencimiento planificado
     // del tramo vigente, no su cierre efectivo.
+    private String motivoSuspension;
+    private LocalDateTime fechaHoraInicioSuspension;
     private LocalDateTime fechaHoraFinSuspension;
 }
