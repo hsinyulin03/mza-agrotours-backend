@@ -2,11 +2,8 @@ package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
-import com.mza_agrotours.backend.dtos.productor.ProductorCreateReq;
-import com.mza_agrotours.backend.dtos.productor.ProductorGetDTO;
-import com.mza_agrotours.backend.dtos.productor.ProductorLevantarSuspensionReq;
-import com.mza_agrotours.backend.dtos.productor.ProductorSuspenderReq;
-import com.mza_agrotours.backend.dtos.productor.ProductorUpdateReq;
+import com.mza_agrotours.backend.dtos.productor.*;
+import com.mza_agrotours.backend.dtos.roles_permisos.RolGetShortDTO;
 import com.mza_agrotours.backend.services.ProductorService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -93,5 +90,10 @@ public class ProductorController {
                 productorId,
                 productorLevantarSuspensionReq.getMotivo(),
                 usuarioAuthDetails.getEmail())));
+    }
+
+    @GetMapping("/roles")
+    public ResponseEntity<ApiResponse<List<RolGetShortDTO>>> obtenerRolesAdmin(@PathVariable UUID establecimientoId) {
+        return ResponseEntity.ok(ApiResponse.ok(this.productorService.obtenerRolesProductor(establecimientoId)));
     }
 }

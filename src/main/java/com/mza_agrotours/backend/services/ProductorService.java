@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.dtos.productor.ProductorCreateReq;
 import com.mza_agrotours.backend.dtos.productor.ProductorGetDTO;
 import com.mza_agrotours.backend.dtos.productor.ProductorUpdateReq;
+import com.mza_agrotours.backend.dtos.roles_permisos.RolGetShortDTO;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.productor.EstadoProductor;
@@ -14,11 +15,8 @@ import com.mza_agrotours.backend.exceptions.AppException;
 import com.mza_agrotours.backend.exceptions.ProductorError;
 import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
 import com.mza_agrotours.backend.mappers.ProductorMapper;
-import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
-import com.mza_agrotours.backend.repositories.EstadoProductorRepository;
-import com.mza_agrotours.backend.repositories.ProductorRepository;
-import com.mza_agrotours.backend.repositories.RolRepository;
-import com.mza_agrotours.backend.repositories.UsuarioRepository;
+import com.mza_agrotours.backend.mappers.RolMapper;
+import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.services.roles_permisos.RolService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +47,7 @@ public class ProductorService {
     private final EstablecimientoRepository establecimientoRepository;
     private final RolRepository rolRepository;
     private final ProductorMapper productorMapper;
+    private final RolMapper rolMapper;
     private final ProductorService self;
 
     public ProductorService(EstadoProductorRepository estadoProductorRepository,
@@ -58,6 +57,7 @@ public class ProductorService {
                             EstablecimientoRepository establecimientoRepository,
                             RolRepository rolRepository,
                             ProductorMapper productorMapper,
+                            RolMapper rolMapper,
                             @Lazy ProductorService self) {
         this.estadoProductorRepository = estadoProductorRepository;
         this.rolService = rolService;
@@ -66,6 +66,7 @@ public class ProductorService {
         this.establecimientoRepository = establecimientoRepository;
         this.rolRepository = rolRepository;
         this.productorMapper = productorMapper;
+        this.rolMapper = rolMapper;
         this.self = self;
     }
 
@@ -313,5 +314,10 @@ public class ProductorService {
         return this.estadoProductorRepository
                 .findByNombreAndFechaHoraBajaIsNull(estadoNombre)
                 .orElseThrow(() -> new AppException(ProductorError.ESTADO_NO_CONFIGURADO));
+    }
+
+    public List<RolGetShortDTO> obtenerRolesProductor(UUID establecimientoId) {
+        List<Rol> rol = this.rolRepository.findAllVigentesMutablesEnScope(TipoPermisoNombre.PRODUCTOR, establecimientoId);
+        return rolMapper.rolListToRolGetShortDTOList(rol);
     }
 }
