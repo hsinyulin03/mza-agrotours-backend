@@ -33,8 +33,8 @@ public interface ProductorMapper {
         dto.setEstadoActual(productor.getEstadoActual().getNombre().name());
         dto.setFechaHoraFinSuspension(productor.getEstados().stream()
                 .filter(tramo -> tramo.getFechaHoraFin() == null)
-                .map(ProductorEstado::getFechaHoraFinPrevista)
                 .findFirst()
+                .map(ProductorEstado::getFechaHoraFinPrevista)
                 .orElse(null));
 
         return dto;
