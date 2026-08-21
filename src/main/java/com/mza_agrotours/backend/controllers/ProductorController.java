@@ -93,6 +93,7 @@ public class ProductorController {
     }
 
     @GetMapping("/roles")
+    @PreAuthorize("@estAuth.tienePermiso(authentication, #establecimientoId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_PRODUCTOR)")
     public ResponseEntity<ApiResponse<List<RolGetShortDTO>>> obtenerRolesAdmin(@PathVariable UUID establecimientoId) {
         return ResponseEntity.ok(ApiResponse.ok(this.productorService.obtenerRolesProductor(establecimientoId)));
     }
