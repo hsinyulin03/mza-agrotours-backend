@@ -21,7 +21,8 @@ public interface ProductorRepository extends BaseEntityRepository<Productor, UUI
             "AND pr.establecimiento.fechaHoraBaja IS NULL " +
             "AND pr.fechaHoraBaja IS NULL " +
             "AND r.fechaHoraBaja IS NULL " +
-            "AND p.codigo = :permiso")
+            "AND p.codigo = :permiso " +
+            "AND pr.estadoActual.nombre = 'ACTIVO'")
     boolean tienePermisoEnEstablecimiento(
             @Param("email") String email,
             @Param("establecimientoId") UUID establecimientoId,
