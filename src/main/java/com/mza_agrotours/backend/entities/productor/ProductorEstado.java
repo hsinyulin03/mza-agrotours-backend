@@ -23,7 +23,13 @@ public class ProductorEstado extends BaseEntity {
     @Column(nullable = false) // TODO: find out length
     private String motivo;
 
+    // Cuándo se cerró realmente este tramo. NULL siempre significa "tramo vigente",
+    // para todos los estados sin excepción.
     private LocalDateTime fechaHoraFin;
+
+    // Hasta cuándo se planificó que dure el tramo. Solo lo llevan las suspensiones;
+    // es una intención a futuro, no el cierre efectivo (ver fechaHoraFin).
+    private LocalDateTime fechaHoraFinPrevista;
 
     @ManyToOne
     private EstadoProductor estadoProductor;
