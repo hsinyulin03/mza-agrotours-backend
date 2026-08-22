@@ -21,6 +21,8 @@ import java.util.List;
 public class SecurityConfig {
     private final FirebaseTokenFilter firebaseTokenFilter;
 
+    private static final String ROL_ADMIN_LIDER = "Administrador Líder";
+
     public SecurityConfig(FirebaseTokenFilter firebaseTokenFilter) {
         this.firebaseTokenFilter = firebaseTokenFilter;
     }
@@ -39,8 +41,16 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Administradores
+                        // TODO: añadir prefijo de ruta /admin por ej /admin/administradores-sistemas
+                        // Discusion: el endpoint /admin/administradores-sistemas nos dice el scope (admin)
+                        // y el recurso sobre el que se desea leer o modificar (administradores-sistemas)
                         .requestMatchers("/administradores-sistemas/").hasAuthority(PermisoCodigo.LEER_ADMIN.name())
                         .requestMatchers("/administradores-sistemas/**").hasAuthority(PermisoCodigo.GESTIONAR_ADMIN.name())
+
+                        // Roles
+                        .requestMatchers(HttpMethod.GET, "/admin/roles").hasAuthority(PermisoCodigo.LEER_ROLES_ADMIN.name())
+                        .requestMatchers("/admin/roles").hasRole(ROL_ADMIN_LIDER)
+                        .requestMatchers("/admin/roles/**").hasRole(ROL_ADMIN_LIDER)
 
                         // Pais y departamento
                         .requestMatchers("/pais/**").permitAll()

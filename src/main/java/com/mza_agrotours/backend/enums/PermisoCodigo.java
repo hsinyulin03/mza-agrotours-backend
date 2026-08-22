@@ -4,6 +4,7 @@ public enum PermisoCodigo {
     // Administrador
     GESTIONAR_ADMIN,
     LEER_ADMIN,
+    LEER_ROLES_ADMIN,
 
     // Productor
     GESTIONAR_PRODUCTOR,

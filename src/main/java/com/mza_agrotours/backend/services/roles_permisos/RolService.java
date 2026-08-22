@@ -1,4 +1,4 @@
-package com.mza_agrotours.backend.services;
+package com.mza_agrotours.backend.services.roles_permisos;
 
 import com.mza_agrotours.backend.dtos.roles_permisos.*;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
@@ -9,7 +9,6 @@ import com.mza_agrotours.backend.enums.PermisoCodigo;
 import com.mza_agrotours.backend.enums.RolProtegido;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
 import com.mza_agrotours.backend.exceptions.AppException;
-import com.mza_agrotours.backend.exceptions.EstablecimientoNotFoundException;
 import com.mza_agrotours.backend.exceptions.RolError;
 import com.mza_agrotours.backend.mappers.RolMapper;
 import com.mza_agrotours.backend.repositories.*;
@@ -19,13 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 @Service
 public class RolService {
     private final RolRepository rolRepository;
-    private final UsuarioRepository usuarioRepository;
     private final AdministradorSistemasRepository administradorSistemasRepository;
     private final RolMapper rolMapper;
     private final TipoPermisoRepository tipoPermisoRepository;
@@ -34,7 +31,6 @@ public class RolService {
     private final EstablecimientoRepository establecimientoRepository;
 
     public RolService(RolRepository rolRepository,
-                      UsuarioRepository usuarioRepository,
                       AdministradorSistemasRepository administradorSistemasRepository,
                       RolMapper rolMapper,
                       TipoPermisoRepository tipoPermisoRepository,
@@ -42,14 +38,12 @@ public class RolService {
                       ProductorRepository productorRepository,
                       EstablecimientoRepository establecimientoRepository) {
         this.rolRepository = rolRepository;
-        this.usuarioRepository = usuarioRepository;
         this.administradorSistemasRepository = administradorSistemasRepository;
         this.rolMapper = rolMapper;
         this.tipoPermisoRepository = tipoPermisoRepository;
         this.permisoRepository = permisoRepository;
         this.productorRepository = productorRepository;
         this.establecimientoRepository = establecimientoRepository;
-
     }
 
     @Transactional(readOnly = true)
@@ -79,6 +73,33 @@ public class RolService {
         return bajaRol(rolId, RolScope.admin());
     }
 
+    /**
+     * Crea el rol lider de un establecimiento: protegido y con todos los permisos del tipo
+     * PRODUCTOR. Cada establecimiento tiene el suyo, porque el rol no queda definido solo por
+     * sus permisos sino tambien por su scope, asi que dos establecimientos no pueden compartir
+     * uno aunque los permisos sean identicos.
+     *
+     * <p>No pasa por {@link #crearRol}: ese camino nace de un {@link RolCreateRequest} de la API
+     * y fuerza {@code esProtegido = false}.
+     *
+     * @param establecimiento establecimiento ya persistido al que se le asocia el rol.
+     */
+    @Transactional
+    public Rol crearRolProductorLider(Establecimiento establecimiento) {
+        TipoPermiso tipoPermiso = this.obtenerTipoPermiso(TipoPermisoNombre.PRODUCTOR);
+        RolScopeSolved rolScopeSolved = new RolScopeSolved(tipoPermiso, establecimiento);
+
+        Rol rolLider = new Rol();
+        rolLider.setNombre(RolProtegido.PRODUCTOR_LIDER.getNombre());
+        rolLider.setDescripcion("Rol productor con todos los permisos");
+        rolLider.setEsProtegido(true);
+        rolLider.setTipoPermiso(rolScopeSolved.tipoPermiso());
+        rolLider.setEstablecimiento(rolScopeSolved.establecimiento());
+        rolLider.setPermisos(new ArrayList<>(
+                this.permisoRepository.findByTipoPermiso(rolScopeSolved.tipoPermiso())));
+
+        return this.rolRepository.save(rolLider);
+    }
 
     //Gestión de roles de productor
     @Transactional(readOnly = true)
@@ -103,37 +124,37 @@ public class RolService {
         return bajaRol(rolId, RolScope.productor(establecimientoId));
     }
 
+    @Transactional(readOnly = true)
+    public AdminAuthoritiesDTO obtenerRolAdminVigenteByEmail(String email) {
+        Rol rol = this.rolRepository.findRolAdminVigenteByUsuarioEmail(email)
+                .orElse(null);
+        if (rol == null) {
+            return null;
+        }
+        List<String> permisosCodigoString = rol.getPermisos()
+                .stream().map(p -> p.getCodigo().toString())
+                .toList();
+
+        return new AdminAuthoritiesDTO(rol.getNombre(), permisosCodigoString);
+    }
+
     private Rol crearRol(RolCreateRequest rolCreateRequest, RolScope scope) {
-        TipoPermiso tipoPermiso = this.tipoPermisoRepository
-                .findByNombre(scope.tipoPermisoNombre())
-                .orElseThrow(() -> new IllegalStateException("Tipo de permiso inválido"));
+        RolScopeSolved rolScopeSolved = this.resolverRolScope(scope);
 
         if (this.rolRepository.existsByNombreAndTipoPermisoAndEstablecimiento(rolCreateRequest.getNombre(), scope.tipoPermisoNombre(), scope.establecimientoId())) {
             throw new AppException(RolError.ROL_ALREADY_EXISTS);
         }
 
-        List<Permiso> permisos = this.permisoRepository
-                .findByTipoPermisoAndCodigoIn(tipoPermiso, rolCreateRequest.getPermisos());
+        List<Permiso> permisos = this.resolvePermisos(rolScopeSolved.tipoPermiso(), rolCreateRequest.getPermisos());
 
-        if (permisos.size() != rolCreateRequest.getPermisos().size()) {
-            throw new AppException(RolError.PERMISO_INVALIDO);
-        }
-
-        Rol nuevoRol = new Rol();
-        nuevoRol.setNombre(rolCreateRequest.getNombre());
-        nuevoRol.setDescripcion(rolCreateRequest.getDescripcion());
-        nuevoRol.setEsProtegido(false);
-        nuevoRol.setPermisos(permisos);
-        nuevoRol.setTipoPermiso(tipoPermiso);
-        nuevoRol.setEstablecimiento(obtenerEstablecimiento(scope));
+        Rol nuevoRol = this.rolMapper
+                .rolScopeSolvedAndCreateRequestAndPermisosToRol(rolCreateRequest, rolScopeSolved, permisos);
 
         return this.rolRepository.save(nuevoRol);
     }
 
     private Rol modificarRol(String rolId, RolUpdateRequest rolUpdateRequest, RolScope scope) {
-        TipoPermiso tipoPermiso = this.tipoPermisoRepository
-                .findByNombre(scope.tipoPermisoNombre())
-                .orElseThrow(() -> new IllegalStateException("Tipo de permiso inválido"));
+        RolScopeSolved rolScopeSolved = this.resolverRolScope(scope);
         /** TODO para pensar
          * Actualmente se permite que el administrador modifique los
          * permisos para su propio rol, algo que podría ser un tiro
@@ -152,19 +173,13 @@ public class RolService {
 
 
         Rol rol = this.rolRepository
-                .findVigenteByIdScoped(
+                .findVigenteMutableByIdScoped(
                         UUID.fromString(rolId),
                         scope.tipoPermisoNombre(),
-                        getRolExcluidoByTipoPermisoNombre(scope.tipoPermisoNombre()),
                         scope.establecimientoId())
                 .orElseThrow(() -> new AppException(RolError.NOT_FOUND));
 
-        List<Permiso> permisos = this.permisoRepository
-                .findByTipoPermisoAndCodigoIn(tipoPermiso, rolUpdateRequest.getPermisos());
-
-        if (permisos.size() != rolUpdateRequest.getPermisos().size()) {
-            throw new AppException(RolError.PERMISO_INVALIDO);
-        }
+        List<Permiso> permisos = this.resolvePermisos(rolScopeSolved.tipoPermiso(), rolUpdateRequest.getPermisos());
 
         rol.setNombre(rolUpdateRequest.getNombre());
         rol.setDescripcion(rolUpdateRequest.getDescripcion());
@@ -173,10 +188,11 @@ public class RolService {
     }
 
     private boolean bajaRol(String rolId, RolScope scope) {
-        String rolExcluido = getRolExcluidoByTipoPermisoNombre(scope.tipoPermisoNombre());
-
         Rol rol = this.rolRepository
-                .findVigenteByIdScoped(UUID.fromString(rolId), scope.tipoPermisoNombre(), rolExcluido, scope.establecimientoId())
+                .findVigenteMutableByIdScoped(
+                        UUID.fromString(rolId),
+                        scope.tipoPermisoNombre(),
+                        scope.establecimientoId())
                 .orElseThrow(() -> new AppException(RolError.NOT_FOUND));
 
 
@@ -188,14 +204,6 @@ public class RolService {
         rol.setFechaHoraBaja(LocalDateTime.now());
         this.rolRepository.save(rol);
         return true;
-    }
-
-    private String getRolExcluidoByTipoPermisoNombre(TipoPermisoNombre tipoPermisoNombre) {
-        return switch (tipoPermisoNombre) {
-            case ADMIN -> RolProtegido.ADMIN_LIDER.getNombre();
-            case PRODUCTOR -> RolProtegido.PRODUCTOR_LIDER.getNombre();
-            default -> throw new IllegalStateException("Unexpected value: " + tipoPermisoNombre);
-        };
     }
 
     private List<RolGetCatalogoDTO> obtenerRolesCatalogoByTipoPermisoNombre(RolScope scope) {
@@ -225,23 +233,31 @@ public class RolService {
             default -> throw new IllegalStateException("Unexpected value: " + tipoPermisoNombre);
         };
     }
-    private Establecimiento obtenerEstablecimiento(RolScope scope) {
-        return scope.establecimientoId() == null
-                ? null
-                : this.establecimientoRepository
-                  .findByIdAndFechaHoraBajaIsNull(scope.establecimientoId())
-                  .orElseThrow (() -> new EstablecimientoNotFoundException());
+
+    private List<Permiso> resolvePermisos(TipoPermiso tipoPermiso, List<String> permisos) {
+        List<Permiso> permisosFetched = this.permisoRepository.findByTipoPermisoAndCodigoIn(tipoPermiso, permisos);
+        if (permisosFetched.size() != permisos.size()) {
+            throw new AppException(RolError.PERMISO_INVALIDO);
+        }
+        return permisosFetched;
     }
 
-    private record RolScope(TipoPermisoNombre tipoPermisoNombre, UUID establecimientoId) {
-        public static RolScope admin() {
-            return new RolScope(TipoPermisoNombre.ADMIN, null);
+    private RolScopeSolved resolverRolScope(RolScope rolScope) {
+        TipoPermiso tipoPermiso = this.obtenerTipoPermiso(rolScope.tipoPermisoNombre());
+
+        Establecimiento establecimiento = null;
+        if (rolScope.establecimientoId() != null) {
+            establecimiento = this.establecimientoRepository
+                    .findByIdAndFechaHoraBajaIsNull(rolScope.establecimientoId())
+                    .orElseThrow(() -> new AppException(RolError.MALA_REQUEST, "No se encuentra establecimiento con el id " + rolScope.establecimientoId(), null));
         }
 
-        public static RolScope productor(UUID establecimientoId) {
-            return new RolScope(TipoPermisoNombre.PRODUCTOR, Objects.requireNonNull(establecimientoId));
-        }
-
+        return new RolScopeSolved(tipoPermiso, establecimiento);
     }
 
+    private TipoPermiso obtenerTipoPermiso(TipoPermisoNombre tipoPermisoNombre) {
+        return this.tipoPermisoRepository
+                .findByNombre(tipoPermisoNombre)
+                .orElseThrow(() -> new IllegalStateException("No se encuentra el tipoPermiso ingresado"));
+    }
 }
