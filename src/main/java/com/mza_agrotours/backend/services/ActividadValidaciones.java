@@ -7,7 +7,7 @@ import com.mza_agrotours.backend.dtos.actividad.DTOTarifa;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadRequest;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
-import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
+import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +19,7 @@ import java.util.*;
 public class ActividadValidaciones {
 
     @Autowired
-    private ActividadRespository actividadRepository;
+    private ActividadRepository actividadRepository;
 
     public List<String> obtenerErroresValidacionActividad(DTOActividadAlta dto){
 

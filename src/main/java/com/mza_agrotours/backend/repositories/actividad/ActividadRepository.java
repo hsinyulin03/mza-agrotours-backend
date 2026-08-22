@@ -15,29 +15,27 @@ import java.util.UUID;
 import java.util.List;
 
 @Repository
-public interface ActividadRespository extends BaseEntityRepository<Actividad, UUID> {
+public interface ActividadRepository extends BaseEntityRepository<Actividad, UUID> {
     Optional<Actividad>  findByNombreIgnoreCaseAndFechaHoraBajaIsNull(String nombre);
     Optional<Actividad> findByIdAndFechaHoraBajaIsNull(UUID id);
 
-    @Query("SELECT a FROM Actividad a WHERE (:busqueda IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', :busqueda, '%'))) " +
+    @Query("SELECT a FROM Actividad a WHERE a.establecimiento.id = :establecimientoId " +
+            "AND (:busqueda IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', :busqueda, '%'))) " +
             "AND (:estado IS NULL OR a.estado.nombre = :estado)")
     List<Actividad> findByFiltrosDinamicos(
+            @Param("establecimientoId") UUID establecimientoId,
             @Param("busqueda") String busqueda,
             @Param("estado") EstadoActividadNombre estado
     );
-
-    //TODO - Ignoramos temporalmente los filtros de departamento
-    @Query("SELECT a FROM Actividad a " +
-            "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
-            "AND a.fechaHoraBaja IS NULL")
-    List<Actividad> explorarActividadesPublicadas();
 
     @Query("SELECT DISTINCT a FROM Actividad a " +
             "LEFT JOIN a.cultivos c " +
             "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
             "AND a.fechaHoraBaja IS NULL " +
-            "AND (c.id IN :cultivosIds )")
-    List<Actividad> explorarActividadesPublicadas(@Param("cultivosIds") List <UUID> cultivosIds);
+            "AND (:departamentoId IS NULL OR a.establecimiento.departamento.id = :departamentoId) " +
+            "AND (:cultivosIds IS NULL OR c.id IN :cultivosIds )")
+    List<Actividad> explorarActividadesPublicadas(@Param("cultivosIds") List <UUID> cultivosIds,
+                                                  @Param("departamentoId") UUID departamentoId);
 
     @Query("SELECT MAX(ad.fechaHoraInicio) FROM Actividad a JOIN a.actividadesDias ad WHERE a.id = :actividadId")
     Optional<LocalDateTime> findUltimaFechaByActividadId(@Param("actividadId") UUID actividadId);
@@ -57,4 +55,6 @@ public interface ActividadRespository extends BaseEntityRepository<Actividad, UU
             "AND ad.estadoActual.estado.nombre IN (com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.ACTIVA,com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.REPROGRAMADA)" +
             "GROUP BY ad.id, ad.cuposMax, ad.fechaHoraInicio, ad.fechaHoraFin")
     List<DiaActividadReservaDTO> getDiaActividadReservaDTO(@Param("uuid") UUID uuidActividad);
+
+    boolean existsByIdAndEstablecimientoId(UUID idActividad, UUID establecimientoId);
 }

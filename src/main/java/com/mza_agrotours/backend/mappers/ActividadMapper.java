@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.mappers;
 import com.mza_agrotours.backend.dtos.actividad.*;
 import com.mza_agrotours.backend.dtos.reservas.RangoEtarioReservaDTO;
 import com.mza_agrotours.backend.entities.actividad.*;
+import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -25,6 +26,10 @@ public interface ActividadMapper {
     @Mapping(target = "precioRegular", ignore = true)
     @Mapping(target = "cultivos", ignore = true)
     DTOActividadDetalleResponse actividadToDTOActividadDetalle(Actividad actividad);
+
+    @Mapping(target = "departamento",source = "departamento.nombre")
+    @Mapping(target = "estado", source = "estadoActual.estadoEstablecimiento.nombre")
+    DTOEstablecimientoCard establecimientoToDTOEstablecimientoCard(Establecimiento establecimiento);
 
     //US-ACT-06
     @Mapping(target = "estado", source = "estado.nombre")
