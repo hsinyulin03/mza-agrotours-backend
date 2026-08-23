@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.actividad.DTOActividadDetalleResponse;
+import com.mza_agrotours.backend.dtos.actividad.DTOFiltro;
 import com.mza_agrotours.backend.dtos.actividad.DTOListadoActividadVisitanteResponse;
 import com.mza_agrotours.backend.dtos.reservas.InfoParaReservarDTO;
 import com.mza_agrotours.backend.services.ActividadService;
@@ -33,6 +34,18 @@ public class ActividadVisitanteController {
                                                  @RequestParam(required = false) UUID departamentoId) throws Exception {
         List<DTOListadoActividadVisitanteResponse> listado = servicio.explorarActividades(cultivosIds, departamentoId);
         return ResponseEntity.ok(ApiResponse.ok(listado));
+    }
+    //Obtener el filtro de departamentos
+    @GetMapping("/departamentos")
+    public ResponseEntity<?> obtenerFiltroDepartamentos() {
+        List<DTOFiltro> filtrosDpto = servicio.obtenerFiltroDepartamentos();
+        return ResponseEntity.ok(ApiResponse.ok(filtrosDpto));
+    }
+    //Obtener el filtro de cultivos
+    @GetMapping("/cultivos")
+    public ResponseEntity<?> obtenerFiltroCultivos() {
+        List<DTOFiltro> filtrosCultivo = servicio.obtenerFiltroCultivos();
+        return ResponseEntity.ok(ApiResponse.ok(filtrosCultivo));
     }
 
     //US-RESE-01: Reservar actividad - Información para reservar

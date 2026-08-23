@@ -33,7 +33,7 @@ public class EstablecimientoAuthorization {
             return false;
         }
 
-        // Paso B: Validamos que la actividad realmente pertenezca a ese establecimiento
+        // Validamos que la actividad realmente pertenezca a ese establecimiento
         return this.actividadRepository.existsByIdAndEstablecimientoId(idActividad, establecimientoId);
     }
 

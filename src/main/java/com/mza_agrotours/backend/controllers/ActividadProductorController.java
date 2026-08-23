@@ -83,8 +83,15 @@ public class ActividadProductorController {
             @PathVariable UUID establecimientoId,
             @PathVariable UUID actividadId,
             @Valid @RequestBody DTOActividadUpdate dto) {
-        DTOActividadGetResponse res = servicio.modificarActividad(actividadId, dto);
+        DTOActividadGetResponse res = servicio.modificarActividad(establecimientoId, actividadId, dto);
         return ResponseEntity.ok(ApiResponse.ok(res));
+    }
+
+    @GetMapping("/estados")
+    @PreAuthorize("@estAuth.tienePermiso(authentication, #establecimientoId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
+    public ResponseEntity<?> obtenerFiltroEstadoActividad(@PathVariable UUID establecimientoId) {
+        List<DTOFiltro> estadosRes = servicio.obtenerFiltroEstadoActividad(establecimientoId);
+        return ResponseEntity.ok(ApiResponse.ok(estadosRes));
     }
 
 }

@@ -80,7 +80,7 @@ public class ActividadService {
     public DTOActividadAltaResponse altaActividad(UUID establecimientoId, DTOActividadAlta dto) {
 
         //Primero hacemos las validaciones del negocio
-        List<String> errores = actividadValidaciones.obtenerErroresValidacionActividad(dto);
+        List<String> errores = actividadValidaciones.obtenerErroresValidacionActividad(establecimientoId, dto);
 
         if (!errores.isEmpty()) {
             throw new ValidacionMultipleException(errores);
@@ -222,11 +222,11 @@ public class ActividadService {
 
     //US-ACT-04: Modificar Actividad
     @Transactional
-    public DTOActividadGetResponse modificarActividad(UUID idActividad, DTOActividadUpdate dto) {
+    public DTOActividadGetResponse modificarActividad(UUID idEstablecimiento, UUID idActividad, DTOActividadUpdate dto) {
 
         Actividad actividad = obtenerActividad(idActividad);
 
-        List<String> errores = actividadValidaciones.obtenerErroresValidacionModificacion(idActividad, dto);
+        List<String> errores = actividadValidaciones.obtenerErroresValidacionModificacion(idEstablecimiento, idActividad, dto);
 
         if (!errores.isEmpty()) {
             throw new ValidacionMultipleException(errores);
@@ -298,6 +298,38 @@ public class ActividadService {
 
         response.setFotosGuardadas(obtenerUrlsDeDescarga(response.getFotosGuardadas()));
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public List<DTOFiltro> obtenerFiltroEstadoActividad(UUID idEstablecimiento) {
+
+        List<DTOFiltro> resultadosBD = actividadRepository.contarActividadesPorEstado(idEstablecimiento);
+
+        Map<String, Long> mapaCantidades = resultadosBD.stream()
+                .collect(Collectors.toMap(
+                        DTOFiltro::getValor,
+                        DTOFiltro::getCantidad
+                ));
+
+        return Arrays.stream(EstadoActividadNombre.values())
+                .map(estado -> {
+                    DTOFiltro dto = new DTOFiltro();
+                    dto.setNombre(estado.getNombre());  // nombre: "Borrador"
+                    dto.setValor(estado.name());   // valor: "BORRADOR"
+                    dto.setCantidad(mapaCantidades.getOrDefault(estado.name(), 0L));
+                    return dto;
+                })
+                .toList();
+
+    }
+    @Transactional(readOnly = true)
+    public List<DTOFiltro> obtenerFiltroDepartamentos() {
+        return actividadRepository.obtenerFiltroDepartamentos();
+    }
+
+    @Transactional(readOnly = true)
+    public List<DTOFiltro> obtenerFiltroCultivos() {
+        return actividadRepository.obtenerFiltroCultivos();
     }
 
     //Métodos auxiliares

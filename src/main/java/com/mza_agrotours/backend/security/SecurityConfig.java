@@ -71,6 +71,9 @@ public class SecurityConfig {
                         //Permisos
                         .requestMatchers( "/permisos/grupos-permisos/admin").hasAuthority(PermisoCodigo.LEER_ADMIN.name())
                         .requestMatchers("/permisos/grupos-permisos/productor").authenticated()
+                        //Actividades
+                        .requestMatchers("/actividades/*/reservar").authenticated()
+                        .requestMatchers("/actividades/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(firebaseTokenFilter, UsernamePasswordAuthenticationFilter.class);
 

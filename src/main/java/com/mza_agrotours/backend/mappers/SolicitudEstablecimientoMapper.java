@@ -16,6 +16,7 @@ public interface SolicitudEstablecimientoMapper {
     @Mapping(target = "estados", ignore = true)
     @Mapping(target = "estadoActual", ignore = true)
     @Mapping(target = "departamento", ignore = true)
+    @Mapping(target = "descripcionEstablecimiento", source = "descripcion")
     SolicitudEstablecimiento solicitudEstablecimientoDtoToSolicitudEstablecimiento(SolicitudEstablecimientoCreateReq solicitudEstablecimientoCreateReq);
 
     List<SolicitudEstablecimientoUserShotDTO> solicitudEstablecimientosToSolicitudEstablecimientoShortDTOs(List<SolicitudEstablecimiento> solicitudEstablecimientos);
@@ -56,6 +57,6 @@ public interface SolicitudEstablecimientoMapper {
     @Mapping(target = "estados", ignore = true)
     @Mapping(target = "estadoActual", ignore = true)
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "descripcion", constant = "")
+    @Mapping(target = "descripcion", source = "descripcionEstablecimiento")
     Establecimiento solicitudEstablecimientoToEstablecimiento(SolicitudEstablecimiento solicitudEstablecimiento);
 }

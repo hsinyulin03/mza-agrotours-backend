@@ -25,11 +25,18 @@ public interface ActividadMapper {
     @Mapping(target = "tarifas", ignore = true)
     @Mapping(target = "precioRegular", ignore = true)
     @Mapping(target = "cultivos", ignore = true)
+    @Mapping(target = "ubicacion", source = "establecimiento")
     DTOActividadDetalleResponse actividadToDTOActividadDetalle(Actividad actividad);
 
     @Mapping(target = "departamento",source = "departamento.nombre")
     @Mapping(target = "estado", source = "estadoActual.estadoEstablecimiento.nombre")
     DTOEstablecimientoCard establecimientoToDTOEstablecimientoCard(Establecimiento establecimiento);
+
+    @Mapping(target = "nombreEstablecimiento", source = "nombre")
+    @Mapping(target = "direccionEstablecimiento", source = "ubicacion")
+    @Mapping(target = "latitude", source = "departamento.lat")
+    @Mapping(target = "longitude", source = "departamento.lon")
+    DTOUbicacion establecimientoToDTOUbicacion(Establecimiento establecimiento);
 
     //US-ACT-06
     @Mapping(target = "estado", source = "estado.nombre")
@@ -43,6 +50,8 @@ public interface ActividadMapper {
     @Mapping(target = "diasYHorasDisponibles", ignore = true)
     @Mapping(target = "diasDelMes", ignore = true)
     @Mapping(target = "cultivos", ignore = true)
+    @Mapping(target = "nombreEstablecimiento", source="establecimiento.nombre")
+    @Mapping(target = "nombreDepartamento", source="establecimiento.departamento.nombre")
     DTOCalendarioActividadDiaResponse actividadToDTOCalendarioActividadDia(Actividad actividad);
 
     @Mapping(source = "cuposMax", target = "cuposMaximos")
@@ -53,6 +62,9 @@ public interface ActividadMapper {
     //US-ACT-12
     @Mapping(target = "precioRegular", ignore = true)
     @Mapping(target = "cultivos", ignore = true)
+    @Mapping(target = "nombreEstablecimiento", source="establecimiento.nombre")
+    @Mapping(target = "nombreDepartamento", source="establecimiento.departamento.nombre")
+    @Mapping(target = "fotoPortada", ignore = true)
     DTOListadoActividadVisitanteResponse actividadToDTOListadoActividadVisitante(Actividad actividad);
 
     //US-ACT-04

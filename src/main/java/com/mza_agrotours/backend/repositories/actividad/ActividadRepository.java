@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.repositories.actividad;
 
+import com.mza_agrotours.backend.dtos.actividad.DTOFiltro;
 import com.mza_agrotours.backend.dtos.reservas.DiaActividadReservaDTO;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
@@ -16,7 +17,14 @@ import java.util.List;
 
 @Repository
 public interface ActividadRepository extends BaseEntityRepository<Actividad, UUID> {
-    Optional<Actividad>  findByNombreIgnoreCaseAndFechaHoraBajaIsNull(String nombre);
+    @Query("select count(a) > 0 from Actividad a " +
+            "where lower(a.nombre) = lower(:nombre) " +
+            "and a.establecimiento.id = :establecimientoId " +
+            "and a.fechaHoraBaja is null " +
+            "and (:idActividadActual is null or a.id <> :idActividadActual)")
+    boolean existeOtraActividadConNombre(@Param("nombre") String nombre,
+                                         @Param("establecimientoId") UUID establecimientoId,
+                                         @Param("idActividadActual") UUID idActividadActual);
     Optional<Actividad> findByIdAndFechaHoraBajaIsNull(UUID id);
 
     @Query("SELECT a FROM Actividad a WHERE a.establecimiento.id = :establecimientoId " +
@@ -55,6 +63,29 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
             "AND ad.estadoActual.estado.nombre IN (com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.ACTIVA,com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.REPROGRAMADA)" +
             "GROUP BY ad.id, ad.cuposMax, ad.fechaHoraInicio, ad.fechaHoraFin")
     List<DiaActividadReservaDTO> getDiaActividadReservaDTO(@Param("uuid") UUID uuidActividad);
+
+    //Filtro de estado de actividad de un establecimiento
+    @Query("SELECT NEW com.mza_agrotours.backend.dtos.actividad.DTOFiltro(a.estado.nombre, COUNT(a)) " +
+            "FROM Actividad a WHERE a.establecimiento.id = :establecimientoId GROUP BY a.estado.nombre")
+    List<DTOFiltro> contarActividadesPorEstado(@Param("establecimientoId") UUID establecimientoId);
+
+    //Filtro de Departamentos
+    @Query("SELECT NEW com.mza_agrotours.backend.dtos.actividad.DTOFiltro(d.id, d.nombre, COUNT(a)) " +
+            "FROM Actividad a JOIN a.establecimiento.departamento d " +
+            "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
+            "AND a.fechaHoraBaja IS NULL " +
+            "GROUP BY d.id, d.nombre " +
+            "ORDER BY d.nombre ASC")
+    List<DTOFiltro> obtenerFiltroDepartamentos();
+
+    // Filtro de Cultivos
+    @Query("SELECT NEW com.mza_agrotours.backend.dtos.actividad.DTOFiltro(c.id, c.nombre, COUNT(a)) " +
+            "FROM Actividad a JOIN a.cultivos c " +
+            "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
+            "AND a.fechaHoraBaja IS NULL " +
+            "GROUP BY c.id, c.nombre " +
+            "ORDER BY c.nombre ASC")
+    List<DTOFiltro> obtenerFiltroCultivos();
 
     boolean existsByIdAndEstablecimientoId(UUID idActividad, UUID establecimientoId);
 }
