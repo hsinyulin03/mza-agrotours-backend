@@ -4,6 +4,7 @@ import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
 import com.mza_agrotours.backend.enums.PermisoCodigo;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.ProductorRepository;
+import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,11 +15,26 @@ import java.util.UUID;
 public class EstablecimientoAuthorization {
     private final ProductorRepository productorRepository;
     private final EstablecimientoRepository establecimientoRepository;
+    private final ActividadRepository actividadRepository;
 
     public EstablecimientoAuthorization(ProductorRepository productorRepository,
-                                        EstablecimientoRepository establecimientoRepository) {
+                                        EstablecimientoRepository establecimientoRepository,
+                                        ActividadRepository actividadRepository) {
         this.productorRepository = productorRepository;
         this.establecimientoRepository = establecimientoRepository;
+        this.actividadRepository = actividadRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean tienePermisoSobreActividad(Authentication authentication, UUID establecimientoId, UUID idActividad, PermisoCodigo permiso) {
+
+        // Verificamos si tiene permiso correspondiente en el establecimiento
+        if (!tienePermiso(authentication, establecimientoId, permiso)) {
+            return false;
+        }
+
+        // Validamos que la actividad realmente pertenezca a ese establecimiento
+        return this.actividadRepository.existsByIdAndEstablecimientoId(idActividad, establecimientoId);
     }
 
     @Transactional(readOnly = true)

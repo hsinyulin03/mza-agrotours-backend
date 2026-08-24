@@ -25,7 +25,7 @@ import com.mza_agrotours.backend.mappers.ArchivoMapper;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.ReservaRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
-import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
+import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadDiaRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
 
@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
 public class ActividadService {
     private final List<String> EXTENSIONES_VALIDAS = List.of("jpg", "jpeg", "png");
     @Autowired
-    private ActividadRespository actividadRepository;
+    private ActividadRepository actividadRepository;
 
     @Autowired
     private ActividadValidaciones actividadValidaciones;
@@ -77,10 +77,10 @@ public class ActividadService {
 
     //US-ACT-03 Alta de actividad
     @Transactional
-    public DTOActividadAltaResponse altaActividad(DTOActividadAlta dto) {
+    public DTOActividadAltaResponse altaActividad(UUID establecimientoId, DTOActividadAlta dto) {
 
         //Primero hacemos las validaciones del negocio
-        List<String> errores = actividadValidaciones.obtenerErroresValidacionActividad(dto);
+        List<String> errores = actividadValidaciones.obtenerErroresValidacionActividad(establecimientoId, dto);
 
         if (!errores.isEmpty()) {
             throw new ValidacionMultipleException(errores);
@@ -111,6 +111,7 @@ public class ActividadService {
         tarifas.forEach(actividad::addActividadRangoEtario);
         actividad.addLogAlta(logAltas);
         calendario.forEach(actividad::addActividadDia);
+        actividad.setEstablecimiento(establecimientoRepository.getReferenceById(establecimientoId));
 
         List<ArchivoUploadResponse> urlsGeneradas = new ArrayList<>();
 
@@ -148,9 +149,8 @@ public class ActividadService {
 
     //US-ACT-06: Listado de actividades de un establecimiento - Vista productor
     @Transactional(readOnly = true)
-    public List<DTOActividadesResponse> obtenerListadoActividades(String busqueda, EstadoActividadNombre estado) {
-        // TODO- Se debe filtrar por establecimiento
-        List<Actividad> actividades = actividadRepository.findByFiltrosDinamicos(busqueda, estado);
+    public List<DTOActividadesResponse> obtenerListadoActividades(UUID establecimientoId, String busqueda, EstadoActividadNombre estado) {
+        List<Actividad> actividades = actividadRepository.findByFiltrosDinamicos(establecimientoId, busqueda, estado);
 
         return actividades.stream()
                 .map(actividadMapper::actividadToDTOActividades)
@@ -194,17 +194,13 @@ public class ActividadService {
 
     //US-ACT-12: Listado de actividades de la plataforma - vista del visitante
     @Transactional(readOnly = true)
-    public List<DTOListadoActividadVisitanteResponse> explorarActividades(List<UUID> cultivoIds) {
-        List<Actividad> actividades;
+    public List<DTOListadoActividadVisitanteResponse> explorarActividades(List<UUID> cultivoIds, UUID departamentoId) {
 
-        // TODO: Falta implementar filtro por departamento
         // TODO: Falta implementar paginación
 
-        if (cultivoIds == null || cultivoIds.isEmpty()) {
-            actividades = actividadRepository.explorarActividadesPublicadas();
-        }else {
-            actividades = actividadRepository.explorarActividadesPublicadas(cultivoIds);
-        }
+        List<UUID> cultivosId = (cultivoIds == null || cultivoIds.isEmpty()) ? null : cultivoIds;
+        List<Actividad> actividades = actividadRepository.explorarActividadesPublicadas(cultivosId, departamentoId);
+
         List<DTOListadoActividadVisitanteResponse> response = actividades.stream().map(actividad -> {
 
             DTOListadoActividadVisitanteResponse dto = actividadMapper.actividadToDTOListadoActividadVisitante(actividad);
@@ -226,11 +222,11 @@ public class ActividadService {
 
     //US-ACT-04: Modificar Actividad
     @Transactional
-    public DTOActividadGetResponse modificarActividad(UUID idActividad, DTOActividadUpdate dto) {
+    public DTOActividadGetResponse modificarActividad(UUID idEstablecimiento, UUID idActividad, DTOActividadUpdate dto) {
 
         Actividad actividad = obtenerActividad(idActividad);
 
-        List<String> errores = actividadValidaciones.obtenerErroresValidacionModificacion(idActividad, dto);
+        List<String> errores = actividadValidaciones.obtenerErroresValidacionModificacion(idEstablecimiento, idActividad, dto);
 
         if (!errores.isEmpty()) {
             throw new ValidacionMultipleException(errores);
@@ -302,6 +298,38 @@ public class ActividadService {
 
         response.setFotosGuardadas(obtenerUrlsDeDescarga(response.getFotosGuardadas()));
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public List<DTOFiltro> obtenerFiltroEstadoActividad(UUID idEstablecimiento) {
+
+        List<DTOFiltro> resultadosBD = actividadRepository.contarActividadesPorEstado(idEstablecimiento);
+
+        Map<String, Long> mapaCantidades = resultadosBD.stream()
+                .collect(Collectors.toMap(
+                        DTOFiltro::getValor,
+                        DTOFiltro::getCantidad
+                ));
+
+        return Arrays.stream(EstadoActividadNombre.values())
+                .map(estado -> {
+                    DTOFiltro dto = new DTOFiltro();
+                    dto.setNombre(estado.getNombre());  // nombre: "Borrador"
+                    dto.setValor(estado.name());   // valor: "BORRADOR"
+                    dto.setCantidad(mapaCantidades.getOrDefault(estado.name(), 0L));
+                    return dto;
+                })
+                .toList();
+
+    }
+    @Transactional(readOnly = true)
+    public List<DTOFiltro> obtenerFiltroDepartamentos() {
+        return actividadRepository.obtenerFiltroDepartamentos();
+    }
+
+    @Transactional(readOnly = true)
+    public List<DTOFiltro> obtenerFiltroCultivos() {
+        return actividadRepository.obtenerFiltroCultivos();
     }
 
     //Métodos auxiliares

@@ -7,7 +7,7 @@ import com.mza_agrotours.backend.dtos.actividad.DTOTarifa;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadRequest;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
-import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
+import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -19,14 +19,14 @@ import java.util.*;
 public class ActividadValidaciones {
 
     @Autowired
-    private ActividadRespository actividadRepository;
+    private ActividadRepository actividadRepository;
 
-    public List<String> obtenerErroresValidacionActividad(DTOActividadAlta dto){
+    public List<String> obtenerErroresValidacionActividad(UUID establecimientoId, DTOActividadAlta dto){
 
         List<String> errores = new ArrayList<>();
 
         // Validar que  no haya dos actividades con mismo nombre
-        errores.addAll(validarNombreUnico(dto.getNombre(), null));
+        errores.addAll(validarNombreUnico(dto.getNombre(), establecimientoId, null));
 
         // No permitir crear una actividad con estado "Dado de baja"
         String estadoRecibido = dto.getEstado();
@@ -44,7 +44,7 @@ public class ActividadValidaciones {
         return errores;
     }
 
-    public List<String> obtenerErroresValidacionModificacion(UUID idActividadActual,  DTOActividadUpdate dto) {
+    public List<String> obtenerErroresValidacionModificacion(UUID establecimientoId, UUID idActividadActual,  DTOActividadUpdate dto) {
         List<String> errores = new ArrayList<>();
 
         // No permitir modificar una actividad con estado "Dado de baja"
@@ -56,18 +56,17 @@ public class ActividadValidaciones {
         }
         errores.addAll(validarCantidadFotosModificacion(dto, idActividadActual));
         errores.addAll(validarTamanioImagenes(dto.getFotosNuevas()));
-        errores.addAll(validarNombreUnico(dto.getNombre(), idActividadActual));
+        errores.addAll(validarNombreUnico(dto.getNombre(), establecimientoId, idActividadActual));
         errores.addAll(validarTarifas(dto.getTarifas()));
         return errores;
     }
 
-    private List<String> validarNombreUnico(String nombre, UUID idActividadActual) {
+    private List<String> validarNombreUnico(String nombre, UUID establecimientoId, UUID idActividadActual) {
         List<String> errores = new ArrayList<>();
-        Optional<Actividad> existente = actividadRepository.findByNombreIgnoreCaseAndFechaHoraBajaIsNull(nombre);
-
-        if (existente.isPresent() && (idActividadActual == null || !existente.get().getId().equals(idActividadActual))) {
-            errores.add("Ya existe una actividad con este nombre");
+        if (actividadRepository.existeOtraActividadConNombre(nombre, establecimientoId, idActividadActual)) {
+            errores.add("Ya existe una actividad con este nombre en el establecimiento");
         }
+
         return errores;
     }
 

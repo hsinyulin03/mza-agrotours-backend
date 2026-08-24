@@ -44,6 +44,8 @@ public class PermisoSeeder implements CommandLineRunner {
                     new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Lectura de Productores","Ver productores")),
             entry(PermisoCodigo.LEER_ROLES_PRODUCTOR,
                     new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Lectura de roles de productores", "Ver los roles de productor del establecimiento")),
+            entry(PermisoCodigo.GESTIONAR_ACTIVIDAD,
+                    new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Gestionar actividades del establecimiento","Crear, modificar y dar de baja actividades")),
             entry(PermisoCodigo.GESTIONAR_SOLICITUD_ESTABLECIMIENTO,
                     new SeedPermiso(TipoPermisoNombre.ADMIN, "Gestionar solicitudes de establecimientos","Ver solicitudes de establecimiento")),
             entry(PermisoCodigo.LEER_SOLICITUD_ESTABLECIMIENTO,

@@ -59,12 +59,7 @@ public class RolSeeder implements CommandLineRunner {
                     SeedRol.conTodosLosPermisos(
                             TipoPermisoNombre.ADMIN,
                             "Rol administrador con todos los permisoCodigos",
-                            false)),
-            entry(RolProtegido.PRODUCTOR_LIDER.getNombre(),
-                    SeedRol.conTodosLosPermisos(
-                            TipoPermisoNombre.PRODUCTOR,
-                            "Rol productor con todos los permisoCodigos",
-                            true))
+                            false))
     );
 
     private final RolRepository rolRepository;

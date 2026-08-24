@@ -50,8 +50,7 @@ public class Establecimiento extends BaseEntity {
     @JoinColumn(name = "departamento_id", nullable = false)
     private Departamento departamento;
 
-    @OneToMany(cascade = CascadeType.ALL)
-    @JoinColumn(name = "establecimiento_id")
+    @OneToMany(mappedBy = "establecimiento")
     private List<Actividad> actividades = new ArrayList<>();
 
     @OneToMany(cascade = CascadeType.ALL)

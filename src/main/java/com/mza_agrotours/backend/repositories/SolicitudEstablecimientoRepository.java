@@ -21,6 +21,7 @@ public interface SolicitudEstablecimientoRepository extends BaseEntityRepository
     Optional<SolicitudEstablecimiento> findByIdAndUsuario(UUID id, Usuario usuario);
 
     @Query("select se from SolicitudEstablecimiento se " +
-            "where se.estadoActual.estadoSolicitudEstablecimiento.nombre = EstadoSolicitudEstablecimientoNombre.PENDIENTE")
+            "where se.id = :solicitudId " +
+            "and se.estadoActual.estadoSolicitudEstablecimiento.nombre = EstadoSolicitudEstablecimientoNombre.PENDIENTE")
     Optional<SolicitudEstablecimiento> findByIdAndPendiente(@Param("solicitudId") UUID solicitudId);
 }
