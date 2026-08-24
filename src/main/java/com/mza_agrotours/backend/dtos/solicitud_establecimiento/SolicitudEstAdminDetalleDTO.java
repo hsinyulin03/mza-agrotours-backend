@@ -16,6 +16,7 @@ public class SolicitudEstAdminDetalleDTO {
     private String razonSocial;
     private String domicilioLegal;
     private String cuit;
+    private String descripcionEstablecimiento;
     private String telefono;
     private String cvu;
     private String email;

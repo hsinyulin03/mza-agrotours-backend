@@ -66,7 +66,13 @@ public class GrupoPermisoSeeder implements CommandLineRunner {
                             TipoPermisoNombre.PRODUCTOR,
                             "Ver y administrar los roles de productor del establecimiento",
                             "user-check",
-                            List.of(PermisoCodigo.LEER_ROLES_PRODUCTOR)))
+                            List.of(PermisoCodigo.LEER_ROLES_PRODUCTOR))),
+            entry("Gestión de actividades",
+                    new SeedGrupoPermiso(
+                            TipoPermisoNombre.PRODUCTOR,
+                            "Altas, bajas y modificación de las actividades del establecimiento",
+                            "user-pen",
+                            List.of(PermisoCodigo.GESTIONAR_ACTIVIDAD)))
 
     );
 

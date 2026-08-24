@@ -22,6 +22,8 @@ public class DTOActividadDetalleResponse {
     private String descripcion;
     private List<String> incluye;
     private List<String> noIncluye;
+    private DTOEstablecimientoCard establecimiento;
+    private DTOUbicacion ubicacion;
 
     // Preguntas frecuentes
     private List<DTOFaqResponse> preguntasFrecuentes;
@@ -29,5 +31,5 @@ public class DTOActividadDetalleResponse {
     private BigDecimal precioRegular;
 
 
-    //TODO- Falta mostrar tipo de  cultivo, información del establecimiento, ubicación, pronóstico, reseñas y calendario para reservas
+    //TODO- Falta mostrar pronóstico, reseñas y calendario para reservas
 }

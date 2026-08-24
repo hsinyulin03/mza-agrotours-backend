@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.entities.actividad;
 
 import com.mza_agrotours.backend.entities.*;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
+import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.receta.Receta;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import jakarta.persistence.*;
@@ -37,10 +38,9 @@ public class Actividad extends BaseEntity {
     private EstadoActividad estado;
 
 
-    //TODO: Agregar relación con establecimiento
-    /*@ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "establecimiento_id", nullable = false)
-    private Establecimiento establecimiento;*/
+    private Establecimiento establecimiento;
 
     @ManyToMany
     @JoinTable(

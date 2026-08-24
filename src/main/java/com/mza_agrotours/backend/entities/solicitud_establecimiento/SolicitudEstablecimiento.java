@@ -35,8 +35,8 @@ public class SolicitudEstablecimiento extends BaseEntity {
     @Column(nullable = false, length = 11)
     private String cuit;
 
-    //@Column(nullable = false, length = 2000)
-    //private String descripcionEstablecimiento;
+    @Column(nullable = false, length = 2000)
+    private String descripcionEstablecimiento;
 
     @Column(nullable = false, length = 200)
     private String domicilioLegal;
