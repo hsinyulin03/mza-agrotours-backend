@@ -1,9 +1,9 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.AccesoDTO;
-import com.mza_agrotours.backend.dtos.productor.Productor;
 import com.mza_agrotours.backend.entities.AdministradorSistemas;
 import com.mza_agrotours.backend.entities.Usuario;
+import com.mza_agrotours.backend.entities.productor.Productor;
 import com.mza_agrotours.backend.mappers.AccesoMapper;
 import com.mza_agrotours.backend.repositories.AdministradorSistemasRepository;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;

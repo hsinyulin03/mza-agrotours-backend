@@ -44,6 +44,15 @@ public interface RolRepository extends BaseEntityRepository<Rol, UUID> {
     @Query("select r from Rol r " +
             "where r.tipoPermiso.nombre = :tipo " +
             "and r.fechaHoraBaja is null " +
+            "and r.esProtegido = false "+
+            "and ((:estId is null and r.establecimiento is null) " +
+            "     or r.establecimiento.id = :estId)")
+    List<Rol> findAllVigentesMutablesEnScope(@Param("tipo") TipoPermisoNombre tipo,
+                                          @Param("estId") UUID estId);
+
+    @Query("select r from Rol r " +
+            "where r.tipoPermiso.nombre = :tipo " +
+            "and r.fechaHoraBaja is null " +
             "and ((:estId is null and r.establecimiento is null) " +
             "     or r.establecimiento.id = :estId)")
     List<Rol> findVigentesEnScope(@Param("tipo") TipoPermisoNombre tipo,

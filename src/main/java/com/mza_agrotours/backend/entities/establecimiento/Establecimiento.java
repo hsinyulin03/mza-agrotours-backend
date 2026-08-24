@@ -1,10 +1,10 @@
 package com.mza_agrotours.backend.entities.establecimiento;
 
-import com.mza_agrotours.backend.dtos.productor.Productor;
 import com.mza_agrotours.backend.entities.BaseEntity;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
+import com.mza_agrotours.backend.entities.productor.Productor;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
