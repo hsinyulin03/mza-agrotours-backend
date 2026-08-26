@@ -241,11 +241,11 @@ public class UsuarioService {
         }
 
         // 3. Usuario no es productor lider de un establecimiento vigente
-        if (productorRepository.esLiderDeUnEstablecimientoByUsuario(usuario)) {
+        if (productorRepository.esProductorDeUnEstablecimiento(usuario)) {
             condiciones.add(
                     new CondicionDTO(
-                            "El establecimiento debe estar dado de baja",
-                            "Tenés un establecimiento activo del cuál sos productor líder. Dalo de baja antes de continuar."
+                            "Un productor no puede eliminar su cuenta",
+                            "Pedí al productor líder de tu establecimiento que gestione la baja de tu cuenta."
                     ));
         }
 

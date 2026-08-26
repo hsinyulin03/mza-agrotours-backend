@@ -44,9 +44,8 @@ public interface ProductorRepository extends BaseEntityRepository<Productor, UUI
 
     @Query("SELECT COUNT(p) > 0 FROM Productor p " +
             "WHERE p.usuario = :usuario " +
-            "AND p.fechaHoraBaja is null " +
-            "AND p.rol.esProtegido = true")
-    boolean esLiderDeUnEstablecimientoByUsuario(Usuario usuario);
+            "AND p.fechaHoraBaja is null ")
+    boolean esProductorDeUnEstablecimiento(Usuario usuario);
 
     @Query("SELECT DISTINCT p FROM Productor p " +
             "LEFT JOIN FETCH p.estados " +
