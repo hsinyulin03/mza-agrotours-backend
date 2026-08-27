@@ -5,9 +5,6 @@ import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
 import com.mza_agrotours.backend.dtos.*;
 import com.mza_agrotours.backend.entities.*;
-import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
-import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
-import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.mappers.UsuarioMapper;
 import com.mza_agrotours.backend.repositories.*;
@@ -19,7 +16,6 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class UsuarioService {
@@ -27,15 +23,14 @@ public class UsuarioService {
 
     private final UsuarioPersistenceService usuarioPersistenceService;
     private final UsuarioAccesoService usuarioAccesoService;
+    private final VisitanteService visitanteService;
 
     private final UsuarioRepository usuarioRepository;
     private final TipoIdentificacionRepository tipoIdentificacionRepository;
     private final PaisRepository paisRepository;
     private final VisitanteRepository visitanteRepository;
-    private final ReservaRepository reservaRepository;
-    private final EstadoReservaRepository estadoReservaRepository;
     private final AdministradorSistemasRepository administradorSistemasRepository;
-
+    private final ProductorRepository productorRepository;
     private final UsuarioMapper usuarioMapper;
 
     public UsuarioService( UsuarioPersistenceService usuarioPersistenceService,
@@ -44,20 +39,20 @@ public class UsuarioService {
                         VisitanteRepository visitanteRepository,
                         UsuarioMapper usuarioMapper,
                         PaisRepository paisRepository,
-                        ReservaRepository reservaRepository,
-                        EstadoReservaRepository estadoReservaRepository,
+                        ProductorRepository productorRepository,
                         AdministradorSistemasRepository administradorSistemasRepository,
-                           UsuarioAccesoService usuarioAccesoService) {
+                        UsuarioAccesoService usuarioAccesoService,
+                        VisitanteService visitanteService) {
         this.usuarioPersistenceService = usuarioPersistenceService;
         this.usuarioRepository = usuarioRepository;
         this.tipoIdentificacionRepository = tipoIdentificacionRepository;
         this.visitanteRepository = visitanteRepository;
         this.usuarioMapper = usuarioMapper;
         this.paisRepository = paisRepository;
-        this.reservaRepository = reservaRepository;
-        this.estadoReservaRepository = estadoReservaRepository;
+        this.productorRepository = productorRepository;
         this.administradorSistemasRepository = administradorSistemasRepository;
         this.usuarioAccesoService = usuarioAccesoService;
+        this.visitanteService = visitanteService;
     }
 
     public UsuarioGetDTO createUsuario(UsuarioCreateReq usuarioCreateReq) throws Exception {
@@ -226,31 +221,33 @@ public class UsuarioService {
     private List<CondicionDTO> getCondicionesDeleteUsuarioHelper(Usuario usuario) throws Exception {
        // 1. Usuario no tiene reservas activas
         List<CondicionDTO> condiciones = new ArrayList<>();
-        Visitante visitante = visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
-        EstadoReserva estadoPendiente = estadoReservaRepository.findByNombre(EstadoReservaNombre.PENDIENTE)
-                .orElseThrow(() -> new Exception("Estado de reserva no encontrado"));
 
-        List<Reserva> reservasActivasList = reservaRepository.findByVisitanteAndReservaEstadoActual(visitante.getId(), estadoPendiente.getId());
-
-        if (!reservasActivasList.isEmpty()) {
+        if (this.visitanteService.tieneReservasActivasByUsuario(usuario)) {
             condiciones.add(
                     new CondicionDTO(
-                            "reservasActivas",
-                            "El usuario tiene reservas activas"
+                            "No debés tener reservas pendientes",
+                            "Tenés reservas en estado pendiente. Cancelalas o esperá a su resolución para continuar"
                     ));
         }
 
-        // 2. Usuario no es administrador (TODO)
-        Optional<AdministradorSistemas> administradorSistemasOptional = administradorSistemasRepository.findByUsuarioAndFechaHoraBajaIsNull(usuario);
-        if (administradorSistemasOptional.isPresent()) {
+        // 2. Usuario no es administrador
+        if (this.administradorSistemasRepository
+                .existsByUsuarioAndFechaHoraBajaIsNull(usuario)) {
             condiciones.add(
                     new CondicionDTO(
-                            "administradorSistemas",
-                            "El usuario es administrador"
+                            "Un administrador no puede autoeliminar su cuenta",
+                            "Pedí a otro administrador del sistema que gestione la baja de tu cuenta."
                     ));
         }
 
-        // 3. Usuario no es productor lider de un establecimiento vigente (TODO)
+        // 3. Usuario no es productor lider de un establecimiento vigente
+        if (productorRepository.esProductorDeUnEstablecimiento(usuario)) {
+            condiciones.add(
+                    new CondicionDTO(
+                            "Un productor no puede eliminar su cuenta",
+                            "Pedí al productor líder de tu establecimiento que gestione la baja de tu cuenta."
+                    ));
+        }
 
         return condiciones;
     }

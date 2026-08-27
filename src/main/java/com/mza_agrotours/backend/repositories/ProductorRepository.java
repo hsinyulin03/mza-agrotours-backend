@@ -42,6 +42,11 @@ public interface ProductorRepository extends BaseEntityRepository<Productor, UUI
 
     boolean existsByUsuarioAndEstablecimiento_IdAndFechaHoraBajaIsNull(Usuario usuario, UUID establecimientoId);
 
+    @Query("SELECT COUNT(p) > 0 FROM Productor p " +
+            "WHERE p.usuario = :usuario " +
+            "AND p.fechaHoraBaja is null ")
+    boolean esProductorDeUnEstablecimiento(Usuario usuario);
+
     @Query("SELECT DISTINCT p FROM Productor p " +
             "LEFT JOIN FETCH p.estados " +
             "JOIN FETCH p.usuario " +

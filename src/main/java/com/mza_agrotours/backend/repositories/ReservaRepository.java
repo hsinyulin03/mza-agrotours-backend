@@ -7,8 +7,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -45,4 +45,9 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
     List<Reserva> findByVisitanteId(@Param("visitanteId") UUID visitante);
 
     boolean existsByActividadIdAndEstadoActualEstadoReservaNombreIn(UUID actividadId, List<EstadoReservaNombre> estados);
+
+    @Query("SELECT COUNT(r) > 0 FROM Reserva r " +
+            "WHERE r.visitante.id = :visitanteId " +
+            "AND r.estadoActual.estadoReserva.nombre = :estadoReservaNombre")
+    boolean tieneReservasEnEstadoByVisitanteId(UUID visitanteId, EstadoReservaNombre estadoReservaNombre);
 }
