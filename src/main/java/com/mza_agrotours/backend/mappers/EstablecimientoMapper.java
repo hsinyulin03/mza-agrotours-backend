@@ -16,7 +16,7 @@ public interface EstablecimientoMapper {
     // DTO consultar establecimientoS - visitante
     @Mapping(target = "cultivos", ignore = true)
     @Mapping(target = "cantidadActividades", ignore = true)
-    DTOConsultarEstablecimientoSVisitante establecimientoToDtoConsultarEstableciminetoS(Establecimiento establecimiento);
+    DTOCatalogoEstablecimientoVisitante establecimientoToDtoConsultarEstableciminetoS(Establecimiento establecimiento);
     // DTO consultar detalle de un establecimiento
 
     @Mapping(source = "departamento.nombre", target = "departamento")

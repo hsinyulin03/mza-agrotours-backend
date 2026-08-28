@@ -29,7 +29,7 @@ public class EstablecimientoController {
             @PathVariable UUID id) throws Exception {
         DTODatosEstablecimiento dto = establecimientoService.obtenerDatosEstablecimiento(id);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(dto));
-    }
+    }/*
     // MODIFICAR ESTABLECIMIENTO
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<DTODatosEstablecimiento>> modificarEstablecimiento(
@@ -49,8 +49,8 @@ public class EstablecimientoController {
     }
     //US-EST-01 Consultar establecimientos
     @GetMapping
-    public ResponseEntity<ApiResponse<List<DTOConsultarEstablecimientoSVisitante>>> consultarEstablecimientosVisitantes() {
-        List<DTOConsultarEstablecimientoSVisitante> establecimientos = establecimientoService.consultarEstablecimientosVisitantes();
+    public ResponseEntity<ApiResponse<List<DTOCatalogoEstablecimientoVisitante>>> consultarEstablecimientosVisitantes() {
+        List<DTOCatalogoEstablecimientoVisitante> establecimientos = establecimientoService.consultarEstablecimientosVisitantes();
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(establecimientos));
     }
     //  US-EST-02 Consultar establecimiento
@@ -59,7 +59,7 @@ public class EstablecimientoController {
             @PathVariable UUID id) {
         DTODetalleEstablecimientoVisitantes dto = establecimientoService.obtenerDetalleEstablecimientoVisitante(id);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(dto));
-    }
+    }*/
 
 
 }
