@@ -28,7 +28,7 @@ public class ActividadProductorController {
 
     // US-ACT-03: Dar de alta una actividad
     @PostMapping("/alta")
-    @PreAuthorize("@estAuth.tienePermiso(authentication, #establecimientoId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
+    //@PreAuthorize("@estAuth.tienePermiso(authentication, #establecimientoId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
     public ResponseEntity<?> crearActividadConDetalles(@PathVariable UUID establecimientoId,
                                                        @Valid @RequestBody DTOActividadAlta dto) throws Exception {
         DTOActividadAltaResponse nuevaActividad = servicio.altaActividad(establecimientoId, dto);

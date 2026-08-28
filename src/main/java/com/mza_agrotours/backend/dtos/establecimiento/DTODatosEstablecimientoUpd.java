@@ -27,6 +27,5 @@ public class DTODatosEstablecimientoUpd {
     @NotBlank(message = "El CVU es obligatorio")
     @Pattern(regexp = "\\d{22}", message = "El CVU debe contener únicamente números y tener exactamente 22 dígitos")
     private String cvu;
-    // Cultivos
-    private List<UUID> cultivosIds;
+
 }

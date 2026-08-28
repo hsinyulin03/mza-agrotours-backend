@@ -90,46 +90,6 @@ public class EstablecimientoService  {
         establecimiento.setTelefono(dto.getTelefono());
         establecimiento.setEmail(dto.getEmail());
         establecimiento.setCvu(dto.getCvu());
-
-        // MODIFICAR CULTIVOS
-        // Lista de cultivos que el establecimiento tiene ASIGNADOS actualmente en la base
-        List<TipoCultivo> cultivosActuales = establecimiento.getTiposCultivos();
-
-        // Busca en la base los TipoCultivo correspondientes a los ids que mandó el frontend.
-        // obtenerCultivos ya valida que todos los ids existan
-        List<TipoCultivo> cultivosNuevos = obtenerCultivos(dto.getCultivosIds());
-
-        // Se pasan ambas listas a Set<UUID> para poder comparar por id
-        Set<UUID> idsActuales = cultivosActuales.stream()
-                .map(TipoCultivo::getId)
-                .collect(Collectors.toSet());
-        Set<UUID> idsNuevos = cultivosNuevos.stream()
-                .map(TipoCultivo::getId)
-                .collect(Collectors.toSet());
-
-        // "A agregar" = cultivos que vinieron del frontend (cultivosNuevos)
-        // y que el establecimiento TODAVÍA NO tiene (su id no está en idsActuales)
-        List<TipoCultivo> cultivosAAgregar = cultivosNuevos.stream()
-                .filter(c -> !idsActuales.contains(c.getId()))
-                .toList();
-
-        // "A eliminar" = cultivos que el establecimiento tiene actualmente (cultivosActuales)
-        // pero que  NO vinieron en la lista del frontend (su id no está en idsNuevos)
-        List<TipoCultivo> cultivosAEliminar = cultivosActuales.stream()
-                .filter(c -> !idsNuevos.contains(c.getId()))
-                .toList();
-
-        // Se recorren los cultivos a eliminar y se sacan
-        for (TipoCultivo cultivo : cultivosAEliminar) {
-            // TODO: Validar si este cultivo posee actividades activas asociadas al establecimiento antes de eliminar la relación.
-            cultivosActuales.remove(cultivo);
-        }
-
-        // Se agregan a la colección actual los cultivos nuevos que faltaban
-        cultivosActuales.addAll(cultivosAAgregar);
-
-        // Persiste los cambios de la relación establecimiento-cultivos
-        establecimientoRepository.save(establecimiento);
         return mapearADatosEstablecimiento(establecimiento);
     }
     /*// BAJA ESTABLECIMIENTO
