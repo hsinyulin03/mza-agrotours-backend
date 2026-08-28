@@ -9,7 +9,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -34,20 +33,19 @@ public class EstablecimientoController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<DTOUpdEstablecimientoResponse>> modificarEstablecimiento(
             @PathVariable UUID id,
-            @Valid @RequestBody DTODatosEstablecimientoUpd dto) {
+            @Valid @RequestBody DTOUpdEstablecimientoRequest dto) {
         DTOUpdEstablecimientoResponse resultado = establecimientoService.modificarEstablecimiento(id, dto);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(resultado));
-    }/*
+    }
     // US-EST-06 BM establecimiento (baja)
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> bajaEstablecimiento(
+    public ResponseEntity<ApiResponse<DTOBajaEstablecimientoResponse>> bajaEstablecimiento(
             @PathVariable UUID id) {
 
-        establecimientoService.bajaEstablecimiento(id);
-
-        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(null));
+        DTOBajaEstablecimientoResponse resultado = establecimientoService.bajaEstablecimiento(id);
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(resultado));
     }
-    //US-EST-01 Consultar establecimientos
+   /* //US-EST-01 Consultar establecimientos
     @GetMapping
     public ResponseEntity<ApiResponse<List<DTOCatalogoEstablecimientoVisitante>>> consultarEstablecimientosVisitantes() {
         List<DTOCatalogoEstablecimientoVisitante> establecimientos = establecimientoService.consultarEstablecimientosVisitantes();

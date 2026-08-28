@@ -6,11 +6,8 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
-import java.util.List;
-import java.util.UUID;
-
 @Data
-public class DTODatosEstablecimientoUpd {
+public class DTOUpdEstablecimientoRequest {
     //Identidad
     @NotBlank(message = "La descripción es obligatoria")
     @Size(max = 2000, message = "La descripción no puede superar los 2000 caracteres")

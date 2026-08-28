@@ -22,10 +22,8 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class EstablecimientoService  {
@@ -76,14 +74,14 @@ public class EstablecimientoService  {
 
         return establecimientoRepository.save(nuevoEstablecimiento);
     }
-
+     ////US-EST-05 BM establecimiento (modificar)
     // Obtener datos establecimiento (panel productor)
     public DTODatosEstablecimiento obtenerDatosEstablecimiento(UUID id) {
         Establecimiento establecimiento = obtenerEstablecimiento(id);
         return mapearADatosEstablecimiento(establecimiento);
     }
     @Transactional
-    public DTOUpdEstablecimientoResponse modificarEstablecimiento(UUID id, DTODatosEstablecimientoUpd dto) {
+    public DTOUpdEstablecimientoResponse modificarEstablecimiento(UUID id, DTOUpdEstablecimientoRequest dto) {
         Establecimiento establecimiento = obtenerEstablecimiento(id);
 
         establecimiento.setDescripcion(dto.getDescripcion());
@@ -98,17 +96,22 @@ public class EstablecimientoService  {
         return response;
 
     }
-    /*// BAJA ESTABLECIMIENTO
+    //// US-EST-06 BM establecimiento (baja)
     @Transactional
-    public void bajaEstablecimiento(UUID id) {
+    public DTOBajaEstablecimientoResponse bajaEstablecimiento(UUID id) {
 
         Establecimiento establecimiento = obtenerEstablecimiento(id);
 
         validarQueNoPoseaActividadesPublicadas(establecimiento);
         establecimiento.setFechaHoraBaja(LocalDateTime.now());
 
-        establecimientoRepository.save(establecimiento);
+        Establecimiento eliminado = establecimientoRepository.save(establecimiento);
+        DTOBajaEstablecimientoResponse response = new DTOBajaEstablecimientoResponse();
+        response.setIdestablecimiento(eliminado.getId());
+        response.setMensaje("Establecimiento dado de baja exitosamente.");
+        return response;
     }
+    /*
     // CONSULTAR ESTABLECIMIENTOS (listado de visitantes)
     public List<DTOCatalogoEstablecimientoVisitante> consultarEstablecimientosVisitantes() {
         // buscar establecimientos
