@@ -29,15 +29,15 @@ public class EstablecimientoController {
             @PathVariable UUID id) throws Exception {
         DTODatosEstablecimiento dto = establecimientoService.obtenerDatosEstablecimiento(id);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(dto));
-    }/*
+    }
     // MODIFICAR ESTABLECIMIENTO
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<DTODatosEstablecimiento>> modificarEstablecimiento(
+    public ResponseEntity<ApiResponse<DTOUpdEstablecimientoResponse>> modificarEstablecimiento(
             @PathVariable UUID id,
             @Valid @RequestBody DTODatosEstablecimientoUpd dto) {
-        DTODatosEstablecimiento resultado = establecimientoService.modificarEstablecimiento(id, dto);
+        DTOUpdEstablecimientoResponse resultado = establecimientoService.modificarEstablecimiento(id, dto);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(resultado));
-    }
+    }/*
     // US-EST-06 BM establecimiento (baja)
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> bajaEstablecimiento(

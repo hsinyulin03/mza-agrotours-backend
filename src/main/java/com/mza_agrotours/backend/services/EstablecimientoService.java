@@ -83,14 +83,20 @@ public class EstablecimientoService  {
         return mapearADatosEstablecimiento(establecimiento);
     }
     @Transactional
-    public DTODatosEstablecimiento modificarEstablecimiento(UUID id, DTODatosEstablecimientoUpd dto) {
+    public DTOUpdEstablecimientoResponse modificarEstablecimiento(UUID id, DTODatosEstablecimientoUpd dto) {
         Establecimiento establecimiento = obtenerEstablecimiento(id);
 
         establecimiento.setDescripcion(dto.getDescripcion());
         establecimiento.setTelefono(dto.getTelefono());
         establecimiento.setEmail(dto.getEmail());
         establecimiento.setCvu(dto.getCvu());
-        return mapearADatosEstablecimiento(establecimiento);
+        Establecimiento guardado = establecimientoRepository.save(establecimiento);
+
+        DTOUpdEstablecimientoResponse response = new DTOUpdEstablecimientoResponse();
+        response.setMensaje("Cambios guardados exitosamente.");
+        response.setDatosEstablecimiento(mapearADatosEstablecimiento(guardado));
+        return response;
+
     }
     /*// BAJA ESTABLECIMIENTO
     @Transactional
