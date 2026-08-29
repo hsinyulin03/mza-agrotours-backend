@@ -111,22 +111,31 @@ public class EstablecimientoService  {
         response.setMensaje("Establecimiento dado de baja exitosamente.");
         return response;
     }
-    /*
     // CONSULTAR ESTABLECIMIENTOS (listado de visitantes)
-    public List<DTOCatalogoEstablecimientoVisitante> consultarEstablecimientosVisitantes() {
-        // buscar establecimientos
-        List<Establecimiento> establecimientos = establecimientoRepository.obtenerEstablecimientosActivos();
+    public List<DTOCatalogoEstablecimientoVisitante> consultarEstablecimientosVisitantes(UUID cultivoId) {
+        if (cultivoId != null) {
+            validarCultivoExiste(cultivoId);
+        }
+
+        List<Establecimiento> establecimientos = establecimientoRepository.obtenerEstablecimientosActivos(cultivoId);
+
         return establecimientos.stream()
                 .map(establecimiento -> {
                     DTOCatalogoEstablecimientoVisitante dto = establecimientoMapper.establecimientoToDtoConsultarEstableciminetoS(establecimiento);
-                    dto.setCultivos(obtenerNombresCultivosActivos(establecimiento));
+                    dto.setCultivos(obtenerCultivosDelEstablecimiento(establecimiento));
+                    dto.setDptoEstablecimiento(establecimientoMapper.departamentoToDto(establecimiento.getDepartamento()));
                     dto.setCantidadActividades(contarActividadesPublicadas(establecimiento));
-
                     return dto;
                 })
                 .toList();
     }
-    // DETALLE ESTABLECIMIENTO (vista pública / visitante)
+
+    public List<DTOFiltroCultivoEstablecimiento> obtenerFiltroCultivos() {
+        return establecimientoRepository.obtenerFiltroCultivos();
+    }
+
+
+   /* // DETALLE ESTABLECIMIENTO (vista pública / visitante)
     public DTODetalleEstablecimientoVisitantes obtenerDetalleEstablecimientoVisitante(UUID id) {
         Establecimiento establecimiento = obtenerEstablecimiento(id);
         return mapearADetalleVisitante(establecimiento);
@@ -137,6 +146,12 @@ public class EstablecimientoService  {
     /**
      * METODOS AUXILIARES
      */
+    private void validarCultivoExiste(UUID cultivoId) {
+        boolean existe = tipoCultivoRepository.findByIdAndFechaHoraBajaIsNull(cultivoId).isPresent();
+        if (!existe) {
+            throw new EntityNotFoundException("No se encuentra el tipo de cultivo indicado");
+        }
+    }
     // ALTA ESTABLECIMIENTO
     private void validarCuitDisponible(String cuit) {
         if (cuit != null && establecimientoRepository.existsByCuit(cuit)) {

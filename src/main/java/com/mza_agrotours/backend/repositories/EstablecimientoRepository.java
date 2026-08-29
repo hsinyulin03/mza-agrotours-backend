@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.repositories;
 
+import com.mza_agrotours.backend.dtos.establecimiento.DTOFiltroCultivoEstablecimiento;
 import com.mza_agrotours.backend.dtos.reservas.EstablecimientoPorActividad;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import org.springframework.data.jpa.repository.Query;
@@ -40,6 +41,31 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
             "AND e.titular.fechaHoraBaja IS NULL")
     boolean esTitularVigente(@Param("email") String email,
                              @Param("establecimientoId") UUID establecimientoId);
-
+    @Query("""
+    SELECT DISTINCT e FROM Establecimiento e
+    JOIN e.actividades a
+    JOIN a.cultivos c
+    WHERE e.fechaHoraBaja IS NULL
+    AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
+    AND a.fechaHoraBaja IS NULL
+    AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO
+    AND (:cultivoId IS NULL OR c.id = :cultivoId)
+    AND c.fechaHoraBaja IS NULL
+    """)
+    List<Establecimiento> obtenerEstablecimientosActivos(@Param("cultivoId") UUID cultivoId);
+    @Query("""
+    SELECT new com.mza_agrotours.backend.dtos.establecimiento.DTOFiltroCultivoEstablecimiento(c.id, c.nombre, COUNT(DISTINCT e))
+    FROM Establecimiento e
+    JOIN e.actividades a
+    JOIN a.cultivos c
+    WHERE e.fechaHoraBaja IS NULL
+    AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
+    AND a.fechaHoraBaja IS NULL
+    AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO
+    AND c.fechaHoraBaja IS NULL
+    GROUP BY c.id, c.nombre
+    ORDER BY c.nombre
+    """)
+    List<DTOFiltroCultivoEstablecimiento> obtenerFiltroCultivos();
 
 }

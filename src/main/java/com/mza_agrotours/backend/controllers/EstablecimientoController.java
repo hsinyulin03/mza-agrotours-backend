@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -45,12 +46,19 @@ public class EstablecimientoController {
         DTOBajaEstablecimientoResponse resultado = establecimientoService.bajaEstablecimiento(id);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(resultado));
     }
-   /* //US-EST-01 Consultar establecimientos
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<DTOCatalogoEstablecimientoVisitante>>> consultarEstablecimientosVisitantes() {
-        List<DTOCatalogoEstablecimientoVisitante> establecimientos = establecimientoService.consultarEstablecimientosVisitantes();
-        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(establecimientos));
+    //US-EST-01 Consultar establecimientos
+    @GetMapping("/catalogo")
+    public ResponseEntity<ApiResponse<List<DTOCatalogoEstablecimientoVisitante>>> consultarEstablecimientosVisitantes(
+            @RequestParam(required = false) UUID cultivoId) {
+        List<DTOCatalogoEstablecimientoVisitante> resultado = establecimientoService.consultarEstablecimientosVisitantes(cultivoId);
+        return ResponseEntity.ok(ApiResponse.ok(resultado));
     }
+    @GetMapping("/filtros/cultivos")
+    public ResponseEntity<ApiResponse<List<DTOFiltroCultivoEstablecimiento>>> obtenerFiltroCultivos() {
+        List<DTOFiltroCultivoEstablecimiento> filtros = establecimientoService.obtenerFiltroCultivos();
+        return ResponseEntity.ok(ApiResponse.ok(filtros));
+    }
+    /*
     //  US-EST-02 Consultar establecimiento
     @GetMapping("/{id}/detalle")
     public ResponseEntity<ApiResponse<DTODetalleEstablecimientoVisitantes>> obtenerDetalleEstablecimientoVisitante(

@@ -10,6 +10,7 @@ public class DTOCatalogoEstablecimientoVisitante {
     private String nombre;
     private String razonSocial;
     private String descripcion;
-    private List<String> cultivos;
+    private DTODptoEstablecimientoResponse dptoEstablecimiento;
+    private List<DTOCultivoEstablecimientoResponse> cultivos;
     private Integer cantidadActividades;
 }
