@@ -1,20 +1,19 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.actividad.*;
+import com.mza_agrotours.backend.entities.Usuario;
+import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.actividad.*;
-import com.mza_agrotours.backend.dtos.reservas.DiaActividadReservaDTO;
-import com.mza_agrotours.backend.dtos.reservas.InfoParaReservarDTO;
-import com.mza_agrotours.backend.dtos.reservas.RangoEtarioReservaDTO;
+import com.mza_agrotours.backend.dtos.actividad.DiaActividadReservaDTO;
+import com.mza_agrotours.backend.dtos.actividad.InfoParaReservarDTO;
+import com.mza_agrotours.backend.dtos.actividad.RangoEtarioReservaDTO;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.enums.Dia;
 import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
-import com.mza_agrotours.backend.exceptions.DatoInvalidoException;
-import com.mza_agrotours.backend.exceptions.EstablecimientoNotFoundException;
-import com.mza_agrotours.backend.exceptions.ResourceNotFoundException;
-import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
+import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
@@ -22,6 +21,8 @@ import com.mza_agrotours.backend.mappers.ActividadMapper;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.ReservaRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
+import com.mza_agrotours.backend.repositories.UsuarioRepository;
+import com.mza_agrotours.backend.repositories.VisitanteRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadDiaRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
@@ -65,6 +66,12 @@ public class ActividadService {
 
     @Autowired
     private ReservaRepository reservaRepository;
+
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private VisitanteRepository visitanteRepository;
 
     //US-ACT-03 Alta de actividad
     @Transactional
@@ -569,10 +576,16 @@ public class ActividadService {
 
     //US-RESE-01: Reservar actividad - información sobre la actividad para reservarla
     @Transactional
-    public InfoParaReservarDTO getInfoParaReservar(UUID idActividad){
-
+    public InfoParaReservarDTO getInfoParaReservar(UUID idActividad, String emailUsuario){
         LocalDateTime fhActual = LocalDateTime.now();
 
+        // Gettear al usuario y visitante
+        Usuario usuario = usuarioRepository.findActiveByEmail(emailUsuario)
+                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+
+        Visitante visitante = visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
+
+        // Gettear la actividad
         Actividad actividad = actividadRepository.findById(idActividad)
                 .orElseThrow(ActividadNotFoundException::new);
 
@@ -601,11 +614,20 @@ public class ActividadService {
             rangoEtarioReservaDTOList.add(actividadMapper.actividadRangoEtarioToDTO(are));
         }
 
+        // Info del usuario a DTO
+        UsuarioPreviewReservaDTO usuarioDTO = UsuarioPreviewReservaDTO.of(
+                usuario.getNombre(),
+                usuario.getFechaNacimiento(),
+                usuario.getTipoIdentificacion().getNombre().name(),
+                usuario.getIdentificacion()
+        );
+
         //Armar el DTO principal y devolver
         return InfoParaReservarDTO.of(
                 actividad,
                 establecimiento,
                 diaActividadReservaDTOList,
+                usuarioDTO,
                 rangoEtarioReservaDTOList,
                 parametrosService.getInstance().getDiasMinReembolso());
     }

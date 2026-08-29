@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.services.pago;
 
+import com.google.api.client.util.Value;
 import com.mercadopago.client.common.IdentificationRequest;
 import com.mercadopago.client.preference.*;
 import com.mercadopago.resources.preference.Preference;
@@ -93,8 +94,8 @@ public class PagoMPStrategy implements EstrategiaPago{
                     .paymentMethods(paymentMethods)
                     .statementDescriptor("MDZ_AGROTOURS")
                     .expires(true)
-                    .expirationDateFrom(reserva.getFechaHoraExpiracion().atZone(ZoneId.systemDefault()).toOffsetDateTime())
-                    .expirationDateTo(OffsetDateTime.now())
+                    .expirationDateFrom(OffsetDateTime.now())
+                    .expirationDateTo(reserva.getFechaHoraExpiracion().atZone(ZoneId.systemDefault()).toOffsetDateTime())
                     .externalReference(reserva.getId().toString())
                     .build();
 
@@ -108,7 +109,7 @@ public class PagoMPStrategy implements EstrategiaPago{
             Pago pago = new Pago();
 
             pago.setMetodoPago(MetodoPago.MERCADO_PAGO);
-            pago.setIdPagoExterno("");
+            pago.setIdPagoExterno(preference.getId());
             pago.setFechaHoraPago(ahora);
             pago.setMontoTotal(reserva.getTotalReserva());
 

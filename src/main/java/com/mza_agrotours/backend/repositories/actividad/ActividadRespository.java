@@ -1,6 +1,6 @@
 package com.mza_agrotours.backend.repositories.actividad;
 
-import com.mza_agrotours.backend.dtos.reservas.DiaActividadReservaDTO;
+import com.mza_agrotours.backend.dtos.actividad.DiaActividadReservaDTO;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.repositories.BaseEntityRepository;
@@ -47,7 +47,7 @@ public interface ActividadRespository extends BaseEntityRepository<Actividad, UU
             "WHERE ad.id = :uuid")
     Optional<Actividad> getActividadByDiaActividadId(@Param("uuid") UUID uuidDiaActividad);
 
-    @Query("SELECT NEW com.mza_agrotours.backend.dtos.reservas.DiaActividadReservaDTO(" +
+    @Query("SELECT NEW com.mza_agrotours.backend.dtos.actividad.DiaActividadReservaDTO(" +
             "CAST(ad.id AS string), ad.cuposMax, CAST(COUNT(rd) as int), ad.fechaHoraInicio, ad.fechaHoraFin) " +
             "FROM Actividad a JOIN a.actividadesDias ad " +
             "LEFT JOIN Reserva r ON  r.actividadDia = ad " +
@@ -55,6 +55,7 @@ public interface ActividadRespository extends BaseEntityRepository<Actividad, UU
             "LEFT JOIN r.reservaDetalles rd " +
             "WHERE a.id = :uuid " +
             "AND ad.estadoActual.estado.nombre IN (com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.ACTIVA,com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.REPROGRAMADA)" +
+            "AND ad.fechaHoraInicio > CURRENT_TIMESTAMP " +
             "GROUP BY ad.id, ad.cuposMax, ad.fechaHoraInicio, ad.fechaHoraFin")
     List<DiaActividadReservaDTO> getDiaActividadReservaDTO(@Param("uuid") UUID uuidActividad);
 }

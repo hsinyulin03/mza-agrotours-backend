@@ -29,6 +29,7 @@ dependencies {
 	implementation('com.mercadopago:sdk-java:2.1.7') {
 		exclude group: 'org.apache.maven.plugins', module: 'maven-javadoc-plugin'
 	}
+	implementation 'commons-lang:commons-lang:2.6'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'org.postgresql:postgresql'

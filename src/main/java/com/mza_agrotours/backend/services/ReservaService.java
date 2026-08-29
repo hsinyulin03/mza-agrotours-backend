@@ -222,7 +222,9 @@ public class ReservaService {
 
         nuevaReserva.setTotalReserva(totalReserva);
 
-        MetodoPago metodoPago = MetodoPago.MANUAL;  // TODO Cambiar esto para cuando se use el medio de pago real
+        MetodoPago metodoPago = MetodoPago.MERCADO_PAGO;
+
+        reservaRepository.saveAndFlush(nuevaReserva);
 
         EstrategiaPago estrategiaPago = estrategiaPagoFactory.get(metodoPago);
         PagoStrategyDTO pagoStratDTO = estrategiaPago.procesarPago(nuevaReserva);
