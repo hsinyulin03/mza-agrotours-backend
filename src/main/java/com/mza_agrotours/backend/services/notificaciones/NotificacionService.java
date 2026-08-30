@@ -1,6 +1,6 @@
 package com.mza_agrotours.backend.services.notificaciones;
 
-import com.mza_agrotours.backend.dtos.notificacion.NotificacionCreadaEvent;
+import com.mza_agrotours.backend.events.NotificacionCreadaEvent;
 import com.mza_agrotours.backend.dtos.notificacion.NotificacionDTO;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;

@@ -1,4 +1,4 @@
-package com.mza_agrotours.backend.dtos.notificacion;
+package com.mza_agrotours.backend.events;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
