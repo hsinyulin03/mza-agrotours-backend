@@ -125,6 +125,12 @@ public class GlobalExceptionHandler {
                 ));
 
     }
+    //Notificaciones
+    @ExceptionHandler(NotificacionNotFoundException.class)
+    public ResponseEntity<?> handleNotificacionNotFound(NotificacionNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.fail("notificacionNotFound", ex.getMessage()));
+    }
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<?> handleConstraintViolationException(ConstraintViolationException ex) {
