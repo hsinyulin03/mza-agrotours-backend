@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.config.RutasNotificacionesFront;
 import com.mza_agrotours.backend.dtos.ObservacionSolicitudDTO;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.*;
@@ -13,10 +14,12 @@ import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolici
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolicitudEstablecimientoNombre;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimiento;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimientoEstado;
+import com.mza_agrotours.backend.enums.TipoNotificacionNombre;
 import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.mappers.ArchivoMapper;
 import com.mza_agrotours.backend.mappers.SolicitudEstablecimientoMapper;
 import com.mza_agrotours.backend.repositories.*;
+import com.mza_agrotours.backend.services.notificaciones.NotificacionService;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -39,6 +42,7 @@ public class SolicitudEstablecimientoService {
     private final AdministradorSistemasRepository administradorSistemasRepository;
     private final ProductorService productorService;
     private final EstablecimientoService establecimientoService;
+    private final NotificacionService notificacionService;
 
     public SolicitudEstablecimientoService(SolicitudEstablecimientoRepository solicitudEstablecimientoRepository,
                                            SolicitudEstablecimientoMapper solicitudEstablecimientoMapper,
@@ -50,7 +54,8 @@ public class SolicitudEstablecimientoService {
                                            ArchivoMapper archivoMapper,
                                            AdministradorSistemasRepository administradorSistemasRepository,
                                            ProductorService productorService,
-                                           EstablecimientoService establecimientoService) {
+                                           EstablecimientoService establecimientoService,
+                                           NotificacionService notificacionService) {
         this.solicitudEstablecimientoRepository = solicitudEstablecimientoRepository;
         this.solicitudEstablecimientoMapper = solicitudEstablecimientoMapper;
         this.estadoSolicitudEstablecimientoRepository = estadoSolicitudEstablecimientoRepository;
@@ -62,6 +67,7 @@ public class SolicitudEstablecimientoService {
         this.administradorSistemasRepository = administradorSistemasRepository;
         this.productorService = productorService;
         this.establecimientoService = establecimientoService;
+        this.notificacionService = notificacionService;
     }
 
     @Transactional
@@ -129,6 +135,14 @@ public class SolicitudEstablecimientoService {
         solicitudEstablecimientoCreateResp.setSolicitudId(nuevaSolicitudEstablecimiento.getId().toString());
         solicitudEstablecimientoCreateResp.setNombreEstablecimiento(nuevaSolicitudEstablecimiento.getRazonSocial());
         solicitudEstablecimientoCreateResp.setArchivoUploadResponses(archivoUploadResponses);
+
+        notificacionService.crearNotificacion(
+                nuevaSolicitudEstablecimiento.getUsuario(),
+                TipoNotificacionNombre.SOLICITUD_ESTABLECIMIENTO_CREADA,
+                null,
+                RutasNotificacionesFront.solicitudEstablecimiento(nuevaSolicitudEstablecimiento.getId()),
+                nuevaSolicitudEstablecimiento.getNombreEstablecimiento()
+        );
 
         return solicitudEstablecimientoCreateResp;
     }
@@ -206,6 +220,21 @@ public class SolicitudEstablecimientoService {
 
             nuevoEstablecimiento.setTitular(productorLider);
             solicitudEstablecimiento.setEstablecimientoCreado(nuevoEstablecimiento);
+
+            this.notificacionService.crearNotificacion(
+                    solicitudEstablecimiento.getUsuario(),
+                    TipoNotificacionNombre.SOLICITUD_ESTABLECIMIENTO_APROBADA,
+                    nuevoEstablecimiento,
+                    RutasNotificacionesFront.solicitudEstablecimiento(solicitudEstablecimiento.getId()),
+                    solicitudEstablecimiento.getRazonSocial());
+        }else{
+            this.notificacionService.crearNotificacion(
+                    solicitudEstablecimiento.getUsuario(),
+                    TipoNotificacionNombre.SOLICITUD_ESTABLECIMIENTO_RECHAZADA,
+                    null,
+                    RutasNotificacionesFront.solicitudEstablecimiento(solicitudEstablecimiento.getId()),
+                    solicitudEstablecimiento.getRazonSocial(),
+                    observacionSolicitudDTO.getObservacion());
         }
 
         solicitudEstablecimiento = this.solicitudEstablecimientoRepository.save(solicitudEstablecimiento);

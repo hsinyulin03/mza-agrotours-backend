@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.config.RutasNotificacionesFront;
 import com.mza_agrotours.backend.dtos.productor.ProductorCreateReq;
 import com.mza_agrotours.backend.dtos.productor.ProductorGetDTO;
 import com.mza_agrotours.backend.dtos.productor.ProductorUpdateReq;
@@ -10,6 +11,7 @@ import com.mza_agrotours.backend.entities.productor.EstadoProductor;
 import com.mza_agrotours.backend.entities.productor.Productor;
 import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import com.mza_agrotours.backend.enums.EstadoProductorNombre;
+import com.mza_agrotours.backend.enums.TipoNotificacionNombre;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
 import com.mza_agrotours.backend.exceptions.AppException;
 import com.mza_agrotours.backend.exceptions.ProductorError;
@@ -17,6 +19,7 @@ import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
 import com.mza_agrotours.backend.mappers.ProductorMapper;
 import com.mza_agrotours.backend.mappers.RolMapper;
 import com.mza_agrotours.backend.repositories.*;
+import com.mza_agrotours.backend.services.notificaciones.NotificacionService;
 import com.mza_agrotours.backend.services.roles_permisos.RolService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +51,7 @@ public class ProductorService {
     private final RolRepository rolRepository;
     private final ProductorMapper productorMapper;
     private final RolMapper rolMapper;
+    private final NotificacionService notificacionService;
     private final ProductorService self;
 
     public ProductorService(EstadoProductorRepository estadoProductorRepository,
@@ -58,6 +62,7 @@ public class ProductorService {
                             RolRepository rolRepository,
                             ProductorMapper productorMapper,
                             RolMapper rolMapper,
+                            NotificacionService notificacionService,
                             @Lazy ProductorService self) {
         this.estadoProductorRepository = estadoProductorRepository;
         this.rolService = rolService;
@@ -67,6 +72,7 @@ public class ProductorService {
         this.rolRepository = rolRepository;
         this.productorMapper = productorMapper;
         this.rolMapper = rolMapper;
+        this.notificacionService =notificacionService;
         this.self = self;
     }
 
@@ -107,6 +113,12 @@ public class ProductorService {
         productor = this.productorRepository.save(productor);
 
         // TODO: entidad que diga quien hizo el cambio
+        this.notificacionService.crearNotificacion(
+                usuario,
+                TipoNotificacionNombre.PRODUCTOR_AGREGADO,
+                establecimiento,
+                RutasNotificacionesFront.establecimiento(establecimientoId),
+                establecimiento.getNombre());
         return this.productorMapper.productorToProductorGetDTO(productor);
     }
 
