@@ -41,8 +41,8 @@ public class NotificacionController {
             @PathVariable UUID idNotificacion,
             @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
     ) {
-        service.marcarLeida(idNotificacion, usuarioAuthDetails.getEmail(), null);
-        return ResponseEntity.ok(ApiResponse.ok(null));
+        NotificacionDTO notificacionActualizada= service.marcarLeida(idNotificacion, usuarioAuthDetails.getEmail(), null);
+        return ResponseEntity.ok(ApiResponse.ok(notificacionActualizada));
     }
 
 }

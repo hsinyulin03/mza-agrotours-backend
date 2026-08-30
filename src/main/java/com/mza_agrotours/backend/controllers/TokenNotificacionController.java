@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.controllers;
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
 import com.mza_agrotours.backend.dtos.notificacion.TokenNotificacionReqDTO;
+import com.mza_agrotours.backend.dtos.notificacion.TokenNotificacionResponseDTO;
 import com.mza_agrotours.backend.services.notificaciones.TokenNotificacionService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -28,18 +29,18 @@ public class TokenNotificacionController {
             @Valid @RequestBody TokenNotificacionReqDTO req,
             @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
     ) {
-        service.registrarToken(usuarioAuthDetails.getEmail(), req.getToken());
-        return ResponseEntity.ok(ApiResponse.ok(null));
+        TokenNotificacionResponseDTO response = service.registrarToken(usuarioAuthDetails.getEmail(), req.getToken());
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     //se debe llamar cada vez que el usuario cierre sesión
     @PostMapping("/baja")
-    public ResponseEntity<?> eliminarDispositivo(
+    public ResponseEntity<?> darBajaDispositivo(
             @Valid @RequestBody TokenNotificacionReqDTO req,
             @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
     ) {
-        service.eliminarToken(usuarioAuthDetails.getEmail(), req.getToken());
-        return ResponseEntity.ok(ApiResponse.ok(null));
+        TokenNotificacionResponseDTO response = service.darBajaToken(usuarioAuthDetails.getEmail(), req.getToken());
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
 }

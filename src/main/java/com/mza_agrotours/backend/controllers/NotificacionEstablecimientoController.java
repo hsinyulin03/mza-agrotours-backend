@@ -52,8 +52,8 @@ public class NotificacionEstablecimientoController {
             @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
     ) {
         String email = usuarioAuthDetails.getEmail();
-        service.marcarLeida(notificacionId, email, establecimientoId);
-        return ResponseEntity.ok(ApiResponse.ok(null));
+        NotificacionDTO notificacionActualizada = service.marcarLeida(notificacionId, email, establecimientoId);
+        return ResponseEntity.ok(ApiResponse.ok(notificacionActualizada));
     }
 
 

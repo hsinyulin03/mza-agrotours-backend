@@ -1,29 +1,35 @@
 package com.mza_agrotours.backend.services.notificaciones;
 
+import com.mza_agrotours.backend.dtos.notificacion.TokenNotificacionResponseDTO;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.notificacion.TokenNotificacion;
 import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
+import com.mza_agrotours.backend.mappers.TokenNotificacionMapper;
 import com.mza_agrotours.backend.repositories.TokenNotificacionRepository;
 import com.mza_agrotours.backend.repositories.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 public class TokenNotificacionService {
 
     private final TokenNotificacionRepository tokenNotificacionRepository;
     private final UsuarioRepository usuarioRepository;
+    private final TokenNotificacionMapper tokenNotificacionMapper;
 
     public TokenNotificacionService(TokenNotificacionRepository tokenNotificacionRepository,
-                                    UsuarioRepository usuarioRepository) {
+                                    UsuarioRepository usuarioRepository,
+                                    TokenNotificacionMapper tokenNotificacionMapper) {
         this.tokenNotificacionRepository = tokenNotificacionRepository;
         this.usuarioRepository = usuarioRepository;
+        this.tokenNotificacionMapper = tokenNotificacionMapper;
     }
 
     @Transactional
-    public void registrarToken(String emailUsuario, String token) {
+    public TokenNotificacionResponseDTO registrarToken(String emailUsuario, String token) {
         Usuario usuario = obtenerUsuario(emailUsuario);
         LocalDateTime ahora = LocalDateTime.now();
 
@@ -45,18 +51,30 @@ public class TokenNotificacionService {
         // Reactiva un token dado de baja: sin esto el insert chocaria contra el unique.
         tokenNotificacion.setFechaHoraBaja(null);
         this.tokenNotificacionRepository.save(tokenNotificacion);
+        return this.tokenNotificacionMapper.tokenNotificacionToTokenNotificacionResponseDTO(tokenNotificacion);
     }
 
     @Transactional
-    public void eliminarToken(String emailUsuario, String token) {
+    public TokenNotificacionResponseDTO darBajaToken(String emailUsuario, String token) {
         Usuario usuario = obtenerUsuario(emailUsuario);
 
-        this.tokenNotificacionRepository.findByToken(token)
-                .filter(t -> t.getUsuario().getId().equals(usuario.getId()))
-                .ifPresent(t -> {
-                    t.setFechaHoraBaja(LocalDateTime.now());
-                    this.tokenNotificacionRepository.save(t);
-                });
+        // impide que A de de baja el token que FCM ya reasigno a B en el mismo dispositivo.
+        Optional<TokenNotificacion> propio = this.tokenNotificacionRepository
+                .findByToken(token)
+                .filter(t -> t.getUsuario().getId().equals(usuario.getId()));
+
+        // No existe o no es mio: No hay nada que dar de baja
+        if (propio.isEmpty()) {
+            return null;
+        }
+        TokenNotificacion tokenNotificacion = propio.get();
+
+        if (tokenNotificacion.getFechaHoraBaja() == null) {
+            tokenNotificacion.setFechaHoraBaja(LocalDateTime.now());
+            this.tokenNotificacionRepository.save(tokenNotificacion);
+        }
+
+        return this.tokenNotificacionMapper.tokenNotificacionToTokenNotificacionResponseDTO(tokenNotificacion);
     }
 
     private Usuario obtenerUsuario(String email) {

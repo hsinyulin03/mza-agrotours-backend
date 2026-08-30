@@ -74,7 +74,7 @@ public class PushNotificacionSender implements CanalNotificacionSender{
                         .setTitle(notificacion.getTitulo())
                         .setBody(notificacion.getMensaje())
                         .build())
-                // data: lo lee el front para saber a donde navegar al tocarla
+                // data: lo lee el front para saber a donde navegar al hacer click
                 .putData("notificacionId", notificacion.getId().toString())
                 .putData("urlLink", notificacion.getUrlLink() == null ? "" : notificacion.getUrlLink())
                 .build();

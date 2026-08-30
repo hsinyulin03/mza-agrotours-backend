@@ -77,7 +77,7 @@ public class NotificacionService {
     }
 
     @Transactional
-    public void marcarLeida(UUID id, String emailUsuario, UUID establecimientoId) {
+    public NotificacionDTO marcarLeida(UUID id, String emailUsuario, UUID establecimientoId) {
         Usuario usuario = obtenerUsuario(emailUsuario);
 
         Notificacion notificacion = this.notificacionRepository
@@ -88,6 +88,7 @@ public class NotificacionService {
             notificacion.setFechaHoraLectura(LocalDateTime.now());
             this.notificacionRepository.save(notificacion);
         }
+        return this.notificacionMapper.notificacionToNotificacionDTO(notificacion);
     }
 
     private Usuario obtenerUsuario(String email) {
