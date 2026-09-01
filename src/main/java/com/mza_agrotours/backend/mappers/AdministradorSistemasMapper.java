@@ -14,8 +14,11 @@ public interface AdministradorSistemasMapper {
 
     List<EstablecimientoAdminDTO> establecimientoListToEstablecimientoAdminDTOList(List<Establecimiento> establecimientos);
 
-    @Mapping(target="productorLider", source="titular.nombre")
-    @Mapping(target="estado", source="estadoActual.nombre")
+    @Mapping(target="productorLider", source="titular.usuario.nombre")
+    @Mapping(target="departamento", source="departamento.nombre")
+    @Mapping(target="estado", source="estadoActual.estadoEstablecimiento.nombre")
+    @Mapping(target="motivoEstado", source="estadoActual.motivo")
+    @Mapping(target="fechaEstado", source="estadoActual.fechaInicio")
     EstablecimientoAdminDTO establecimientoToEstablecimientoAdminDTO(Establecimiento establecimiento);
 
     default List<AdminSistemasGetDTO> administradorSistemasListToAdminSistemasGetDTOList(List<AdministradorSistemas> administradorSistemas) {

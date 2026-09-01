@@ -1,14 +1,13 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.dtos.administrador_sistemas.AdminSistemasCreateReq;
-import com.mza_agrotours.backend.dtos.administrador_sistemas.AdminSistemasGetDTO;
-import com.mza_agrotours.backend.dtos.administrador_sistemas.AdministradorSistemasUpdateReq;
-import com.mza_agrotours.backend.dtos.administrador_sistemas.EstablecimientoAdminDTO;
+import com.mza_agrotours.backend.dtos.administrador_sistemas.*;
 import com.mza_agrotours.backend.dtos.roles_permisos.RolGetShortDTO;
 import com.mza_agrotours.backend.entities.AdministradorSistemas;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
+import com.mza_agrotours.backend.entities.establecimiento.EstadoEstablecimiento;
 import com.mza_agrotours.backend.entities.roles_permisos.Rol;
+import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
 import com.mza_agrotours.backend.enums.RolProtegido;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
 import com.mza_agrotours.backend.exceptions.AdministradorSistemasError;
@@ -16,10 +15,7 @@ import com.mza_agrotours.backend.exceptions.AppException;
 import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
 import com.mza_agrotours.backend.mappers.AdministradorSistemasMapper;
 import com.mza_agrotours.backend.mappers.RolMapper;
-import com.mza_agrotours.backend.repositories.AdministradorSistemasRepository;
-import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
-import com.mza_agrotours.backend.repositories.RolRepository;
-import com.mza_agrotours.backend.repositories.UsuarioRepository;
+import com.mza_agrotours.backend.repositories.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,18 +31,21 @@ public class AdministradorSistemasService {
     private final AdministradorSistemasMapper administradorSistemasMapper;
     private final RolMapper rolMapper;
     private final EstablecimientoRepository establecimientoRepository;
+    private final EstadoEstablecimientoRepository estadoEstablecimientoRepository;
 
     public AdministradorSistemasService(RolRepository rolRepository,
                                         AdministradorSistemasRepository administradorSistemasRepository,
                                         UsuarioRepository usuarioRepository,
                                         AdministradorSistemasMapper administradorSistemasMapper,
                                         EstablecimientoRepository establecimientoRepository,
+                                        EstadoEstablecimientoRepository estadoEstablecimientoRepository,
                                         RolMapper rolMapper) {
         this.rolRepository = rolRepository;
         this.administradorSistemasRepository = administradorSistemasRepository;
         this.usuarioRepository = usuarioRepository;
         this.administradorSistemasMapper = administradorSistemasMapper;
         this.establecimientoRepository = establecimientoRepository;
+        this.estadoEstablecimientoRepository = estadoEstablecimientoRepository;
         this.rolMapper = rolMapper;
     }
 
@@ -143,11 +142,50 @@ public class AdministradorSistemasService {
                 .establecimientoListToEstablecimientoAdminDTOList(establecimientos);
     }
 
+    public EstablecimientoAdminDTO suspenderEstablecimiento(UUID establecimientoId, EstablecimientoSuspenderReq establecimientoSuspenderReq) {
+        Establecimiento establecimiento = this.establecimientoRepository
+                .findByIdAndFechaHoraBajaIsNull(establecimientoId)
+                .orElseThrow(() -> new AppException(AdministradorSistemasError.ESTABLECIMIENTO_NOT_FOUND));
+
+        if (!establecimiento.getEstadoActual().getEstadoEstablecimiento().getNombre().equals(EstadoEstablecimientoNombre.ACTIVO)) {
+            throw new AppException(AdministradorSistemasError.ESTABLECIMIENTO_NO_ACTIVO);
+        }
+
+        EstadoEstablecimiento estadoSuspendido = obtenerEstadoEstablecimientoByNombre(EstadoEstablecimientoNombre.SUSPENDIDO);
+        establecimiento.cambiarEstado(estadoSuspendido, establecimientoSuspenderReq.getMotivo(), LocalDateTime.now());
+
+        establecimiento = this.establecimientoRepository.save(establecimiento);
+        return this.administradorSistemasMapper.establecimientoToEstablecimientoAdminDTO(establecimiento);
+    }
+
+    public EstablecimientoAdminDTO reactivarEstablecimiento(UUID establecimientoId) {
+        Establecimiento establecimientoSuspendido = this.establecimientoRepository
+                .findByIdAndFechaHoraBajaIsNull(establecimientoId)
+                .orElseThrow(() -> new AppException(AdministradorSistemasError.ESTABLECIMIENTO_NOT_FOUND));
+
+        if (!establecimientoSuspendido.getEstadoActual().getEstadoEstablecimiento().getNombre().equals(EstadoEstablecimientoNombre.SUSPENDIDO)) {
+            throw new AppException(AdministradorSistemasError.ESTABLECIMIENTO_NO_SUSPENDIDO);
+        }
+
+        EstadoEstablecimiento estadoActivo = obtenerEstadoEstablecimientoByNombre(EstadoEstablecimientoNombre.ACTIVO);
+        establecimientoSuspendido.cambiarEstado(estadoActivo, "Reactivación de establecimiento", LocalDateTime.now());
+
+        establecimientoSuspendido = this.establecimientoRepository.save(establecimientoSuspendido);
+        return this.administradorSistemasMapper.establecimientoToEstablecimientoAdminDTO(establecimientoSuspendido);
+    }
+
     // Nadie gestiona su propio rol de administrador: ni para escalarlo ni para darse de baja
     private void validarNoEsAutoGestion(String emailUsuarioAfectado, String emailAdminEjecutor) {
         if (emailUsuarioAfectado.equalsIgnoreCase(emailAdminEjecutor)) {
             throw new AppException(AdministradorSistemasError.AUTO_GESTION_PROHIBIDA);
         }
+    }
+
+    // Los estados de establecimiento vienen del seeder: si falta, es un problema de configuracion
+    private EstadoEstablecimiento obtenerEstadoEstablecimientoByNombre(EstadoEstablecimientoNombre estadoNombre) {
+        return this.estadoEstablecimientoRepository
+                .findByNombreAndFechaBajaIsNull(estadoNombre)
+                .orElseThrow(() -> new AppException(AdministradorSistemasError.ESTADO_ESTABLECIMIENTO_NO_CONFIGURADO));
     }
 
 

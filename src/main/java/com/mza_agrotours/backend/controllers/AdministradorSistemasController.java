@@ -2,9 +2,7 @@ package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
-import com.mza_agrotours.backend.dtos.administrador_sistemas.AdminSistemasCreateReq;
-import com.mza_agrotours.backend.dtos.administrador_sistemas.AdminSistemasGetDTO;
-import com.mza_agrotours.backend.dtos.administrador_sistemas.AdministradorSistemasUpdateReq;
+import com.mza_agrotours.backend.dtos.administrador_sistemas.*;
 import com.mza_agrotours.backend.dtos.roles_permisos.RolGetShortDTO;
 import com.mza_agrotours.backend.services.AdministradorSistemasService;
 import jakarta.validation.Valid;

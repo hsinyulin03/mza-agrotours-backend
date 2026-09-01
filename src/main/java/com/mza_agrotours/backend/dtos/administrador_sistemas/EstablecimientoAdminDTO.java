@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @NoArgsConstructor
 @Getter
@@ -16,4 +17,6 @@ public class EstablecimientoAdminDTO {
     private String departamento;
     private LocalDate fechaAlta;
     private String estado;
+    private String motivoEstado;
+    private LocalDateTime fechaEstado;
 }
