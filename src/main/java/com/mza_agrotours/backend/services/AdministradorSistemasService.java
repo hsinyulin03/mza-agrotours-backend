@@ -16,12 +16,16 @@ import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
 import com.mza_agrotours.backend.mappers.AdministradorSistemasMapper;
 import com.mza_agrotours.backend.mappers.RolMapper;
 import com.mza_agrotours.backend.repositories.*;
+import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class AdministradorSistemasService {
@@ -32,6 +36,8 @@ public class AdministradorSistemasService {
     private final RolMapper rolMapper;
     private final EstablecimientoRepository establecimientoRepository;
     private final EstadoEstablecimientoRepository estadoEstablecimientoRepository;
+    private final ActividadRepository actividadRepository;
+    private final ReservaRepository reservaRepository;
 
     public AdministradorSistemasService(RolRepository rolRepository,
                                         AdministradorSistemasRepository administradorSistemasRepository,
@@ -39,7 +45,9 @@ public class AdministradorSistemasService {
                                         AdministradorSistemasMapper administradorSistemasMapper,
                                         EstablecimientoRepository establecimientoRepository,
                                         EstadoEstablecimientoRepository estadoEstablecimientoRepository,
-                                        RolMapper rolMapper) {
+                                        RolMapper rolMapper,
+                                        ActividadRepository actividadRepository,
+                                        ReservaRepository reservaRepository) {
         this.rolRepository = rolRepository;
         this.administradorSistemasRepository = administradorSistemasRepository;
         this.usuarioRepository = usuarioRepository;
@@ -47,6 +55,8 @@ public class AdministradorSistemasService {
         this.establecimientoRepository = establecimientoRepository;
         this.estadoEstablecimientoRepository = estadoEstablecimientoRepository;
         this.rolMapper = rolMapper;
+        this.actividadRepository = actividadRepository;
+        this.reservaRepository = reservaRepository;
     }
 
     public List<AdminSistemasGetDTO> findAllAdminSistemasVigentes() {
@@ -138,8 +148,15 @@ public class AdministradorSistemasService {
     @Transactional(readOnly = true)
     public List<EstablecimientoAdminDTO> obtenerEstablecimientos() {
         List<Establecimiento> establecimientos = this.establecimientoRepository.findByFechaHoraBajaIsNull();
+
+        if (establecimientos.isEmpty()) {
+            return List.of();
+        }
+
+        ConteosPorEstablecimientoAdminDTO conteosPorEstablecimientoAdminDTO = obtenerConteosPorEstablecimientoAdminDTOByEstablecimientos(establecimientos);
+
         return this.administradorSistemasMapper
-                .establecimientoListToEstablecimientoAdminDTOList(establecimientos);
+                .establecimientoListToEstablecimientoAdminDTOList(establecimientos, conteosPorEstablecimientoAdminDTO);
     }
 
     public EstablecimientoAdminDTO suspenderEstablecimiento(UUID establecimientoId, EstablecimientoSuspenderReq establecimientoSuspenderReq) {
@@ -186,6 +203,27 @@ public class AdministradorSistemasService {
         return this.estadoEstablecimientoRepository
                 .findByNombreAndFechaBajaIsNull(estadoNombre)
                 .orElseThrow(() -> new AppException(AdministradorSistemasError.ESTADO_ESTABLECIMIENTO_NO_CONFIGURADO));
+    }
+
+    private ConteosPorEstablecimientoAdminDTO obtenerConteosPorEstablecimientoAdminDTOByEstablecimientos(List<Establecimiento> establecimientos) {
+        Set<UUID> ids = establecimientos.stream().map(Establecimiento::getId).collect(Collectors.toSet());
+
+        Map<UUID, Long> publicadasPorEstablecimiento = this.obtenerPublicacionesPorEstablecimiento(ids);
+        Map<UUID, Long> reservasHistoricasPorEstablecimiento = this.obtenerReservasHistoricoPorEstablecimiento(ids);
+
+        return new ConteosPorEstablecimientoAdminDTO(publicadasPorEstablecimiento, reservasHistoricasPorEstablecimiento);
+    }
+
+    private Map<UUID, Long> obtenerPublicacionesPorEstablecimiento(Set<UUID> establecimientosIds) {
+        List<ConteoPorEstablecimientoDTO> conteoPorEstablecimientos = this.actividadRepository.countPublicadasByEstablecimientoIds(establecimientosIds);
+        return conteoPorEstablecimientos.stream()
+                .collect(Collectors.toMap(ConteoPorEstablecimientoDTO::getEstablecimientoID, ConteoPorEstablecimientoDTO::getCantidad));
+    }
+
+    private Map<UUID, Long> obtenerReservasHistoricoPorEstablecimiento(Set<UUID> establecimientosIds) {
+        List<ConteoPorEstablecimientoDTO> conteoPorEstablecimientos = this.reservaRepository.countReservasTotalesByEstablecimientoIds(establecimientosIds);
+        return conteoPorEstablecimientos.stream()
+                .collect(Collectors.toMap(ConteoPorEstablecimientoDTO::getEstablecimientoID, ConteoPorEstablecimientoDTO::getCantidad));
     }
 
 
