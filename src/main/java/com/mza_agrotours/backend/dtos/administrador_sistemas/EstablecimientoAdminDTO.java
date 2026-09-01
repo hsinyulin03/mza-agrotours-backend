@@ -16,6 +16,11 @@ public class EstablecimientoAdminDTO {
     private String productorLider;
     private String departamento;
     private LocalDate fechaAlta;
+
+    private Long cantidadActividadesPublicadas;
+    private Long cantidadReservasHistorico;
+
+    // Información del estado
     private String estado;
     private String motivoEstado;
     private LocalDateTime fechaEstado;
