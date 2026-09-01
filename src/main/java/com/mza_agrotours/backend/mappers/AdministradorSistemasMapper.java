@@ -21,7 +21,7 @@ public interface AdministradorSistemasMapper {
     @Mapping(target="motivoEstado", source="estadoActual.motivo")
     @Mapping(target="fechaEstado", source="estadoActual.fechaInicio")
     @Mapping(target="fechaAlta", source="fechaHoraAlta")
-    @Mapping(target="nombreEjecutor", source="ejecutor.usuario.nombre")
+    @Mapping(target="nombreEjecutor", source="estadoActual.ejecutor.usuario.nombre")
     EstablecimientoAdminDTO establecimientoToEstablecimientoAdminDTO(Establecimiento establecimiento);
 
     default List<AdminSistemasGetDTO> administradorSistemasListToAdminSistemasGetDTOList(List<AdministradorSistemas> administradorSistemas) {
