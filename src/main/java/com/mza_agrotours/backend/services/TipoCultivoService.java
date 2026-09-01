@@ -16,7 +16,7 @@ import com.mza_agrotours.backend.mappers.TipoCultivoMapper;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.EstacionalidadRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
-import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
+import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.receta.RecetaRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +41,7 @@ public class TipoCultivoService {
     @Autowired
     private EstablecimientoRepository establecimientoRepository;
     @Autowired
-    private ActividadRespository actividadRepository;
+    private ActividadRepository actividadRepository;
 
     // US-EST-05 Modificar establecimiento cultivos
     public List<TipoCultivoShortDTO> obtenerTipoCultivosDisponibles() {
