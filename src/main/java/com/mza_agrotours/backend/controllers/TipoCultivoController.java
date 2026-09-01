@@ -25,9 +25,9 @@ public class TipoCultivoController {
     }
 
     @PostMapping("/alta")
-    public ResponseEntity<ApiResponse<DTOTipoCultivoEditarDetalle>> altaTipoCultivo(
+    public ResponseEntity<ApiResponse<DTOtcAMResponse>> altaTipoCultivo(
             @Valid @RequestBody DTOTipoCultivoAM dto) {
-        DTOTipoCultivoEditarDetalle resultado = tipoCultivoService.altaTipoCultivo(dto);
+        DTOtcAMResponse resultado = tipoCultivoService.altaTipoCultivo(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(resultado));
     }
     @GetMapping("/{id}")
@@ -38,10 +38,10 @@ public class TipoCultivoController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<DTOTipoCultivoEditarDetalle>> modificarTipoCultivo(
+    public ResponseEntity<ApiResponse<DTOtcAMResponse>> modificarTipoCultivo(
             @PathVariable UUID id,
             @Valid @RequestBody DTOTipoCultivoAM dto) {
-        DTOTipoCultivoEditarDetalle resultado = tipoCultivoService.modificarTipoCultivo(id, dto);
+        DTOtcAMResponse resultado = tipoCultivoService.modificarTipoCultivo(id, dto);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(resultado));
     }
 
@@ -58,10 +58,10 @@ public class TipoCultivoController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> bajaTipoCultivo(
+    public ResponseEntity<ApiResponse<DTOtcBResponse>> bajaTipoCultivo(
             @PathVariable UUID id) {
-        tipoCultivoService.bajaTipoCultivo(id);
-        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(null));
+        DTOtcBResponse resultado = tipoCultivoService.bajaTipoCultivo(id);
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(resultado));
     }
 
 }

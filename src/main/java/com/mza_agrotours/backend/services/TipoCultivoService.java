@@ -1,18 +1,22 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.dtos.receta.DTORecetaAMResponse;
 import com.mza_agrotours.backend.dtos.tipoCultivo.*;
 import com.mza_agrotours.backend.entities.cultivo.Estacionalidad;
 import com.mza_agrotours.backend.entities.cultivo.EstacionalidadMes;
+import com.mza_agrotours.backend.entities.cultivo.InformacionNutricional;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.enums.EstacionalidadNombre;
 import com.mza_agrotours.backend.enums.Mes;
-import com.mza_agrotours.backend.exceptions.EntityAlreadyExistsException;
-import com.mza_agrotours.backend.exceptions.EntityNotFoundException;
+import com.mza_agrotours.backend.exceptions.AppException;
 import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
+import com.mza_agrotours.backend.exceptions.tipoCultivo.TipoCultivoError;
+import com.mza_agrotours.backend.exceptions.tipoCultivo.ValidacionMultipleTipoCultivoException;
 import com.mza_agrotours.backend.mappers.TipoCultivoMapper;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.EstacionalidadRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
+import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
 import com.mza_agrotours.backend.repositories.receta.RecetaRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +40,8 @@ public class TipoCultivoService {
     private RecetaRepository recetaRepository;
     @Autowired
     private EstablecimientoRepository establecimientoRepository;
+    @Autowired
+    private ActividadRespository actividadRepository;
 
     // US-EST-05 Modificar establecimiento cultivos
     public List<TipoCultivoShortDTO> obtenerTipoCultivosDisponibles() {
@@ -47,18 +53,26 @@ public class TipoCultivoService {
     ////US-CULT-06 ABM tipo cultivo (AM)
     // ALTA TIPO DE CULTIVO
     @Transactional
-    public DTOTipoCultivoEditarDetalle altaTipoCultivo(DTOTipoCultivoAM dto) {
-        validarNombreDisponible(dto.getNombre());
+    public DTOtcAMResponse altaTipoCultivo(DTOTipoCultivoAM dto) {
+        List<String> errores = obtenerErroresValidacionAlta(dto);
+        if (!errores.isEmpty()) {
+            throw new ValidacionMultipleTipoCultivoException(errores);
+        }
 
         TipoCultivo tipoCultivo = new TipoCultivo();
         tipoCultivo.setNombre(dto.getNombre());
         tipoCultivo.setDescripcion(dto.getDescripcion());
         tipoCultivo.setBeneficios(dto.getBeneficios());
         tipoCultivo.setEstacionalidadMeses(construirEstacionalidadMeses(dto.getEstacionalidadPorMes()));
-        // todo informacion nutricional
+        tipoCultivo.setPorcionReferencia(dto.getPorcionReferencia());
+        tipoCultivo.setInformacionNutricional(construirInformacionNutricional(dto.getInformacionNutricional()));
+
         TipoCultivo guardado = tipoCultivoRepository.save(tipoCultivo);
 
-        return mapearADatos(guardado);
+        DTOtcAMResponse response = new DTOtcAMResponse();
+        response.setIdTipoCultivo(guardado.getId());
+        response.setMensaje("Se agregó el cultivo " + guardado.getNombre() + " al catálogo.");
+        return response;
     }
     // OBTENER DATOS TIPO CULTIVO (para prellenar el formulario de editar)
     @Transactional
@@ -68,9 +82,14 @@ public class TipoCultivoService {
     }
     // MODIFICAR TIPO CULTIVO
     @Transactional
-    public DTOTipoCultivoEditarDetalle modificarTipoCultivo(UUID id, DTOTipoCultivoAM dto) {
+    public DTOtcAMResponse modificarTipoCultivo(UUID id, DTOTipoCultivoAM dto) {
         TipoCultivo tipoCultivo = obtenerTipoCultivo(id);
-        validarNombreDisponibleParaModificar(id, dto.getNombre());
+
+        List<String> errores = obtenerErroresValidacionModificacion(id, dto);
+        if (!errores.isEmpty()) {
+            throw new ValidacionMultipleTipoCultivoException(errores);
+        }
+
 
         tipoCultivo.setNombre(dto.getNombre());
         tipoCultivo.setDescripcion(dto.getDescripcion());
@@ -78,8 +97,21 @@ public class TipoCultivoService {
 
         actualizarEstacionalidad(tipoCultivo, dto.getEstacionalidadPorMes());
 
+        List<InformacionNutricional> informacionActual =
+                tipoCultivo.getInformacionNutricional();
+
+        List<InformacionNutricional> informacionNueva =
+                construirInformacionNutricional(dto.getInformacionNutricional());
+
+        informacionActual.clear();
+        informacionActual.addAll(informacionNueva);
+
+
         TipoCultivo guardado = tipoCultivoRepository.save(tipoCultivo);
-        return mapearADatos(guardado);
+        DTOtcAMResponse response = new DTOtcAMResponse();
+        response.setIdTipoCultivo(guardado.getId());
+        response.setMensaje("Se guardaron los cambios del cultivo" + guardado.getNombre() + ".");
+        return response;
     }
 
     // CONSULTAR ESTACIONALIDADES (catálogo fijo, para poblar el selector del formulario de cultivos)
@@ -107,7 +139,7 @@ public class TipoCultivoService {
 
     // BAJA TIPO DE CULTIVO
     @Transactional
-    public void bajaTipoCultivo(UUID id) {
+    public DTOtcBResponse bajaTipoCultivo(UUID id) {
         TipoCultivo tipoCultivo = obtenerTipoCultivo(id);
 
         boolean tieneRecetasActivas = tipoCultivo.getRecetas().stream()
@@ -117,8 +149,7 @@ public class TipoCultivoService {
             throw new ValidacionNegocioException("No se puede eliminar el cultivo porque posee recetas asociadas");
         }
 
-        //todo agregar contaractividadespublciadasporculivo
-        long cantidadActividades = 0;
+        long cantidadActividades = actividadRepository.contarActividadesPublicadasPorCultivo(tipoCultivo.getId());
         if (cantidadActividades > 0) {
             throw new ValidacionNegocioException("Existen actividades vigentes que cosechan esos cultivos");
         }
@@ -131,9 +162,69 @@ public class TipoCultivoService {
 
 
         tipoCultivo.setFechaHoraBaja(LocalDateTime.now());
-        tipoCultivoRepository.save(tipoCultivo);
+        TipoCultivo eliminado = tipoCultivoRepository.save(tipoCultivo);
+        DTOtcBResponse response = new DTOtcBResponse();
+        response.setIdTipoCultivo(eliminado.getId());
+        response.setMensaje("Se eliminó el cultivo " + eliminado.getNombre() + " del catálogo.");
+        return response;
     }
 
+
+
+
+    /**
+     * VALIDACIONES
+     */
+    private List<String> obtenerErroresValidacionAlta(DTOTipoCultivoAM dto) {
+        List<String> errores = new ArrayList<>();
+
+        agregarSiNombreNoDisponible(errores, dto.getNombre(), null);
+        agregarSiEstacionalidadInvalida(errores, dto.getEstacionalidadPorMes());
+
+        return errores;
+    }
+
+    private List<String> obtenerErroresValidacionModificacion(UUID id, DTOTipoCultivoAM dto) {
+        List<String> errores = new ArrayList<>();
+
+        agregarSiNombreNoDisponible(errores, dto.getNombre(), id);
+        agregarSiEstacionalidadInvalida(errores, dto.getEstacionalidadPorMes());
+
+        return errores;
+    }
+
+
+
+    private void agregarSiNombreNoDisponible(List<String> errores, String nombre, UUID idAExcluir) {
+
+        Optional<TipoCultivo> existente =
+                tipoCultivoRepository.findByNombreIgnoreCaseAndFechaHoraBajaIsNull(nombre);
+
+        if (existente.isPresent()) {
+
+            TipoCultivo cultivo = existente.get();
+
+            if (idAExcluir == null || !cultivo.getId().equals(idAExcluir)) {
+                errores.add("Ya existe un tipo de cultivo con ese nombre");
+            }
+        }
+    }
+
+    private void agregarSiEstacionalidadInvalida(List<String> errores, List<EstacionalidadNombre> estacionalidadPorMes) {
+        Mes[] meses = Mes.values();
+
+        if (estacionalidadPorMes == null || estacionalidadPorMes.size() != meses.length) {
+            errores.add("Se esperaban " + meses.length + " estacionalidades (una por mes), se recibieron "
+                    + (estacionalidadPorMes == null ? 0 : estacionalidadPorMes.size()));
+            return;
+        }
+
+        boolean tieneCosecha = estacionalidadPorMes.stream()
+                .anyMatch(estado -> estado == EstacionalidadNombre.COSECHA);
+        if (!tieneCosecha) {
+            errores.add("El cultivo debe tener al menos un mes en estado de cosecha");
+        }
+    }
 
 
 
@@ -145,12 +236,6 @@ public class TipoCultivoService {
     /**
      * METODOS AUXILIARES
      */
-    // ALTA
-    private void validarNombreDisponible(String nombre) {
-        if (tipoCultivoRepository.existsByNombreIgnoreCaseAndFechaHoraBajaIsNull(nombre)) {
-            throw new EntityAlreadyExistsException("Ya existe un tipo de cultivo con este nombre");
-        }
-    }
 
     private List<EstacionalidadMes> construirEstacionalidadMeses(List<EstacionalidadNombre> estacionalidadPorMes) {
         // Lista donde se van guardando las EstacionalidadMes creadas
@@ -196,11 +281,46 @@ public class TipoCultivoService {
             throw new ValidacionNegocioException("El cultivo debe tener al menos un mes en estado de cosecha");
         }
     }
+    private List<InformacionNutricional> construirInformacionNutricional(
+            List<DTOTipoCultivoInfoNutriAM> informacionNutricionalDTO
+    ) {
+        if (informacionNutricionalDTO == null) {
+            return new ArrayList<>();
+        }
+
+        return informacionNutricionalDTO.stream()
+                .map(dto -> {
+                    InformacionNutricional info = new InformacionNutricional();
+
+                    info.setNombre(dto.getNombre());
+                    String valor = dto.getValor();
+
+                    if (valor != null) {
+                        valor = valor.trim();
+
+                        valor = switch (valor.toLowerCase()) {
+                            case "alto" -> "Alto";
+                            case "medio" -> "Medio";
+                            case "bajo" -> "Bajo";
+                            default -> valor;
+                        };
+                    }
+
+                    info.setValor(valor);
+                    info.setUnidad(dto.getUnidad());
+
+                    return info;
+                })
+                .toList();
+    }
     // DETALLE / EDITAR
     private DTOTipoCultivoEditarDetalle mapearADatos(TipoCultivo tipoCultivo) {
         DTOTipoCultivoEditarDetalle dto = tipoCultivoMapper.tipoCultivoToDtoEditarDetalle(tipoCultivo);
 
         dto.setEstacionalidadPorMes(obtenerEstacionalidadPorMes(tipoCultivo));
+        dto.setPorcionReferencia(tipoCultivo.getPorcionReferencia());
+        dto.setInformacionNutricional(tipoCultivoMapper.informacionNutricionalToDto(tipoCultivo.getInformacionNutricional()));
+
         return dto;
     }
 
@@ -235,7 +355,7 @@ public class TipoCultivoService {
     }
     private TipoCultivo obtenerTipoCultivo(UUID id) {
         return tipoCultivoRepository.findByIdAndFechaHoraBajaIsNull(id)
-                .orElseThrow(() -> new EntityNotFoundException("No se encuentra el tipo de cultivo indicado"));
+                .orElseThrow(() -> new AppException(TipoCultivoError.NOT_FOUND));
     }
     // MODIFICAR
     private void actualizarEstacionalidad(TipoCultivo tipoCultivo, List<EstacionalidadNombre> estacionalidadPorMes) {
@@ -250,16 +370,6 @@ public class TipoCultivoService {
         estacionalidadActual.addAll(estacionalidadNueva);
     }
 
-    private void validarNombreDisponibleParaModificar(UUID id, String nombre) {
-        tipoCultivoRepository.findByNombreIgnoreCaseAndFechaHoraBajaIsNull(nombre)
-                // Si el nombre pertenece a otro cultivo distinto del que se mandó a editar
-                // se considera un nombre duplicado
-                // el filter lo deja pasar y lanza la exception
-                .filter(existente -> !existente.getId().equals(id))
-                .ifPresent(existente -> {
-                    throw new EntityAlreadyExistsException("Ya existe un tipo de cultivo con ese nombre");
-                });
-    }
     // CATALOGO (listado admin)
     private DTOTipoCultivoListado mapearAListado(TipoCultivo tipoCultivo) {
         DTOTipoCultivoListado dto = tipoCultivoMapper.tipoCultivoToDtoListado(tipoCultivo);
@@ -269,8 +379,7 @@ public class TipoCultivoService {
                 .filter(r -> r.getFechaHoraBaja() == null)
                 // Cuenta cuántas recetas cumplen
                 .count();
-        // TODO CONTAR ACTIVADADES POR CULTIVO
-        Integer cantidadActividades = 0;
+        Integer cantidadActividades = (int) actividadRepository.contarActividadesPublicadasPorCultivo(tipoCultivo.getId());
         boolean tieneEstablecimientosAsociados = establecimientoRepository
                 .existsByTiposCultivosIdAndFechaHoraBajaIsNull(tipoCultivo.getId());
 
@@ -298,7 +407,7 @@ public class TipoCultivoService {
                 // pasa de estacionalidadmes a solo mes
                 .map(EstacionalidadMes::getMes)
                 .toList();
-        // Si el cultivo nunca está en cosecha devuelve null igual no puede ser o si ?
+
         if (mesesEnCosecha.isEmpty()) {
             return null;
         }

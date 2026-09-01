@@ -1,10 +1,8 @@
 package com.mza_agrotours.backend.mappers;
 
-import com.mza_agrotours.backend.dtos.tipoCultivo.DTOEstacionalidad;
-import com.mza_agrotours.backend.dtos.tipoCultivo.DTOTipoCultivoEditarDetalle;
-import com.mza_agrotours.backend.dtos.tipoCultivo.DTOTipoCultivoListado;
-import com.mza_agrotours.backend.dtos.tipoCultivo.TipoCultivoShortDTO;
+import com.mza_agrotours.backend.dtos.tipoCultivo.*;
 import com.mza_agrotours.backend.entities.cultivo.Estacionalidad;
+import com.mza_agrotours.backend.entities.cultivo.InformacionNutricional;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -31,4 +29,8 @@ public interface TipoCultivoMapper {
     DTOTipoCultivoListado tipoCultivoToDtoListado(TipoCultivo tipoCultivo);
 
     List<TipoCultivoShortDTO> tipoCultivoToShortDto(List<TipoCultivo> tipoCultivoListado);
+
+    DTOInformacionNutricionalDatos informacionNutricionalToDto(InformacionNutricional informacionNutricional);
+
+    List<DTOInformacionNutricionalDatos> informacionNutricionalToDto(List<InformacionNutricional> informacionNutricional);
 }

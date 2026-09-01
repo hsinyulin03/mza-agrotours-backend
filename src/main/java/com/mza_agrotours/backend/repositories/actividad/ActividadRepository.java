@@ -87,4 +87,14 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
     List<DTOFiltro> obtenerFiltroCultivos();
 
     boolean existsByIdAndEstablecimientoId(UUID idActividad, UUID establecimientoId);
+
+    @Query("""
+        SELECT COUNT(DISTINCT a) FROM Actividad a
+        JOIN a.cultivos tc
+        WHERE tc.id = :tipoCultivoId
+        AND a.fechaHoraBaja IS NULL
+        AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO
+        """)
+    long contarActividadesPublicadasPorCultivo(@Param("tipoCultivoId") UUID tipoCultivoId);
+
 }

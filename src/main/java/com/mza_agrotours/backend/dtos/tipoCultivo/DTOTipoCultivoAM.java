@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.dtos.tipoCultivo;
 
 import com.mza_agrotours.backend.enums.EstacionalidadNombre;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -27,4 +28,11 @@ public class DTOTipoCultivoAM {
     @NotNull(message = "La estacionalidad es requerida")
     @Size(min = 12, max = 12, message = "Debe indicarse la estacionalidad de los 12 meses")
     private List<EstacionalidadNombre> estacionalidadPorMes; // indice 0 = Enero índice 11 = Diciembre
+
+    @NotBlank(message = "La porción de referencia es requerida")
+    @Size(max = 30, message = "Máximo 30 caracteres")
+    private String porcionReferencia;
+
+    @Valid
+    private List<DTOTipoCultivoInfoNutriAM> informacionNutricional;
 }
