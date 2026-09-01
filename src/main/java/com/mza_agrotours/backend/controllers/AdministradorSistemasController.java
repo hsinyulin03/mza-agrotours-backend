@@ -59,4 +59,9 @@ public class AdministradorSistemasController {
     public ResponseEntity<ApiResponse<List<RolGetShortDTO>>> obtenerRolesAdmin() {
         return ResponseEntity.ok(ApiResponse.ok(this.administradorSistemasService.obtenerRolesAdmin()));
     }
+
+    @GetMapping("/establecimientos")
+    public ResponseEntity<ApiResponse<List<EstablecimientoAdminDTO>>> obtenerEstablecimientos() {
+        return ResponseEntity.ok(ApiResponse.ok(this.administradorSistemasService.obtenerEstablecimientos()));
+    }
 }

@@ -1,13 +1,22 @@
 package com.mza_agrotours.backend.mappers;
 
 import com.mza_agrotours.backend.dtos.administrador_sistemas.AdminSistemasGetDTO;
+import com.mza_agrotours.backend.dtos.administrador_sistemas.EstablecimientoAdminDTO;
 import com.mza_agrotours.backend.entities.AdministradorSistemas;
+import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface AdministradorSistemasMapper {
+
+    List<EstablecimientoAdminDTO> establecimientoListToEstablecimientoAdminDTOList(List<Establecimiento> establecimientos);
+
+    @Mapping(target="productorLider", source="titular.nombre")
+    @Mapping(target="estado", source="estadoActual.nombre")
+    EstablecimientoAdminDTO establecimientoToEstablecimientoAdminDTO(Establecimiento establecimiento);
 
     default List<AdminSistemasGetDTO> administradorSistemasListToAdminSistemasGetDTOList(List<AdministradorSistemas> administradorSistemas) {
         return administradorSistemas.stream().map(this::administradorSistemasToAdminSistemasGetDTO).toList();
