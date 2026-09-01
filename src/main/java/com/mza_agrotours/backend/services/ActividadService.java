@@ -111,7 +111,14 @@ public class ActividadService {
         tarifas.forEach(actividad::addActividadRangoEtario);
         actividad.addLogAlta(logAltas);
         calendario.forEach(actividad::addActividadDia);
-        actividad.setEstablecimiento(establecimientoRepository.getReferenceById(establecimientoId));
+
+        Establecimiento establecimiento = establecimientoRepository.findByIdAndFechaHoraBajaIsNull(establecimientoId)
+                .orElseThrow(EstablecimientoNotFoundException::new);
+
+        agregarCultivosAEstablecimiento(establecimiento, cultivos);
+        establecimientoRepository.save(establecimiento);
+
+        actividad.setEstablecimiento(establecimiento);
 
         List<ArchivoUploadResponse> urlsGeneradas = new ArrayList<>();
 
@@ -244,9 +251,22 @@ public class ActividadService {
         actividad.setNombre(dto.getNombre());
         actividad.setDescripcion(dto.getDescripcion());
 
+        List<TipoCultivo> cultivosAnteriores = new ArrayList<>(actividad.getCultivos());
+
         List<TipoCultivo> cultivos = actualizarCultivos(actividad.getCultivos(), dto.getCultivos());
         actividad.getCultivos().clear();
         actividad.getCultivos().addAll(cultivos);
+
+        List<TipoCultivo> cultivosRemovidos = cultivosAnteriores.stream()
+                .filter(cultivoAnterior -> cultivos.stream().noneMatch(c -> c.getId().equals(cultivoAnterior.getId())))
+                .toList();
+
+        Establecimiento establecimiento = establecimientoRepository.findByIdAndFechaHoraBajaIsNull(idEstablecimiento)
+                .orElseThrow(EstablecimientoNotFoundException::new);
+
+        agregarCultivosAEstablecimiento(establecimiento, cultivos);
+        quitarCultivosSinUsoDelEstablecimiento(establecimiento, cultivosRemovidos, idActividad);
+        establecimientoRepository.save(establecimiento);
 
         List<ActividadRangoEtario> activosActuales = actividad.getActividadRangoEtarios().stream()
                 .filter(r -> r.getFechaHoraBaja() == null)
@@ -597,6 +617,35 @@ public class ActividadService {
             throw new ValidacionNegocioException("Uno o más tipos de cultivo seleccionados no existen o se encuentran dados de baja.");
         }
         return cultivosActivos;
+    }
+
+    // Asocia al establecimiento los cultivos de la actividad que aún no tenga asignados.
+    // Si el establecimiento ya tiene el cultivo, no se hace nada.
+    private void agregarCultivosAEstablecimiento(Establecimiento establecimiento, List<TipoCultivo> cultivos) {
+        List<UUID> idsCultivosActuales = establecimiento.getTiposCultivos().stream()
+                .map(TipoCultivo::getId)
+                .toList();
+
+        List<TipoCultivo> cultivosNuevos = cultivos.stream()
+                .filter(cultivo -> !idsCultivosActuales.contains(cultivo.getId()))
+                .toList();
+
+        establecimiento.getTiposCultivos().addAll(cultivosNuevos);
+    }
+
+    // Ante la quita de un cultivo de una actividad, sólo se desasocia del establecimiento
+    // si ninguna otra actividad vigente (no dada de baja) del establecimiento lo sigue utilizando.
+    private void quitarCultivosSinUsoDelEstablecimiento(Establecimiento establecimiento, List<TipoCultivo> cultivosRemovidos, UUID idActividadActual) {
+        if (cultivosRemovidos == null || cultivosRemovidos.isEmpty()) {
+            return;
+        }
+
+        List<UUID> idsARemover = cultivosRemovidos.stream()
+                .map(TipoCultivo::getId)
+                .filter(cultivoId -> !actividadRepository.existeOtraActividadVigenteConCultivo(establecimiento.getId(), cultivoId, idActividadActual))
+                .toList();
+
+        establecimiento.getTiposCultivos().removeIf(cultivo -> idsARemover.contains(cultivo.getId()));
     }
 
     private List<TipoCultivo> actualizarCultivos(List <TipoCultivo> cultivosActuales, List<UUID> idsRequest) {
