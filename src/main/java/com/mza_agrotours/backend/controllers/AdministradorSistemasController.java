@@ -2,7 +2,9 @@ package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
-import com.mza_agrotours.backend.dtos.administrador_sistemas.*;
+import com.mza_agrotours.backend.dtos.administrador_sistemas.AdminSistemasCreateReq;
+import com.mza_agrotours.backend.dtos.administrador_sistemas.AdminSistemasGetDTO;
+import com.mza_agrotours.backend.dtos.administrador_sistemas.AdministradorSistemasUpdateReq;
 import com.mza_agrotours.backend.dtos.roles_permisos.RolGetShortDTO;
 import com.mza_agrotours.backend.services.AdministradorSistemasService;
 import jakarta.validation.Valid;
@@ -56,27 +58,5 @@ public class AdministradorSistemasController {
     @GetMapping("/roles")
     public ResponseEntity<ApiResponse<List<RolGetShortDTO>>> obtenerRolesAdmin() {
         return ResponseEntity.ok(ApiResponse.ok(this.administradorSistemasService.obtenerRolesAdmin()));
-    }
-
-    @GetMapping("/establecimientos")
-    public ResponseEntity<ApiResponse<List<EstablecimientoAdminDTO>>> obtenerEstablecimientos() {
-        return ResponseEntity.ok(ApiResponse.ok(this.administradorSistemasService.obtenerEstablecimientos()));
-    }
-
-    @PostMapping("/establecimientos/{establecimientoId}/suspension")
-    public ResponseEntity<ApiResponse<EstablecimientoAdminDTO>> suspenderEstablecimiento(
-            @PathVariable UUID establecimientoId,
-            @Valid @RequestBody EstablecimientoSuspenderReq establecimientoSuspenderReq,
-            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) {
-        return ResponseEntity.ok(ApiResponse.ok(this.administradorSistemasService
-                .suspenderEstablecimiento(establecimientoId, establecimientoSuspenderReq, usuarioAuthDetails.getEmail())));
-    }
-
-    @DeleteMapping("/establecimientos/{establecimientoId}/suspension")
-    public ResponseEntity<ApiResponse<EstablecimientoAdminDTO>> levantarSuspension(
-            @PathVariable UUID establecimientoId,
-            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) {
-        return ResponseEntity.ok(ApiResponse.ok(this.administradorSistemasService
-                .reactivarEstablecimiento(establecimientoId, usuarioAuthDetails.getEmail())));
     }
 }
