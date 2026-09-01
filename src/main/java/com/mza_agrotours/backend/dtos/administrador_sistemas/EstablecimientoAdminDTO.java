@@ -23,4 +23,5 @@ public class EstablecimientoAdminDTO {
     private String estado;
     private String motivoEstado;
     private LocalDateTime fechaEstado;
+    private String nombreEjecutor;
 }

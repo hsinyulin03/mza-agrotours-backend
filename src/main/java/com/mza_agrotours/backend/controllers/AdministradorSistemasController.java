@@ -66,12 +66,17 @@ public class AdministradorSistemasController {
     @PostMapping("/establecimientos/{establecimientoId}/suspension")
     public ResponseEntity<ApiResponse<EstablecimientoAdminDTO>> suspenderEstablecimiento(
             @PathVariable UUID establecimientoId,
-            @Valid @RequestBody EstablecimientoSuspenderReq establecimientoSuspenderReq) {
-        return ResponseEntity.ok(ApiResponse.ok(this.administradorSistemasService.suspenderEstablecimiento(establecimientoId, establecimientoSuspenderReq)));
+            @Valid @RequestBody EstablecimientoSuspenderReq establecimientoSuspenderReq,
+            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) {
+        return ResponseEntity.ok(ApiResponse.ok(this.administradorSistemasService
+                .suspenderEstablecimiento(establecimientoId, establecimientoSuspenderReq, usuarioAuthDetails.getEmail())));
     }
 
     @DeleteMapping("/establecimientos/{establecimientoId}/suspension")
-    public ResponseEntity<ApiResponse<EstablecimientoAdminDTO>> levantarSuspension(@PathVariable UUID establecimientoId) {
-        return ResponseEntity.ok(ApiResponse.ok(this.administradorSistemasService.reactivarEstablecimiento(establecimientoId)));
+    public ResponseEntity<ApiResponse<EstablecimientoAdminDTO>> levantarSuspension(
+            @PathVariable UUID establecimientoId,
+            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) {
+        return ResponseEntity.ok(ApiResponse.ok(this.administradorSistemasService
+                .reactivarEstablecimiento(establecimientoId, usuarioAuthDetails.getEmail())));
     }
 }

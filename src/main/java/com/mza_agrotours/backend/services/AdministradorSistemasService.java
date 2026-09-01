@@ -159,7 +159,10 @@ public class AdministradorSistemasService {
                 .establecimientoListToEstablecimientoAdminDTOList(establecimientos, conteosPorEstablecimientoAdminDTO);
     }
 
-    public EstablecimientoAdminDTO suspenderEstablecimiento(UUID establecimientoId, EstablecimientoSuspenderReq establecimientoSuspenderReq) {
+    public EstablecimientoAdminDTO suspenderEstablecimiento(
+            UUID establecimientoId,
+            EstablecimientoSuspenderReq establecimientoSuspenderReq,
+            String emailEjecutor) {
         Establecimiento establecimiento = this.establecimientoRepository
                 .findByIdAndFechaHoraBajaIsNull(establecimientoId)
                 .orElseThrow(() -> new AppException(AdministradorSistemasError.ESTABLECIMIENTO_NOT_FOUND));
@@ -168,14 +171,16 @@ public class AdministradorSistemasService {
             throw new AppException(AdministradorSistemasError.ESTABLECIMIENTO_NO_ACTIVO);
         }
 
+        AdministradorSistemas adminEjecutor = this.obtenerAdministradorSistemasByEmail(emailEjecutor);
+
         EstadoEstablecimiento estadoSuspendido = obtenerEstadoEstablecimientoByNombre(EstadoEstablecimientoNombre.SUSPENDIDO);
-        establecimiento.cambiarEstado(estadoSuspendido, establecimientoSuspenderReq.getMotivo(), LocalDateTime.now());
+        establecimiento.cambiarEstado(estadoSuspendido, establecimientoSuspenderReq.getMotivo(), adminEjecutor);
 
         establecimiento = this.establecimientoRepository.save(establecimiento);
         return this.administradorSistemasMapper.establecimientoToEstablecimientoAdminDTO(establecimiento);
     }
 
-    public EstablecimientoAdminDTO reactivarEstablecimiento(UUID establecimientoId) {
+    public EstablecimientoAdminDTO reactivarEstablecimiento(UUID establecimientoId, String emailEjecutor) {
         Establecimiento establecimientoSuspendido = this.establecimientoRepository
                 .findByIdAndFechaHoraBajaIsNull(establecimientoId)
                 .orElseThrow(() -> new AppException(AdministradorSistemasError.ESTABLECIMIENTO_NOT_FOUND));
@@ -184,8 +189,10 @@ public class AdministradorSistemasService {
             throw new AppException(AdministradorSistemasError.ESTABLECIMIENTO_NO_SUSPENDIDO);
         }
 
+        AdministradorSistemas adminEjecutor = this.obtenerAdministradorSistemasByEmail(emailEjecutor);
+
         EstadoEstablecimiento estadoActivo = obtenerEstadoEstablecimientoByNombre(EstadoEstablecimientoNombre.ACTIVO);
-        establecimientoSuspendido.cambiarEstado(estadoActivo, "Reactivación de establecimiento", LocalDateTime.now());
+        establecimientoSuspendido.cambiarEstado(estadoActivo, "Reactivación de establecimiento", adminEjecutor);
 
         establecimientoSuspendido = this.establecimientoRepository.save(establecimientoSuspendido);
         return this.administradorSistemasMapper.establecimientoToEstablecimientoAdminDTO(establecimientoSuspendido);
@@ -203,6 +210,10 @@ public class AdministradorSistemasService {
         return this.estadoEstablecimientoRepository
                 .findByNombreAndFechaBajaIsNull(estadoNombre)
                 .orElseThrow(() -> new AppException(AdministradorSistemasError.ESTADO_ESTABLECIMIENTO_NO_CONFIGURADO));
+    }
+
+    private AdministradorSistemas obtenerAdministradorSistemasByEmail(String email) {
+        return this.administradorSistemasRepository.findByEmailActivo(email).orElseThrow(() -> new AppException(AdministradorSistemasError.NOT_FOUND));
     }
 
     private ConteosPorEstablecimientoAdminDTO obtenerConteosPorEstablecimientoAdminDTOByEstablecimientos(List<Establecimiento> establecimientos) {

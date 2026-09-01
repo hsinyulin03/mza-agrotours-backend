@@ -23,5 +23,8 @@ public interface AdministradorSistemasRepository extends BaseEntityRepository<Ad
     @Query("SELECT p.codigo FROM AdministradorSistemas a JOIN a.rol r JOIN r.permisos p WHERE a.usuario.email = :email AND a.fechaHoraBaja IS NULL")
     List<PermisoCodigo> findPermisoCodigosByEmailActivo(@Param("email") String email);
 
+    @Query("SELECT a FROM AdministradorSistemas a WHERE a.usuario.email = :email AND a.fechaHoraBaja IS NULL")
+    Optional<AdministradorSistemas> findByEmailActivo(@Param("email") String email);
+
     Integer countByRolAndFechaHoraBajaIsNull(Rol rol);
 }

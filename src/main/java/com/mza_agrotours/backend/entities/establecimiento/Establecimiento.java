@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.entities.establecimiento;
 
+import com.mza_agrotours.backend.entities.AdministradorSistemas;
 import com.mza_agrotours.backend.entities.BaseEntity;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
@@ -75,7 +76,13 @@ public class Establecimiento extends BaseEntity {
     @JoinColumn(name = "estado_actual_id")
     private EstablecimientoEstado estadoActual;
 
-    public void cambiarEstado(EstadoEstablecimiento estado, String motivo, LocalDateTime tiempoCambio) {
+    public void cambiarEstado(EstadoEstablecimiento estado, String motivo) {
+        cambiarEstado(estado, motivo, null);
+    }
+
+    public void cambiarEstado(EstadoEstablecimiento estado, String motivo,AdministradorSistemas adminEjecutor) {
+        LocalDateTime tiempoCambio = LocalDateTime.now();
+
         this.estados.stream()
                 .filter(tramo -> tramo.getFechaFin() == null)
                 .forEach(tramo -> tramo.setFechaFin(tiempoCambio));
@@ -85,6 +92,7 @@ public class Establecimiento extends BaseEntity {
         nuevoTramo.setMotivo(motivo);
         nuevoTramo.setEstadoEstablecimiento(estado);
         nuevoTramo.setFechaFin(null);
+        nuevoTramo.setEjecutor(adminEjecutor);
 
         this.estados.add(nuevoTramo);
         this.estadoActual = nuevoTramo;
