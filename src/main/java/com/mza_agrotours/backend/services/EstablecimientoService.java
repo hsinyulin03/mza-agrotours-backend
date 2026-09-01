@@ -76,6 +76,9 @@ public class EstablecimientoService  {
         nuevoEstablecimiento.getEstados().add(estadoInicial);
         nuevoEstablecimiento.setEstadoActual(estadoInicial);
 
+        LocalDateTime fechaHoraAlta = LocalDateTime.now();
+        nuevoEstablecimiento.setFechaHoraAlta(fechaHoraAlta);
+
         return establecimientoRepository.save(nuevoEstablecimiento);
     }
 

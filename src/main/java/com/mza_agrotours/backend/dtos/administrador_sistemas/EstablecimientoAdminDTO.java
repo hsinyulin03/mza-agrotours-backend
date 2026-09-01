@@ -4,7 +4,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @NoArgsConstructor
@@ -15,7 +14,7 @@ public class EstablecimientoAdminDTO {
     private String nombre;
     private String productorLider;
     private String departamento;
-    private LocalDate fechaAlta;
+    private LocalDateTime fechaAlta;
 
     private Long cantidadActividadesPublicadas;
     private Long cantidadReservasHistorico;

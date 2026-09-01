@@ -31,6 +31,9 @@ public class Establecimiento extends BaseEntity {
     @Column(nullable = false, length = 11)
     private String cuit;
 
+    @Column(nullable = false)
+    private LocalDateTime fechaHoraAlta;
+
     private LocalDateTime fechaHoraBaja;
 
     @Column(nullable = false, length = 2000)
