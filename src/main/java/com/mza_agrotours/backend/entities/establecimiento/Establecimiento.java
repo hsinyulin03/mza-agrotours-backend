@@ -71,4 +71,19 @@ public class Establecimiento extends BaseEntity {
     @OneToOne
     @JoinColumn(name = "estado_actual_id")
     private EstablecimientoEstado estadoActual;
+
+    public void cambiarEstado(EstadoEstablecimiento estado, String motivo, LocalDateTime tiempoCambio) {
+        this.estados.stream()
+                .filter(tramo -> tramo.getFechaFin() == null)
+                .forEach(tramo -> tramo.setFechaFin(tiempoCambio));
+
+        EstablecimientoEstado nuevoTramo = new EstablecimientoEstado();
+        nuevoTramo.setFechaInicio(tiempoCambio);
+        nuevoTramo.setMotivo(motivo);
+        nuevoTramo.setEstadoEstablecimiento(estado);
+        nuevoTramo.setFechaFin(null);
+
+        this.estados.add(nuevoTramo);
+        this.estadoActual = nuevoTramo;
+    }
 }
