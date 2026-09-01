@@ -64,4 +64,16 @@ public class AdministradorSistemasController {
     public ResponseEntity<ApiResponse<List<EstablecimientoAdminDTO>>> obtenerEstablecimientos() {
         return ResponseEntity.ok(ApiResponse.ok(this.administradorSistemasService.obtenerEstablecimientos()));
     }
+
+    @PostMapping("/establecimientos/{establecimientoId}/suspension")
+    public ResponseEntity<ApiResponse<EstablecimientoAdminDTO>> suspenderEstablecimiento(
+            @PathVariable UUID establecimientoId,
+            @Valid @RequestBody EstablecimientoSuspenderReq establecimientoSuspenderReq) {
+        return ResponseEntity.ok(ApiResponse.ok(this.administradorSistemasService.suspenderEstablecimiento(establecimientoId, establecimientoSuspenderReq)));
+    }
+
+    @DeleteMapping("/establecimientos/{establecimientoId}/suspension")
+    public ResponseEntity<ApiResponse<EstablecimientoAdminDTO>> levantarSuspension(@PathVariable UUID establecimientoId) {
+        return ResponseEntity.ok(ApiResponse.ok(this.administradorSistemasService.reactivarEstablecimiento(establecimientoId)));
+    }
 }
