@@ -97,4 +97,11 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
             "and a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
             "group by a.establecimiento.id")
     List<ConteoPorEstablecimientoDTO> countPublicadasByEstablecimientoIds(@Param("ids") Set<UUID> establecimientoIds);
+
+    @Query("SELECT a FROM Actividad a " +
+            "WHERE a.id = :actividadId " +
+            "AND a.fechaHoraBaja IS NULL " +
+            "AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
+            "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO")
+    Optional<Actividad> findByIdVigenteConEstablecimientoActivo(@Param("actividadId") UUID actividadId);
 }

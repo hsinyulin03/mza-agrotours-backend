@@ -13,10 +13,7 @@ import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
 import com.mza_agrotours.backend.enums.Dia;
 import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
-import com.mza_agrotours.backend.exceptions.DatoInvalidoException;
-import com.mza_agrotours.backend.exceptions.EstablecimientoNotFoundException;
-import com.mza_agrotours.backend.exceptions.ResourceNotFoundException;
-import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
+import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
@@ -77,6 +74,7 @@ public class ActividadService {
     //US-ACT-03 Alta de actividad
     @Transactional
     public DTOActividadAltaResponse altaActividad(UUID establecimientoId, DTOActividadAlta dto) {
+        validarEstablecimientoNoSuspendido(establecimientoId);
 
         //Primero hacemos las validaciones del negocio
         List<String> errores = actividadValidaciones.obtenerErroresValidacionActividad(establecimientoId, dto);
@@ -140,7 +138,8 @@ public class ActividadService {
     //US-ACT-02:  Consultar detalle de una actividad
     @Transactional(readOnly = true)
     public DTOActividadDetalleResponse obtenerDetallePorId(UUID idActividad) {
-        Actividad actividad = obtenerActividad(idActividad);
+        Actividad actividad = this.actividadRepository.findByIdVigenteConEstablecimientoActivo(idActividad)
+                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
         DTOActividadDetalleResponse response = actividadMapper.actividadToDTOActividadDetalle(actividad);
         response.setFotos(obtenerUrlsDeDescarga(response.getFotos()));
         return response;
@@ -222,6 +221,7 @@ public class ActividadService {
     //US-ACT-04: Modificar Actividad
     @Transactional
     public DTOActividadGetResponse modificarActividad(UUID idEstablecimiento, UUID idActividad, DTOActividadUpdate dto) {
+        validarEstablecimientoNoSuspendido(idEstablecimiento);
 
         Actividad actividad = obtenerActividad(idActividad);
 
@@ -701,6 +701,13 @@ public class ActividadService {
                 diaActividadReservaDTOList,
                 rangoEtarioReservaDTOList,
                 parametrosService.getInstance().getDiasMinReembolso());
+    }
+
+    void validarEstablecimientoNoSuspendido(UUID establecimientoId) {
+        if (this.establecimientoRepository.establecimientoSuspendido(establecimientoId)) {
+            throw new AppException(EstablecimientoError.ESTABLECIMIENTO_SUSPENDIDO);
+        }
+
     }
 }
 
