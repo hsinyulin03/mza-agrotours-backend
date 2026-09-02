@@ -159,6 +159,7 @@ public class AdministradorSistemasService {
                 .establecimientoListToEstablecimientoAdminDTOList(establecimientos, conteosPorEstablecimientoAdminDTO);
     }
 
+    @Transactional
     public EstablecimientoAdminDTO suspenderEstablecimiento(
             UUID establecimientoId,
             EstablecimientoSuspenderReq establecimientoSuspenderReq,
@@ -180,6 +181,7 @@ public class AdministradorSistemasService {
         return this.administradorSistemasMapper.establecimientoToEstablecimientoAdminDTO(establecimiento);
     }
 
+    @Transactional
     public EstablecimientoAdminDTO reactivarEstablecimiento(UUID establecimientoId, String emailEjecutor) {
         Establecimiento establecimientoSuspendido = this.establecimientoRepository
                 .findByIdAndFechaHoraBajaIsNull(establecimientoId)
