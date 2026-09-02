@@ -29,6 +29,12 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
 """)
     List<Establecimiento> obtenerEstablecimientosActivos();
 
+    @Query("SELECT e FROM Establecimiento e " +
+            "WHERE e.id = :establecimientoId " +
+            "AND e.fechaHoraBaja IS NULL " +
+            "AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO")
+    Optional<Establecimiento> obtenerEstablecimientoActivoById(@Param("establecimientoId") UUID establecimientoId);
+
     List<Establecimiento> findByFechaHoraBajaIsNull();
 
     Optional<Establecimiento> findByIdAndFechaHoraBajaIsNull(UUID id);
@@ -43,5 +49,10 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
     boolean esTitularVigente(@Param("email") String email,
                              @Param("establecimientoId") UUID establecimientoId);
 
+    @Query("SELECT COUNT(e) > 0 FROM Establecimiento e " +
+            "WHERE e.id = :establecimientoId " +
+            "AND e.fechaHoraBaja IS NULL " +
+            "AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.SUSPENDIDO")
+    boolean establecimientoSuspendido(@Param("establecimientoId") UUID establecimientoId);
 
 }
