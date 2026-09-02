@@ -41,6 +41,7 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
             "LEFT JOIN a.cultivos c " +
             "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
             "AND a.fechaHoraBaja IS NULL " +
+            "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO " +
             "AND (:departamentoId IS NULL OR a.establecimiento.departamento.id = :departamentoId) " +
             "AND (:cultivosIds IS NULL OR c.id IN :cultivosIds )")
     List<Actividad> explorarActividadesPublicadas(@Param("cultivosIds") List <UUID> cultivosIds,
