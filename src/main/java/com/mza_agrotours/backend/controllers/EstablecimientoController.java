@@ -67,6 +67,11 @@ public class EstablecimientoController {
         List<DTOFiltroCultivoEstablecimiento> filtros = establecimientoService.obtenerFiltroCultivos();
         return ResponseEntity.ok(ApiResponse.ok(filtros));
     }
+    @GetMapping("/filtros/departamentos")
+    public ResponseEntity<ApiResponse<List<DTOFiltroDepartamentoEstablecimiento>>> obtenerFiltroDepartamentos() {
+        List<DTOFiltroDepartamentoEstablecimiento> filtros = establecimientoService.obtenerFiltroDepartamentos();
+        return ResponseEntity.ok(ApiResponse.ok(filtros));
+    }
     /*
     //  US-EST-02 Consultar establecimiento
     @GetMapping("/{id}/detalle")

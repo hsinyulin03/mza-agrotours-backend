@@ -133,6 +133,9 @@ public class EstablecimientoService  {
         return establecimientoRepository.obtenerFiltroCultivos();
     }
 
+    public List<DTOFiltroDepartamentoEstablecimiento> obtenerFiltroDepartamentos() {
+        return establecimientoRepository.obtenerFiltroDepartamentos();
+    }
 
    //// US-EST-02 consulta de un establecimiento (vista pública / visitante)
     public DTODetalleEstablecimientoVisitantes obtenerDetalleEstablecimientoVisitante(UUID id) {

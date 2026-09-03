@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.repositories;
 
 import com.mza_agrotours.backend.dtos.establecimiento.DTOFiltroCultivoEstablecimiento;
+import com.mza_agrotours.backend.dtos.establecimiento.DTOFiltroDepartamentoEstablecimiento;
 import com.mza_agrotours.backend.dtos.reservas.EstablecimientoPorActividad;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import org.springframework.data.domain.Page;
@@ -89,5 +90,15 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
     ORDER BY c.nombre
     """)
     List<DTOFiltroCultivoEstablecimiento> obtenerFiltroCultivos();
+    @Query("""
+    SELECT new com.mza_agrotours.backend.dtos.establecimiento.DTOFiltroDepartamentoEstablecimiento(d.id, d.nombre, COUNT(DISTINCT e))
+    FROM Establecimiento e
+    JOIN e.departamento d
+    WHERE e.fechaHoraBaja IS NULL
+    AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
+    GROUP BY d.id, d.nombre
+    ORDER BY d.nombre ASC
+    """)
+    List<DTOFiltroDepartamentoEstablecimiento> obtenerFiltroDepartamentos();
 
 }
