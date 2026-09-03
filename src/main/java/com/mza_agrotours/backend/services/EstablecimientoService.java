@@ -20,6 +20,8 @@ import com.mza_agrotours.backend.repositories.EstadoEstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -110,22 +112,21 @@ public class EstablecimientoService  {
         return response;
     }
     //// US-EST-01 consulta de establecimientos (vista pública / visitante)
-    public List<DTOCatalogoEstablecimientoVisitante> consultarEstablecimientosVisitantes(UUID cultivoId) {
-        if (cultivoId != null) {
-            validarCultivoExiste(cultivoId);
-        }
+    public Page<DTOCatalogoEstablecimientoVisitante> consultarEstablecimientosVisitantes(List<UUID> cultivoIds, UUID departamentoId, Pageable pageable) {
 
-        List<Establecimiento> establecimientos = establecimientoRepository.obtenerEstablecimientosActivos(cultivoId);
+        List<UUID> cultivosId = (cultivoIds == null || cultivoIds.isEmpty()) ? null : cultivoIds;
 
-        return establecimientos.stream()
-                .map(establecimiento -> {
-                    DTOCatalogoEstablecimientoVisitante dto = establecimientoMapper.establecimientoToDtoConsultarEstableciminetoS(establecimiento);
-                    dto.setCultivos(obtenerCultivosConActividadPublicada(establecimiento));
-                    dto.setDptoEstablecimiento(establecimientoMapper.departamentoToDto(establecimiento.getDepartamento()));
-                    dto.setCantidadActividades(contarActividadesPublicadas(establecimiento));
-                    return dto;
-                })
-                .toList();
+        Page<Establecimiento> establecimientosPage = establecimientoRepository
+                .obtenerEstablecimientosActivos(cultivosId, departamentoId, pageable);
+
+        return establecimientosPage.map(establecimiento -> {
+            DTOCatalogoEstablecimientoVisitante dto = establecimientoMapper
+                    .establecimientoToDtoConsultarEstableciminetoS(establecimiento);
+            dto.setCultivos(obtenerCultivosConActividadPublicada(establecimiento));
+            dto.setDptoEstablecimiento(establecimientoMapper.departamentoToDto(establecimiento.getDepartamento()));
+            dto.setCantidadActividades(contarActividadesPublicadas(establecimiento));
+            return dto;
+        });
     }
 
     public List<DTOFiltroCultivoEstablecimiento> obtenerFiltroCultivos() {
@@ -144,12 +145,6 @@ public class EstablecimientoService  {
     /**
      * METODOS AUXILIARES
      */
-    private void validarCultivoExiste(UUID cultivoId) {
-        boolean existe = tipoCultivoRepository.findByIdAndFechaHoraBajaIsNull(cultivoId).isPresent();
-        if (!existe) {
-            throw new EntityNotFoundException("No se encuentra el tipo de cultivo indicado");
-        }
-    }
     // ALTA ESTABLECIMIENTO
     private void validarCuitDisponible(String cuit) {
         if (cuit != null && establecimientoRepository.existsByCuit(cuit)) {
