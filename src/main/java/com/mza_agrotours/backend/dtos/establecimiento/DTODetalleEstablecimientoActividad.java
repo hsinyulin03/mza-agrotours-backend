@@ -12,7 +12,7 @@ public class DTODetalleEstablecimientoActividad {
 
     private String nombre;
 
-    private List<String> cultivos;
+    private List<DTOCultivoEstablecimientoResponse> cultivos;
 
     private BigDecimal precioDesde;
 

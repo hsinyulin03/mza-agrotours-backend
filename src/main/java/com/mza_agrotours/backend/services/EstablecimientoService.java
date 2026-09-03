@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.dtos.establecimiento.*;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
+import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.establecimiento.EstablecimientoEstado;
@@ -14,7 +15,6 @@ import com.mza_agrotours.backend.exceptions.EntityNotFoundException;
 import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
 import com.mza_agrotours.backend.mappers.EstablecimientoMapper;
 import com.mza_agrotours.backend.repositories.DepartamentoRepository;
-import com.mza_agrotours.backend.repositories.EstablecimientoEstadoRepository;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.EstadoEstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
@@ -22,8 +22,11 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
+
+
 
 @Service
 public class EstablecimientoService  {
@@ -31,16 +34,11 @@ public class EstablecimientoService  {
     private EstablecimientoRepository establecimientoRepository;
 
     @Autowired
-    private EstablecimientoEstadoRepository establecimientoEstadoRepository;
-
-    @Autowired
     private EstadoEstablecimientoRepository estadoEstablecimientoRepository;
 
     @Autowired
     private DepartamentoRepository departamentoRepository;
 
-//    @Autowired
-//    private ProductorRepository productorRepository;
     @Autowired
     private TipoCultivoRepository tipoCultivoRepository;
     @Autowired
@@ -111,7 +109,7 @@ public class EstablecimientoService  {
         response.setMensaje("Establecimiento dado de baja exitosamente.");
         return response;
     }
-    // CONSULTAR ESTABLECIMIENTOS (listado de visitantes)
+    //// US-EST-01 consulta de establecimientos (vista pública / visitante)
     public List<DTOCatalogoEstablecimientoVisitante> consultarEstablecimientosVisitantes(UUID cultivoId) {
         if (cultivoId != null) {
             validarCultivoExiste(cultivoId);
@@ -122,7 +120,7 @@ public class EstablecimientoService  {
         return establecimientos.stream()
                 .map(establecimiento -> {
                     DTOCatalogoEstablecimientoVisitante dto = establecimientoMapper.establecimientoToDtoConsultarEstableciminetoS(establecimiento);
-                    dto.setCultivos(obtenerCultivosDelEstablecimiento(establecimiento));
+                    dto.setCultivos(obtenerCultivosConActividadPublicada(establecimiento));
                     dto.setDptoEstablecimiento(establecimientoMapper.departamentoToDto(establecimiento.getDepartamento()));
                     dto.setCantidadActividades(contarActividadesPublicadas(establecimiento));
                     return dto;
@@ -135,11 +133,11 @@ public class EstablecimientoService  {
     }
 
 
-   /* // DETALLE ESTABLECIMIENTO (vista pública / visitante)
+   //// US-EST-02 consulta de un establecimiento (vista pública / visitante)
     public DTODetalleEstablecimientoVisitantes obtenerDetalleEstablecimientoVisitante(UUID id) {
         Establecimiento establecimiento = obtenerEstablecimiento(id);
         return mapearADetalleVisitante(establecimiento);
-    }*/
+    }
 
 
 
@@ -202,8 +200,23 @@ public class EstablecimientoService  {
         dto.setCultivos(obtenerCultivosDelEstablecimiento(establecimiento));
         return dto;
     }
+    private List<DTOCultivoEstablecimientoResponse> obtenerCultivosDelEstablecimiento(Establecimiento establecimiento) {
+        if (establecimiento == null || establecimiento.getTiposCultivos() == null) {
+            return List.of();
+        }
 
-    private List<DTOCultivoEstablecimientoResponse> obtenerCultivosDelEstablecimiento(
+        return establecimiento.getTiposCultivos().stream()
+                .filter(cultivo -> cultivo.getFechaHoraBaja() == null)
+                .map(cultivo -> {
+                    DTOCultivoEstablecimientoResponse dto = new DTOCultivoEstablecimientoResponse();
+                    dto.setId(cultivo.getId());
+                    dto.setNombre(cultivo.getNombre());
+                    return dto;
+                })
+                .toList();
+    }
+
+    private List<DTOCultivoEstablecimientoResponse> obtenerCultivosConActividadPublicada(
             Establecimiento establecimiento) {
         Map<UUID, TipoCultivo> cultivosUnicos = new LinkedHashMap<>();
 
@@ -222,6 +235,7 @@ public class EstablecimientoService  {
                 })
                 .toList();
     }
+
     private List<String> obtenerNombresCultivosActivos(Establecimiento establecimiento) {
         return establecimiento.getTiposCultivos().stream()
                 .filter(cultivo -> cultivo.getFechaHoraBaja() == null)
@@ -248,12 +262,11 @@ public class EstablecimientoService  {
             throw new ValidacionNegocioException("No se puede dar de baja el establecimiento porque posee actividades publicadas");
         }
     }
-   /* // DETALLE ESTABLECIMIENTO
+    // DETALLE ESTABLECIMIENTO
     private DTODetalleEstablecimientoVisitantes mapearADetalleVisitante(Establecimiento establecimiento) {
         DTODetalleEstablecimientoVisitantes dto =
                 establecimientoMapper.establecimientoToDtoDetalleVisitantes(establecimiento);
-
-        dto.setCultivos(obtenerNombresCultivosActivos(establecimiento));
+        dto.setCultivos(obtenerCultivosConActividadPublicada(establecimiento));
         dto.setActividades(obtenerActividadesPublicadasDetalle(establecimiento));
 
         return dto;
@@ -264,35 +277,40 @@ public class EstablecimientoService  {
                 .filter(this::esActividadPublicada)
                 .map(this::mapearAActividadDetalle)
                 .toList();
-    }*/
-/*
+    }
+
     private DTODetalleEstablecimientoActividad mapearAActividadDetalle(Actividad actividad) {
         DTODetalleEstablecimientoActividad dto = establecimientoMapper.actividadToDtoDetalle(actividad);
 
-        // TODO: cultivos de la actividad
-        List<DTOCultivoResponse> cultivosAsociados = actividad.getCultivos().stream()
-                .map(c -> new DTOCultivoResponse(c.getId(), c.getNombre()))
-                .collect(Collectors.toList());
-
-        private BigDecimal obtenerPrecioBaseVigente(Actividad actividad) {
-
-            if (actividad.getActividadRangoEtarios() == null) {
-                return null;
-            }
-
-            return actividad.getActividadRangoEtarios().stream()
-                    .filter(ActividadRangoEtario::isEsTarifaBase)
-                    .filter(r -> (r.getFechaHoraBaja() == null))
-                    .map(ActividadRangoEtario::getPrecio)
-                    .findFirst()
-                    .orElse(null);
-        }
+        // Cultivos asociados a la actividad
+        List<DTOCultivoEstablecimientoResponse> cultivosAsociados = (actividad.getCultivos() == null)
+                ? List.of()
+                : actividad.getCultivos().stream()
+                  .map(c -> new DTOCultivoEstablecimientoResponse(c.getId(), c.getNombre()))
+                  .toList();
+        dto.setCultivos(cultivosAsociados);
+        // Obtener precio base vigente
+        BigDecimal precioBase = obtenerPrecioBaseVigente(actividad);
+        dto.setPrecioDesde(precioBase);
 
         // TODO: implementar cálculo real del promedio de Calificacion.puntuacion
-       // dto.setPuntuacion(calcularCalificacionPromedio(actividad));
+        // dto.setPuntuacion(calcularCalificacionPromedio(actividad));
 
         return dto;
     }
-*/
 
+    private BigDecimal obtenerPrecioBaseVigente(Actividad actividad) {
+        if (actividad == null || actividad.getActividadRangoEtarios() == null) {
+            return null;
+        }
+
+        return actividad.getActividadRangoEtarios().stream()
+                .filter(ActividadRangoEtario::isEsTarifaBase)
+                .filter(r -> r.getFechaHoraBaja() == null)
+                .map(ActividadRangoEtario::getPrecio)
+                .findFirst()
+                .orElse(null);
+    }
 }
+
+
