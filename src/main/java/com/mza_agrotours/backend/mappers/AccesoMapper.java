@@ -22,6 +22,7 @@ public interface AccesoMapper {
     @Mapping(target = "tipoPermiso", source = "rol.tipoPermiso.nombre")
     @Mapping(target = "establecimientoNombre", source = "rol.establecimiento.nombre")
     @Mapping(target = "establecimientoId", source = "rol.establecimiento.id")
+    @Mapping(target = "establecimientoEstado", source = "rol.establecimiento.estadoActual.estadoEstablecimiento.nombre")
     AccesoDTO  rolToAccesoDTO(Rol rol);
 
     default String permisoToString(Permiso permiso) {
