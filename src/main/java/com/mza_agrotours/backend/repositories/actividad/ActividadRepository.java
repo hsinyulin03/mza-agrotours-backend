@@ -27,7 +27,7 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
     Optional<Actividad> findByIdAndFechaHoraBajaIsNull(UUID id);
 
     @Query("SELECT a FROM Actividad a WHERE a.establecimiento.id = :establecimientoId " +
-            "AND (:busqueda IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', :busqueda, '%'))) " +
+            "AND (CAST(:busqueda AS string) IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) " +
             "AND (:estado IS NULL OR a.estado.nombre = :estado)")
     List<Actividad> findByFiltrosDinamicos(
             @Param("establecimientoId") UUID establecimientoId,
