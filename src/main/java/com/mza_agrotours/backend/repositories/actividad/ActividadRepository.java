@@ -29,7 +29,7 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
     Optional<Actividad> findByIdAndFechaHoraBajaIsNull(UUID id);
 
     @Query("SELECT a FROM Actividad a WHERE a.establecimiento.id = :establecimientoId " +
-            "AND (:busqueda IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', :busqueda, '%'))) " +
+            "AND (CAST(:busqueda AS string) IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) " +
             "AND (:estado IS NULL OR a.estado.nombre = :estado)")
     List<Actividad> findByFiltrosDinamicos(
             @Param("establecimientoId") UUID establecimientoId,
@@ -104,4 +104,14 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
             "AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
             "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO")
     Optional<Actividad> findByIdVigenteConEstablecimientoActivo(@Param("actividadId") UUID actividadId);
+
+    @Query("""
+        SELECT COUNT(DISTINCT a) FROM Actividad a
+        JOIN a.cultivos tc
+        WHERE tc.id = :tipoCultivoId
+        AND a.fechaHoraBaja IS NULL
+        AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO
+        """)
+    long contarActividadesPublicadasPorCultivo(@Param("tipoCultivoId") UUID tipoCultivoId);
+
 }

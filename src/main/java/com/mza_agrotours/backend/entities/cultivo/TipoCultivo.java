@@ -31,6 +31,9 @@ public class TipoCultivo extends BaseEntity {
     @Column(name = "beneficio", length = 100)
     private List<String> beneficios = new ArrayList<>();
 
+    @Column(nullable = false, length = 30)
+    private String porcionReferencia;
+
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "tipo_cultivo_id")
     private List<InformacionNutricional> informacionNutricional = new ArrayList<>();
