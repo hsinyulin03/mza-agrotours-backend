@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.exceptions.pago;
 
+import com.mercadopago.exceptions.MPApiException;
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

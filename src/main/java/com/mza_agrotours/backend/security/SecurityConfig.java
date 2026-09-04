@@ -35,9 +35,16 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml"
+                        ).permitAll()
                         .requestMatchers("/administradores-sistemas/").hasAuthority(PermisoNombre.LEER_ADMIN.name())
                         .requestMatchers("/administradores-sistemas/**").hasAuthority(PermisoNombre.GESTIONAR_ADMIN.name())
                         .requestMatchers("/usuario/**").authenticated()
+                        .requestMatchers("/reserva/**").authenticated()
                         .anyRequest().authenticated())
                 .addFilterBefore(firebaseTokenFilter, UsernamePasswordAuthenticationFilter.class);
 

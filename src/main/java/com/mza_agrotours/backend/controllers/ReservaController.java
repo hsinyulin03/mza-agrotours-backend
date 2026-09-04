@@ -55,4 +55,13 @@ public class ReservaController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/cancelarPago/{preferenceId}")
+    public ResponseEntity<ApiResponse<?>> cancelarPago(
+            @PathVariable String preferenceId,
+            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
+    ) {
+        String email = usuarioAuthDetails.getEmail();
+        service.handleCancelarPago(preferenceId, email);
+        return ResponseEntity.ok(ApiResponse.ok(null));
+    }
 }

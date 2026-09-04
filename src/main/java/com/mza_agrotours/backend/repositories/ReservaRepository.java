@@ -44,5 +44,16 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "WHERE r.visitante.id = :visitanteId")
     List<Reserva> findByVisitanteId(@Param("visitanteId") UUID visitante);
 
+    @Query("SELECT DISTINCT r FROM Reserva r " +
+            "LEFT JOIN FETCH r.estados " +
+            "JOIN r.estadoActual estado " +
+            "WHERE estado.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE")
+    List<Reserva> findReservasPendientes(@Param("currTime") LocalDateTime currTime);
+
     boolean existsByActividadIdAndEstadoActualEstadoReservaNombreIn(UUID actividadId, List<EstadoReservaNombre> estados);
+
+    @Query("SELECT r FROM Reserva r " +
+            "JOIN FETCH r.pago p " +
+            "WHERE p.idPagoExterno = :idPagoExterno ")
+    Optional<Reserva> findByPagoWithIdPagoExterno(@Param("idPagoExterno") String idPagoExterno);
 }

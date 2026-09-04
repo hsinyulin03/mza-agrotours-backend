@@ -1,5 +1,15 @@
 package com.mza_agrotours.backend.services;
 
+import com.mercadopago.client.merchantorder.MerchantOrderClient;
+import com.mercadopago.client.preference.PreferenceClient;
+import com.mercadopago.client.preference.PreferenceRequest;
+import com.mercadopago.exceptions.MPApiException;
+import com.mercadopago.exceptions.MPException;
+import com.mercadopago.net.MPElementsResourcesPage;
+import com.mercadopago.net.MPSearchRequest;
+import com.mercadopago.resources.merchantorder.MerchantOrder;
+import com.mercadopago.resources.merchantorder.MerchantOrderPayment;
+import com.mercadopago.resources.preference.Preference;
 import com.mza_agrotours.backend.dtos.reservas.*;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
 import com.mza_agrotours.backend.entities.TipoIdentificacionNombre;
@@ -9,6 +19,8 @@ import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
+import com.mza_agrotours.backend.entities.pago.EstadoPago;
+import com.mza_agrotours.backend.entities.pago.PagoEstado;
 import com.mza_agrotours.backend.enums.EstadoPagoNombre;
 import com.mza_agrotours.backend.enums.MetodoPago;
 import com.mza_agrotours.backend.entities.pago.Pago;
@@ -24,6 +36,7 @@ import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadDiaNotFound;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
+import com.mza_agrotours.backend.exceptions.pago.EstadoPagoNotFoundException;
 import com.mza_agrotours.backend.exceptions.reservas.ActividadFullException;
 import com.mza_agrotours.backend.exceptions.reservas.EstadoReservaNotFoundException;
 import com.mza_agrotours.backend.exceptions.reservas.FechaNacimientoInvalidaException;
@@ -31,6 +44,8 @@ import com.mza_agrotours.backend.exceptions.reservas.ReservaNotFoundException;
 import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
 import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
+import com.mza_agrotours.backend.repositories.pago.EstadoPagoRepository;
+import com.mza_agrotours.backend.repositories.pago.PagoRepository;
 import com.mza_agrotours.backend.services.pago.EstrategiaPago;
 import com.mza_agrotours.backend.services.pago.EstrategiaPagoFactory;
 import org.slf4j.Logger;
@@ -42,6 +57,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -64,10 +81,11 @@ public class ReservaService {
     private final ActividadRespository actividadRepository;
     private final ParametrosService parametrosService;
     private final TipoIdentificacionRepository tipoIdentificacionRepository;
+    private final EstadoPagoRepository estadoPagoRepository;
     private final EstrategiaPagoFactory estrategiaPagoFactory;
     private final ReservaService self;
 
-    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, EstablecimientoRepository establecimientoRepository, ActividadRespository actividadRepository, ParametrosService parametrosService, UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstrategiaPagoFactory estrategiaPagoFactory, @Lazy ReservaService self) {
+    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, EstablecimientoRepository establecimientoRepository, ActividadRespository actividadRepository, ParametrosService parametrosService, UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstadoPagoRepository estadoPagoRepository, EstrategiaPagoFactory estrategiaPagoFactory, @Lazy ReservaService self, PagoRepository pagoRepository) {
         this.reservaRepository = reservaRepository;
         this.reservaMapper = reservaMapper;
         this.establecimientoRepository = establecimientoRepository;
@@ -76,6 +94,7 @@ public class ReservaService {
         this.actividadRepository = actividadRepository;
         this.parametrosService = parametrosService;
         this.tipoIdentificacionRepository = tipoIdentificacionRepository;
+        this.estadoPagoRepository = estadoPagoRepository;
         this.estrategiaPagoFactory = estrategiaPagoFactory;
         this.self = self;
     }
@@ -258,13 +277,14 @@ public class ReservaService {
         List<Reserva> reservas = reservaRepository.findReservasExpiradas(ahora);
 
         EstadoReserva estadoReserva = reservaRepository.findEstadoReservaByEstadoReservaNombre(EXPIRADA)
-                .orElseThrow(() -> new EstadoReservaNotFoundException(EstadoReservaNombre.EXPIRADA));
+                .orElseThrow(() -> new EstadoReservaNotFoundException(EXPIRADA));
 
         List<String> idFallidas = new ArrayList<>();
 
         for (Reserva r : reservas){
             try{
-                self.expirarReservaIndividual(r, estadoReserva, ahora);
+                r.setFechaHoraExpiracion(null);
+                self.cambiarEstadoReservaYGuardar(r, estadoReserva, ahora);
             } catch (Exception e) {
                 idFallidas.add(r.getId().toString());
             }
@@ -275,12 +295,121 @@ public class ReservaService {
     }
 
     /**
-     * Expira una única reserva en su propia transacción, para que un fallo al guardar
-     * una reserva no revierta las expiraciones ya confirmadas de las demás.
+     * Cambia el estado de una única reserva y guarda en su propia transacción, para que un fallo al guardar
+     * una reserva no revierta cambios de otras ya confirmadas (expiraciones y pagadas).
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void expirarReservaIndividual(Reserva r, EstadoReserva estadoReserva, LocalDateTime ahora){
+    public void cambiarEstadoReservaYGuardar(Reserva r, EstadoReserva estadoReserva, LocalDateTime ahora){
         r.cambiarEstado(estadoReserva, ahora);
         reservaRepository.save(r);
+    }
+
+    @Transactional(readOnly = true)
+    public void pagarReservas(){
+        LocalDateTime ahora = LocalDateTime.now();
+        List<Reserva> reservas = reservaRepository.findReservasPendientes(ahora);
+        MerchantOrderClient merchantOrderClient = new MerchantOrderClient();
+
+        EstadoReserva estadoReserva = reservaRepository.findEstadoReservaByEstadoReservaNombre(PAGADA)
+                .orElseThrow(() -> new EstadoReservaNotFoundException(PAGADA));
+        EstadoPago estadoPago = estadoPagoRepository.findByNombre(EstadoPagoNombre.APROBADO)
+                .orElseThrow(() -> new EstadoPagoNotFoundException(EstadoPagoNombre.APROBADO));
+
+        List<String> idFallidas = new ArrayList<>(); // Array de las id de reserva que fallaron en pasarse a pagada
+        int pagosExitosos = 0; // Cantidad de pagos exitosos
+
+        for (Reserva r : reservas){
+            Pago pago = r.getPago();
+            String preferenceId = pago.getIdPagoExterno();
+
+            try{
+                // Creamos el tipo de búsqueda que queremos hacer: por preferenceId
+                MPSearchRequest searchRequest = MPSearchRequest.builder()
+                        .filters(Map.of("preference_id", preferenceId))
+                        .limit(10)  // Debería haber 1 MO por preference, puede haber más si paga lo mismo varias veces
+                        .offset(0)  // Buscamos el primero, sin offest
+                        .build();
+
+                MPElementsResourcesPage<MerchantOrder> resultado = merchantOrderClient.search(searchRequest);
+                if (resultado.getElements() == null ) continue; // Si no se encuentra merchant order significa que no hay pagos, skip
+                for (MerchantOrder mo: resultado.getElements()){
+                    List <MerchantOrderPayment> pagos = mo.getPayments();   // Buscamos la lista de pagos de la merchant order
+
+                    boolean reservaPagada = pagos.stream().anyMatch(p ->
+                            "approved".equals(p.getStatus())    // Buscar pago aprobado TODO - Buscamos el primer pago pero nunca comparamos que sea por el total. No veo por qué NO lo sería, pero es un punto débil
+                    );
+
+                    if (reservaPagada) {
+                        pago.cambiarEstado(estadoPago, ahora);  //Estado del pago
+
+                        r.setFechaHoraExpiracion(null);         // FHExpiración de la reserva
+                        self.cambiarEstadoReservaYGuardar(r, estadoReserva, ahora); // Estado de la reserva
+
+                        // Expírar la preference (para menor chance que se pague 2 veces)
+                        PreferenceClient client = new PreferenceClient();
+                        PreferenceRequest preferenceRequest = PreferenceRequest.builder()
+                                .expirationDateTo(ahora.atZone(ZoneId.systemDefault()).toOffsetDateTime())
+                                .build();
+                        client.update(preferenceId, preferenceRequest);
+
+                        pagosExitosos++; // Contador de reservas pagadas para el log
+                    }
+                }
+            } catch (MPApiException e) {
+                log.warn("Error de la API de MP consultando merchant orders para reserva {}: {}", r.getId(), e.getApiResponse().getContent());
+                idFallidas.add(r.getId().toString());
+            } catch (MPException e) {
+                log.warn("Error de red/SDK consultando merchant orders para reserva {}", r.getId(), e);
+                idFallidas.add(r.getId().toString());
+            }
+            catch (Exception e) {
+                log.warn("Error de backend checkeando reservas pagas {}", r.getId(), e);
+                idFallidas.add(r.getId().toString());
+            }
+        }
+
+        log.info("Se pagaron {}/{} reservas pendientes encontradas. Las reservas con cambio fallido fueron {}, con ids: {}",
+                pagosExitosos, reservas.size(), idFallidas.size(), idFallidas);
+    }
+
+    @Transactional
+    public void handleCancelarPago(String preferenceId, String emailUsuario){
+        LocalDateTime ahora = LocalDateTime.now();
+
+        EstadoReserva estadoReserva = reservaRepository.findEstadoReservaByEstadoReservaNombre(EXPIRADA)
+                .orElseThrow(() -> new EstadoReservaNotFoundException(EXPIRADA));
+
+        // Gettear al usuario y visitante
+        Usuario usuario = usuarioRepository.findActiveByEmail(emailUsuario)
+                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+
+        Visitante visitante = visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
+        try{
+            Optional<Reserva> optReserva = reservaRepository.findByPagoWithIdPagoExterno(preferenceId);
+            if (optReserva.isEmpty()) {
+                throw new ReservaNotFoundException();
+            }
+            Reserva reserva = optReserva.get();
+
+            // Confirmar que sea del usuario
+            if (reserva.getVisitante() != visitante){
+                throw new ReservaNotFoundException();
+            }
+
+            // Cambiar estado reserva
+            reserva.setFechaHoraExpiracion(ahora);
+            cambiarEstadoReservaYGuardar(reserva, estadoReserva, ahora);
+
+            // Expírar la preference para liberar el cupo
+            PreferenceClient client = new PreferenceClient();
+            PreferenceRequest preferenceRequest = PreferenceRequest.builder()
+                    .expirationDateTo(ahora.atZone(ZoneId.systemDefault()).toOffsetDateTime())
+                    .build();
+            client.update(preferenceId, preferenceRequest);
+
+            reservaRepository.save(reserva);
+        } catch (Exception e) {
+            log.info("Hubo una reserva cuyo pago no pudo ser cancelado. Quedará hasta expirar sola.");
+        }
     }
 }

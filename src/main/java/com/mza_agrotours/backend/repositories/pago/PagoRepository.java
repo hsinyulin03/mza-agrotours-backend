@@ -15,4 +15,6 @@ public interface PagoRepository extends BaseEntityRepository<Pago, UUID> {
     @Query("SELECT ep FROM EstadoPago ep " +
             "WHERE ep.nombre = :estadoPagoNombre")
     Optional<EstadoPago> findEstadoPagoByEstadoPagoNombre(@Param("estadoPagoNombre") EstadoPagoNombre estadoPagoNombre);
+
+    Optional<Pago> findByIdPagoExterno(String idPagoExterno);
 }

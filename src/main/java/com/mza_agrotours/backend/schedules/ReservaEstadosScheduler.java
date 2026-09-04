@@ -18,4 +18,9 @@ public class ReservaEstadosScheduler {
     public void checkReservasExpiradas(){
         reservaService.expirarReservas();
     }
+
+    @Scheduled(fixedDelay = 60L, timeUnit = TimeUnit.SECONDS)
+    public void checkReservasPagadas(){
+        reservaService.pagarReservas();
+    }
 }
