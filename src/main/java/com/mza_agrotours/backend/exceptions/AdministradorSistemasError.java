@@ -23,7 +23,19 @@ public enum AdministradorSistemasError implements ErrorCode {
             "No se puede mutar el estado de un administrador líder"),
     AUTO_GESTION_PROHIBIDA("AS.autoGestion",
             HttpStatus.FORBIDDEN,
-            "No se puede gestionar el propio rol de administrador")
+            "No se puede gestionar el propio rol de administrador"),
+    ESTABLECIMIENTO_NOT_FOUND("AS.establecimientoNotFound",
+            HttpStatus.NOT_FOUND,
+            "No se encontró el establecimiento"),
+    ESTABLECIMIENTO_NO_ACTIVO("AS.establecimientoNoActivo",
+            HttpStatus.CONFLICT,
+            "El establecimiento no se encuentra activo"),
+    ESTABLECIMIENTO_NO_SUSPENDIDO("AS.establecimientoNoSuspendido",
+            HttpStatus.CONFLICT,
+            "El establecimiento no se encuentra suspendido"),
+    ESTADO_ESTABLECIMIENTO_NO_CONFIGURADO("AS.estadoEstablecimientoNoConfigurado",
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "El estado de establecimiento solicitado no se encuentra configurado")
     ;
     private final String code;
     private final HttpStatus httpStatus;

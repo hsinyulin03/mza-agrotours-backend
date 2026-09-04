@@ -76,6 +76,9 @@ public class EstablecimientoService  {
         nuevoEstablecimiento.getEstados().add(estadoInicial);
         nuevoEstablecimiento.setEstadoActual(estadoInicial);
 
+        LocalDateTime fechaHoraAlta = LocalDateTime.now();
+        nuevoEstablecimiento.setFechaHoraAlta(fechaHoraAlta);
+
         return establecimientoRepository.save(nuevoEstablecimiento);
     }
 
@@ -161,7 +164,8 @@ public class EstablecimientoService  {
     }
     // DETALLE ESTABLECIMIENTO (vista pública / visitante)
     public DTODetalleEstablecimientoVisitantes obtenerDetalleEstablecimientoVisitante(UUID id) {
-        Establecimiento establecimiento = obtenerEstablecimiento(id);
+        Establecimiento establecimiento = this.establecimientoRepository.obtenerEstablecimientoActivoById(id)
+                .orElseThrow(() -> new EntityNotFoundException("No se encuentra el establecimiento indicado"));
         return mapearADetalleVisitante(establecimiento);
     }
 
