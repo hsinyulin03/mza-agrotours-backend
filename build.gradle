@@ -35,7 +35,9 @@ dependencies {
 	annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
-	testImplementation 'junit:junit:4.13.2'
+	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+	testImplementation 'org.testcontainers:junit-jupiter'
+	testImplementation 'org.testcontainers:postgresql'
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
@@ -44,6 +46,13 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	environment 'SPRING_PROFILES_ACTIVE', 'test'
+	// The JDK resolves this machine's zone to the legacy alias "America/Buenos_Aires",
+	// which pgjdbc sends to the server and postgres:16 rejects. Matches docker-compose.dev.yml.
+	systemProperty 'user.timezone', 'America/Argentina/Buenos_Aires'
+	testLogging {
+		events "passed"
+	}
 	finalizedBy tasks.named('jacocoTestReport')
 }
 
