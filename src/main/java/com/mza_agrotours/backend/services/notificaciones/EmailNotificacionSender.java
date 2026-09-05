@@ -16,7 +16,7 @@ public class EmailNotificacionSender implements CanalNotificacionSender {
     private final JavaMailSender mailSender;
     private final String remitente;
 
-    EmailNotificacionSender(JavaMailSender mailSender,
+    public EmailNotificacionSender(JavaMailSender mailSender,
                             @Value("${notificaciones.email.remitente}") String remitente) {
         this.mailSender = mailSender;
         this.remitente = remitente;
