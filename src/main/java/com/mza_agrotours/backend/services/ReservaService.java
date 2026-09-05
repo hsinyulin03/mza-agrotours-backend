@@ -394,7 +394,7 @@ public class ReservaService {
 
             // Cambiar estado reserva
             reserva.setFechaHoraExpiracion(ahora);
-            cambiarEstadoReservaYGuardar(reserva, estadoReserva, ahora);
+            self.cambiarEstadoReservaYGuardar(reserva, estadoReserva, ahora);
 
             // Expírar la preference para liberar el cupo
             PreferenceClient client = new PreferenceClient();
