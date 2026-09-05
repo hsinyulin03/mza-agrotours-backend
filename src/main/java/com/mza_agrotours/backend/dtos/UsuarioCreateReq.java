@@ -16,8 +16,8 @@ public class UsuarioCreateReq extends UsuarioBaseReq {
     @NotBlank(message = "La contraseña es obligatoria")
     @Size(min = 8, message = "La contraseña debe tener al menos 8 caracteres")
     @Pattern(
-            regexp = "^(?=.*[^a-zA-Z0-9\\s])\\S+$",
-            message = "La contraseña debe contener al menos un carácter especial y no puede contener espacios"
+            regexp = "^(?=.*[^a-zA-Z0-9\\s]).+$",
+            message = "La contraseña debe contener al menos un carácter especial"
     )
     private String password;
 }
