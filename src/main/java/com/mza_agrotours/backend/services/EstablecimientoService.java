@@ -47,7 +47,7 @@ public class EstablecimientoService  {
     private EstablecimientoMapper establecimientoMapper;
 // ALTA ESTABLECIMIENTO
     @Transactional
-    public DTODatosEstablecimiento altaEstablecimiento(DTOEstablecimientoAlta dto){
+    public DTODatosEstablecimiento altaAuxEstablecimiento(DTOEstablecimientoAlta dto){
         validarCuitDisponible(dto.getCuit());
 
         Departamento departamento = obtenerDepartamento(dto.getDepartamentoId());
