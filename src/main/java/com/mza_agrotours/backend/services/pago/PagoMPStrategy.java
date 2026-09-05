@@ -104,7 +104,6 @@ public class PagoMPStrategy implements EstrategiaPago{
             Preference preference = client.create(preferenceRequest);
 
             // Ahora creamos el pago en estado PENDIENTE
-
             LocalDateTime ahora = LocalDateTime.now();
             Pago pago = new Pago();
 
@@ -118,7 +117,8 @@ public class PagoMPStrategy implements EstrategiaPago{
 
             pago.cambiarEstado(estadoPendiente, ahora);
 
-            reserva.setSubTotalComisionTransaccion(BigDecimal.valueOf(0));
+            // Info del pago
+            reserva.setSubTotalComisionTransaccion(BigDecimal.valueOf(0)); // TODO fee nuestra y del marketplace
             reserva.setSubTotalComisionPropia(
                     reserva.getTotalReserva().multiply(
                             BigDecimal.valueOf(parametrosService.getInstance().getPorcentajeComision())

@@ -45,6 +45,7 @@ public class SecurityConfig {
                         .requestMatchers("/administradores-sistemas/**").hasAuthority(PermisoNombre.GESTIONAR_ADMIN.name())
                         .requestMatchers("/usuario/**").authenticated()
                         .requestMatchers("/reserva/**").authenticated()
+                        .requestMatchers("/actividades/*").authenticated()
                         .anyRequest().authenticated())
                 .addFilterBefore(firebaseTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
