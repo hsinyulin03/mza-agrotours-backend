@@ -1,6 +1,6 @@
 package com.mza_agrotours.backend.exceptions.reservas;
 
-import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
+import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 
 public class EstadoReservaNotFoundException extends RuntimeException {
     public EstadoReservaNotFoundException(String message) {

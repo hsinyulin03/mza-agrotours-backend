@@ -1,7 +1,7 @@
 package com.mza_agrotours.backend.repositories.actividad;
 
 import com.mza_agrotours.backend.dtos.actividad.DTOFiltro;
-import com.mza_agrotours.backend.dtos.reservas.DiaActividadReservaDTO;
+import com.mza_agrotours.backend.dtos.actividad.DiaActividadReservaDTO;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.repositories.BaseEntityRepository;
@@ -52,11 +52,11 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
             "WHERE ad.id = :uuid")
     Optional<Actividad> getActividadByDiaActividadId(@Param("uuid") UUID uuidDiaActividad);
 
-    @Query("SELECT NEW com.mza_agrotours.backend.dtos.reservas.DiaActividadReservaDTO(" +
+    @Query("SELECT NEW com.mza_agrotours.backend.dtos.actividad.DiaActividadReservaDTO(" +
             "CAST(ad.id AS string), ad.cuposMax, CAST(COUNT(rd) as int), ad.fechaHoraInicio, ad.fechaHoraFin) " +
             "FROM Actividad a JOIN a.actividadesDias ad " +
             "LEFT JOIN Reserva r ON  r.actividadDia = ad " +
-            "AND r.estadoActual.estadoReserva.nombre IN (com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.PENDIENTE, com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre.PAGADA) " +
+            "AND r.estadoActual.estadoReserva.nombre IN (com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE, com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA) " +
             "LEFT JOIN r.reservaDetalles rd " +
             "WHERE a.id = :uuid " +
             "AND ad.estadoActual.estado.nombre IN (com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.ACTIVA,com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.REPROGRAMADA)" +
@@ -96,5 +96,4 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
         AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO
         """)
     long contarActividadesPublicadasPorCultivo(@Param("tipoCultivoId") UUID tipoCultivoId);
-
 }

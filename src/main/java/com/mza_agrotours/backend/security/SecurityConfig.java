@@ -71,9 +71,22 @@ public class SecurityConfig {
                         //Permisos
                         .requestMatchers( "/permisos/grupos-permisos/admin").hasAuthority(PermisoCodigo.LEER_ADMIN.name())
                         .requestMatchers("/permisos/grupos-permisos/productor").authenticated()
+
                         //Actividades
                         .requestMatchers("/actividades/*/reservar").authenticated()
                         .requestMatchers("/actividades/**").permitAll()
+
+                        //Reserva
+                        .requestMatchers("/reserva/**").authenticated()
+
+                        //Docs
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml"
+                        ).permitAll()
+
                         .anyRequest().authenticated())
                 .addFilterBefore(firebaseTokenFilter, UsernamePasswordAuthenticationFilter.class);
 

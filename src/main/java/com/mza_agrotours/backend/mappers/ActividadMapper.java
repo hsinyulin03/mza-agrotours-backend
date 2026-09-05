@@ -1,7 +1,7 @@
 package com.mza_agrotours.backend.mappers;
 
 import com.mza_agrotours.backend.dtos.actividad.*;
-import com.mza_agrotours.backend.dtos.reservas.RangoEtarioReservaDTO;
+import com.mza_agrotours.backend.dtos.actividad.RangoEtarioReservaDTO;
 import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import org.mapstruct.AfterMapping;
