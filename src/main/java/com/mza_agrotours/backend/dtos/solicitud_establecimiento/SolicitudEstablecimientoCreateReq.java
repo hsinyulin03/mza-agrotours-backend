@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.dtos.solicitud_establecimiento;
 
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadRequest;
 import com.mza_agrotours.backend.dtos.archivo.PresignedUrlRequest;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -27,6 +28,10 @@ public class SolicitudEstablecimientoCreateReq {
     @NotNull
     @Size(min = 1, max = 11)
     private String cuit;
+
+    @NotBlank
+    @Size(min = 1, max = 2000)
+    private String descripcion;
 
     @NotNull
     @Size(min = 1, max = 200)

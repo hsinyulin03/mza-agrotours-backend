@@ -33,6 +33,9 @@ public class Usuario extends BaseEntity {
     @Column(nullable = false)
     private String telefono;
 
+    @Column(nullable = false)
+    private LocalDateTime fechaHoraAlta;
+
     private LocalDateTime fechaHoraBaja;
 
     @Column(nullable = false)

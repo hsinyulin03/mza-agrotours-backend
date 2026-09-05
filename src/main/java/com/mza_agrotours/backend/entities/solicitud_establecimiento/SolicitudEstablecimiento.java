@@ -4,6 +4,7 @@ import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.BaseEntity;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.Usuario;
+import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -34,8 +35,8 @@ public class SolicitudEstablecimiento extends BaseEntity {
     @Column(nullable = false, length = 11)
     private String cuit;
 
-    //@Column(nullable = false, length = 2000)
-    //private String descripcionEstablecimiento;
+    @Column(nullable = false, length = 2000)
+    private String descripcionEstablecimiento;
 
     @Column(nullable = false, length = 200)
     private String domicilioLegal;
@@ -61,6 +62,9 @@ public class SolicitudEstablecimiento extends BaseEntity {
 
     @OneToOne
     private SolicitudEstablecimientoEstado estadoActual;
+
+    @OneToOne
+    private Establecimiento establecimientoCreado;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Archivo> pruebas = new ArrayList<>();

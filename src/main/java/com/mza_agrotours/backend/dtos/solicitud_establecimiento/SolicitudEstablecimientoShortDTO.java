@@ -1,23 +1,21 @@
 package com.mza_agrotours.backend.dtos.solicitud_establecimiento;
 
-import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolicitudEstablecimientoNombre;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
-
+/**
+ * DTO para la lista de solicitud de establecimiento
+ * solicitada por un administrador de sistemas autorizado.
+ */
 @NoArgsConstructor
-@AllArgsConstructor
 @Getter
 @Setter
 public class SolicitudEstablecimientoShortDTO {
     private String id;
     private String nombreEstablecimiento;
-    private String razonSocial;
-    private String domicilioLegal;
-    private String cuit;
-    private LocalDateTime fechaHoraAlta;
-    private EstadoSolicitudEstablecimientoNombre estado;
+    private String fechaHoraAlta;
+    private String estado;
+    private String departamento;
+    private String nombreSolicitante;
 }

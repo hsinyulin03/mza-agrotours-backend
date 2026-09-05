@@ -14,7 +14,10 @@ public class DTOListadoActividadVisitanteResponse {
         private String nombre;
         private BigDecimal precioRegular;
         private List<DTOCultivoResponse> cultivos;
+        private DTOFotosResponse fotoPortada;
+        private String nombreEstablecimiento;
+        private String nombreDepartamento;
 
-        //TODO: Valoraciones, imagenes,  cant de reseñas , nombre del establecimeinto y departamentos
+        //TODO: Valoraciones,  cant de reseñas
 
 }

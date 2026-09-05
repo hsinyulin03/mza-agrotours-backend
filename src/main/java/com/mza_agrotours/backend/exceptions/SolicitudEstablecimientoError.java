@@ -18,7 +18,8 @@ public enum SolicitudEstablecimientoError implements ErrorCode{
             "Ya existe un establecimiento vigente con ese CUIT"),
     SOLICITUD_ESTABLECIMIENTO_ALREADY_EXISTS("SE.SEAlreadyExists",
             HttpStatus.FORBIDDEN,
-    "Ya existe una solicitud de este establecimiento");
+    "Ya existe una solicitud de este establecimiento"),
+    ESTADO_INVALIDO("SE.InvalidState", HttpStatus.BAD_REQUEST, "El estado enviado es inválido");
 
     private final String code;
     private final HttpStatus httpStatus;

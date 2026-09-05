@@ -13,4 +13,5 @@ public class SolicitudEstablecimientoEstadoDTO {
     private String estado;
     private String fecha;
     private String observaciones;
+    private String revisor;
 }

@@ -9,7 +9,6 @@ import com.mercadopago.net.MPElementsResourcesPage;
 import com.mercadopago.net.MPSearchRequest;
 import com.mercadopago.resources.merchantorder.MerchantOrder;
 import com.mercadopago.resources.merchantorder.MerchantOrderPayment;
-import com.mercadopago.resources.preference.Preference;
 import com.mza_agrotours.backend.dtos.reservas.*;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
 import com.mza_agrotours.backend.entities.TipoIdentificacionNombre;
@@ -20,7 +19,6 @@ import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.pago.EstadoPago;
-import com.mza_agrotours.backend.entities.pago.PagoEstado;
 import com.mza_agrotours.backend.enums.EstadoPagoNombre;
 import com.mza_agrotours.backend.enums.MetodoPago;
 import com.mza_agrotours.backend.entities.pago.Pago;
@@ -43,9 +41,8 @@ import com.mza_agrotours.backend.exceptions.reservas.FechaNacimientoInvalidaExce
 import com.mza_agrotours.backend.exceptions.reservas.ReservaNotFoundException;
 import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
 import com.mza_agrotours.backend.repositories.*;
-import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
 import com.mza_agrotours.backend.repositories.pago.EstadoPagoRepository;
-import com.mza_agrotours.backend.repositories.pago.PagoRepository;
+import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.services.pago.EstrategiaPago;
 import com.mza_agrotours.backend.services.pago.EstrategiaPagoFactory;
 import org.slf4j.Logger;
@@ -57,7 +54,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -78,14 +74,14 @@ public class ReservaService {
     private final EstablecimientoRepository establecimientoRepository;
     private final UsuarioRepository usuarioRepository;
     private final VisitanteRepository visitanteRepository;
-    private final ActividadRespository actividadRepository;
+    private final ActividadRepository actividadRepository;
     private final ParametrosService parametrosService;
     private final TipoIdentificacionRepository tipoIdentificacionRepository;
     private final EstadoPagoRepository estadoPagoRepository;
     private final EstrategiaPagoFactory estrategiaPagoFactory;
     private final ReservaService self;
 
-    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, EstablecimientoRepository establecimientoRepository, ActividadRespository actividadRepository, ParametrosService parametrosService, UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstadoPagoRepository estadoPagoRepository, EstrategiaPagoFactory estrategiaPagoFactory, @Lazy ReservaService self, PagoRepository pagoRepository) {
+    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, EstablecimientoRepository establecimientoRepository, ActividadRepository actividadRepository, ParametrosService parametrosService, UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstrategiaPagoFactory estrategiaPagoFactory, @Lazy ReservaService self, EstadoPagoRepository estadoPagoRepository) {
         this.reservaRepository = reservaRepository;
         this.reservaMapper = reservaMapper;
         this.establecimientoRepository = establecimientoRepository;

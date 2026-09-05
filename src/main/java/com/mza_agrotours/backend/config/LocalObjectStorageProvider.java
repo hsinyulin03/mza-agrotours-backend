@@ -21,4 +21,12 @@ public class LocalObjectStorageProvider implements ObjectStorageProvider {
 
         return new PresignedUrlResponse(uploadUrl, key);
     }
+
+    @Override
+    public String generateDownloadUrl(String key) {
+        return ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/object-storage/objects/{key}")
+                .buildAndExpand(key)
+                .toUriString();
+    }
 }

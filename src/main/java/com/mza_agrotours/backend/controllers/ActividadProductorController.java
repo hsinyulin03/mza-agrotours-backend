@@ -12,6 +12,7 @@ import jakarta.validation.constraints.Min;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -20,76 +21,79 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/actividades")
+@RequestMapping("/establecimientos/{establecimientoId}/actividades")
 @Validated
-public class ActividadController {
+public class ActividadProductorController {
 
     @Autowired
     private ActividadService servicio;
 
     // US-ACT-03: Dar de alta una actividad
     @PostMapping("/alta")
-    public ResponseEntity<?> crearActividadConDetalles(@Valid @RequestBody DTOActividadAlta dto) throws Exception {
-        //Está bien devolver un dto?
-        DTOActividadAltaResponse nuevaActividad = servicio.altaActividad(dto);
+    @PreAuthorize("@estAuth.tienePermiso(authentication, #establecimientoId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
+    public ResponseEntity<?> crearActividadConDetalles(@PathVariable UUID establecimientoId,
+                                                       @Valid @RequestBody DTOActividadAlta dto) throws Exception {
+        DTOActividadAltaResponse nuevaActividad = servicio.altaActividad(establecimientoId, dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(nuevaActividad));
     }
 
-    //US-ACT-02: Consultar detalle de una actividad
-    @GetMapping("/{id}")
-    public ResponseEntity<?> obtenerDetalleActividad(@PathVariable UUID id) throws Exception {
-
-        DTOActividadDetalleResponse detalle = servicio.obtenerDetallePorId(id);
-        return ResponseEntity.ok(ApiResponse.ok(detalle));
-    }
 
     //US-ACT-06: Listado de actividades de un establecimiento - Vista productor
     @GetMapping
+    @PreAuthorize("@estAuth.tienePermiso(authentication, #establecimientoId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
     //busqueda es lo que ingresa en el search bar y estado es para filtrar actividad por estado
-    public ResponseEntity<?> obtenerListadoProductor(@RequestParam(required = false) String busqueda,
+    public ResponseEntity<?> obtenerListadoProductor(@PathVariable UUID establecimientoId,
+                                                     @RequestParam(required = false) String busqueda,
                                                      @RequestParam(required = false) EstadoActividadNombre estado) throws Exception {
 
 
-        List<DTOActividadesResponse> listado = servicio.obtenerListadoActividades(busqueda, estado);
+        List<DTOActividadesResponse> listado = servicio.obtenerListadoActividades(establecimientoId, busqueda, estado);
         return ResponseEntity.ok(ApiResponse.ok(listado));
 
     }
 
     //US-ACT-07: Consultar todos los días disponibles para una actividad
-    @GetMapping("/{id}/dias")
+    @GetMapping("/{actividadId}/dias")
+    @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
     public ResponseEntity<?> obtenerCalendarioInteractvo(
-            @PathVariable UUID id,
+            @PathVariable UUID establecimientoId,
+            @PathVariable UUID actividadId,
             @RequestParam @Min(value = 1, message = "El mes debe ser mayor o igual a 1")
             @Max(value = 12, message = "El mes debe ser menor o igual a 12") int mes,
             @RequestParam int anio) throws Exception {
 
-        DTOCalendarioActividadDiaResponse detalle = servicio.obtenerDetalleCalendario(id, mes, anio);
+        DTOCalendarioActividadDiaResponse detalle = servicio.obtenerDetalleCalendario(actividadId, mes, anio);
         return ResponseEntity.ok(ApiResponse.ok(detalle));
 
     }
 
-    //US-ACT-12: Listado de actividades de la plataforma - vista del visitante
-    @GetMapping("/explorar")
-    public ResponseEntity<?> explorarActividades(@RequestParam(required = false) List<UUID> cultivosIds) throws Exception {
-        List<DTOListadoActividadVisitanteResponse> listado = servicio.explorarActividades(cultivosIds);
-        return ResponseEntity.ok(ApiResponse.ok(listado));
-    }
 
     //US-ACT-04: Modificar Actividad
-    @GetMapping("/edit/{idActividad}")
+    @GetMapping("/edit/{actividadId}")
+    @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
     public ResponseEntity<?> obtenerActividadPorId(
-            @PathVariable UUID idActividad) {
-        DTOActividadGetResponse response = servicio.obtenerActividadPorId(idActividad);
+            @PathVariable UUID establecimientoId,
+            @PathVariable UUID actividadId) {
+        DTOActividadGetResponse response = servicio.obtenerActividadPorId(actividadId);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     //US-ACT-04: Modificar Actividad
-    @PutMapping("/edit/{idActividad}")
+    @PutMapping("/edit/{actividadId}")
+    @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
     public ResponseEntity<?> modificarActividad(
-            @PathVariable UUID idActividad,
+            @PathVariable UUID establecimientoId,
+            @PathVariable UUID actividadId,
             @Valid @RequestBody DTOActividadUpdate dto) {
-        DTOActividadGetResponse res = servicio.modificarActividad(idActividad, dto);
+        DTOActividadGetResponse res = servicio.modificarActividad(establecimientoId, actividadId, dto);
         return ResponseEntity.ok(ApiResponse.ok(res));
+    }
+
+    @GetMapping("/estados")
+    @PreAuthorize("@estAuth.tienePermiso(authentication, #establecimientoId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
+    public ResponseEntity<?> obtenerFiltroEstadoActividad(@PathVariable UUID establecimientoId) {
+        List<DTOFiltro> estadosRes = servicio.obtenerFiltroEstadoActividad(establecimientoId);
+        return ResponseEntity.ok(ApiResponse.ok(estadosRes));
     }
 
     //US-RESE-01: Reservar actividad - Información para reservar
@@ -102,4 +106,5 @@ public class ActividadController {
         InfoParaReservarDTO infoParaReservar = servicio.getInfoParaReservar(id, email);
         return ResponseEntity.ok(ApiResponse.ok(infoParaReservar));
     }
+
 }

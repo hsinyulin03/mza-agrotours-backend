@@ -7,4 +7,6 @@ import com.mza_agrotours.backend.exceptions.ObjectStorageProviderException;
 public interface ObjectStorageProvider {
     PresignedUrlResponse generatePresignedUrl(
             PresignedUrlRequest request) throws ObjectStorageProviderException;
+
+    String generateDownloadUrl(String key);
 }

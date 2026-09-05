@@ -1,7 +1,9 @@
 plugins {
 	id 'java'
+	id 'jacoco'
 	id 'org.springframework.boot' version '3.5.16'
 	id 'io.spring.dependency-management' version '1.1.7'
+	id 'org.sonarqube' version '7.4.0.8496'
 }
 
 group = 'com.mza-agrotours'
@@ -46,4 +48,36 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	finalizedBy tasks.named('jacocoTestReport')
+}
+
+// Sonar reads coverage from the XML report, which is off by default.
+tasks.named('jacocoTestReport') {
+	dependsOn tasks.named('test')
+	reports {
+		xml.required = true
+		html.required = true
+	}
+}
+
+sonar {
+	properties {
+		property 'sonar.host.url', 'https://sonarcloud.io'
+		property 'sonar.projectKey', findProperty('sonarProjectKey') ?: 'hsinyulin03_mza-agrotours-backend'
+		property 'sonar.organization', findProperty('sonarOrganization') ?: 'hsinyulin03'
+		property 'sonar.projectName', 'mza-agrotours-backend'
+
+		// Generated sources (MapStruct impls, Lombok output) are not ours to fix.
+		property 'sonar.exclusions', 'build/generated/**'
+		// Data holders and framework glue: no branches worth covering.
+		property 'sonar.coverage.exclusions', [
+				'**/BackendApplication.java',
+				'**/config/**',
+				'**/dtos/**',
+				'**/entities/**',
+				'**/enums/**',
+				'**/mappers/**',
+				'**/repositories/**',
+		].join(',')
+	}
 }

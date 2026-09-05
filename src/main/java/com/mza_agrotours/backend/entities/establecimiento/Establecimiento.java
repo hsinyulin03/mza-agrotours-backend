@@ -2,13 +2,15 @@ package com.mza_agrotours.backend.entities.establecimiento;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
 import com.mza_agrotours.backend.entities.Departamento;
-import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
+import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
+import com.mza_agrotours.backend.entities.productor.Productor;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,17 +50,15 @@ public class Establecimiento extends BaseEntity {
     @JoinColumn(name = "departamento_id", nullable = false)
     private Departamento departamento;
 
-    @OneToMany(cascade = CascadeType.ALL)
-    @JoinColumn(name = "establecimiento_id")
+    @OneToMany(mappedBy = "establecimiento")
     private List<Actividad> actividades = new ArrayList<>();
 
     @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "establecimiento_id")
     private List<EstablecimientoEstado> estados = new ArrayList<>();
 
-//    @ManyToOne
-//    @JoinColumn(name = "productor_titular_id")
-//    private Productor titular;
+    @ManyToOne
+    private Productor titular;
 
     // Cultivos del establecimento
     @ManyToMany

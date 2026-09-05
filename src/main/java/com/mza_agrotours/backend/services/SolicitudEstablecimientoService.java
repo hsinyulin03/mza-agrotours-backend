@@ -1,13 +1,14 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.dtos.ObservacionSolicitudDTO;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
-import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateReq;
-import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoCreateResp;
-import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoDTO;
-import com.mza_agrotours.backend.dtos.solicitud_establecimiento.SolicitudEstablecimientoShortDTO;
+import com.mza_agrotours.backend.dtos.solicitud_establecimiento.*;
+import com.mza_agrotours.backend.entities.AdministradorSistemas;
 import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.Usuario;
+import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
+import com.mza_agrotours.backend.entities.productor.Productor;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolicitudEstablecimiento;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolicitudEstablecimientoNombre;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimiento;
@@ -35,6 +36,9 @@ public class SolicitudEstablecimientoService {
     private final EstablecimientoRepository establecimientoRepository;
     private final ArchivoService archivoService;
     private final ArchivoMapper archivoMapper;
+    private final AdministradorSistemasRepository administradorSistemasRepository;
+    private final ProductorService productorService;
+    private final EstablecimientoService establecimientoService;
 
     public SolicitudEstablecimientoService(SolicitudEstablecimientoRepository solicitudEstablecimientoRepository,
                                            SolicitudEstablecimientoMapper solicitudEstablecimientoMapper,
@@ -43,7 +47,10 @@ public class SolicitudEstablecimientoService {
                                            UsuarioRepository usuarioRepository,
                                            EstablecimientoRepository establecimientoRepository,
                                            ArchivoService archivoService,
-                                           ArchivoMapper archivoMapper) {
+                                           ArchivoMapper archivoMapper,
+                                           AdministradorSistemasRepository administradorSistemasRepository,
+                                           ProductorService productorService,
+                                           EstablecimientoService establecimientoService) {
         this.solicitudEstablecimientoRepository = solicitudEstablecimientoRepository;
         this.solicitudEstablecimientoMapper = solicitudEstablecimientoMapper;
         this.estadoSolicitudEstablecimientoRepository = estadoSolicitudEstablecimientoRepository;
@@ -52,13 +59,15 @@ public class SolicitudEstablecimientoService {
         this.establecimientoRepository = establecimientoRepository;
         this.archivoService = archivoService;
         this.archivoMapper = archivoMapper;
+        this.administradorSistemasRepository = administradorSistemasRepository;
+        this.productorService = productorService;
+        this.establecimientoService = establecimientoService;
     }
 
     @Transactional
     public SolicitudEstablecimientoCreateResp crearSolicitudEstablecimiento(
             SolicitudEstablecimientoCreateReq solicitudEstablecimientoCreateReq,
-            String emailUsuario)
-            throws Exception {
+            String emailUsuario) {
         // -1. Encontrar si existen establecimientos vigentes con el cuit de la solicitud
         if (establecimientoRepository.existsByCuitAndFechaHoraBajaIsNull(solicitudEstablecimientoCreateReq.getCuit())) {
             throw new AppException(SolicitudEstablecimientoError.ESTABLECIMIENTO_ALREADY_EXISTS);
@@ -124,9 +133,9 @@ public class SolicitudEstablecimientoService {
         return solicitudEstablecimientoCreateResp;
     }
 
-    public List<SolicitudEstablecimientoShortDTO> obtenerSolicitudesPorUsuario(String emailUsuario) {
+    public List<SolicitudEstablecimientoUserShotDTO> obtenerSolicitudesPorUsuario(String emailUsuario) {
         Usuario usuario = this.usuarioRepository.findActiveByEmail(emailUsuario)
-                .orElseThrow(() -> new UsuarioNotFound("No se pudo encontrar el usuario"));
+                .orElseThrow(UsuarioNotFound::new);
 
         List<SolicitudEstablecimiento> solicitudEstablecimientos = this.solicitudEstablecimientoRepository.findAllByUsuario(usuario);
 
@@ -136,12 +145,103 @@ public class SolicitudEstablecimientoService {
 
     public SolicitudEstablecimientoDTO obtenerSolicitudPorUsuario(String emailUsuario, String solicitudId) {
         Usuario usuario = this.usuarioRepository.findActiveByEmail(emailUsuario)
-                .orElseThrow(() -> new UsuarioNotFound("No se pudo encontrar el usuario"));
+                .orElseThrow(UsuarioNotFound::new);
 
         SolicitudEstablecimiento solicitudEstablecimiento = this.solicitudEstablecimientoRepository
                 .findByIdAndUsuario(UUID.fromString(solicitudId), usuario)
                 .orElseThrow(() -> new AppException(SolicitudEstablecimientoError.NOT_FOUND));
 
         return this.solicitudEstablecimientoMapper.solicitudEstablecimientoToDTO(solicitudEstablecimiento);
+    }
+
+    public List<SolicitudEstablecimientoShortDTO> obtenerTodasLasSolicitudes() {
+        List<SolicitudEstablecimiento> solicitudes = this.solicitudEstablecimientoRepository
+                .findAll();
+
+        return this.solicitudEstablecimientoMapper
+                .solicitudEstablecimientoToShortDTOs(solicitudes);
+    }
+
+    public SolicitudEstAdminDetalleDTO obtenerSolicitudPorId(String id) {
+        SolicitudEstablecimiento solicitudEstablecimiento = this.solicitudEstablecimientoRepository
+                .findById(UUID.fromString(id))
+                .orElseThrow(() -> new AppException(SolicitudEstablecimientoError.NOT_FOUND));
+        return this.solicitudEstablecimientoMapper.solicitudEstablecimientoToDTOAdmin(solicitudEstablecimiento);
+    }
+
+    @Transactional
+    public SolicitudEstablecimientoDTO observarSolicitud(String emailObservador,
+                                                        String solicitudId,
+                                                        ObservacionSolicitudDTO observacionSolicitudDTO) {
+        SolicitudEstablecimiento solicitudEstablecimiento = this.solicitudEstablecimientoRepository
+                .findByIdAndPendiente(UUID.fromString(solicitudId))
+                .orElseThrow(() -> new AppException(SolicitudEstablecimientoError.NOT_FOUND));
+
+        EstadoSolicitudEstablecimiento estadoSolicitud = this
+                .obtenerEstadoSolicitudByNombre(observacionSolicitudDTO.getEstado());
+
+
+        SolicitudEstablecimientoEstado nuevaSolicitudEstadoEstablecimiento = new SolicitudEstablecimientoEstado();
+        nuevaSolicitudEstadoEstablecimiento.setFechaHoraRevision(LocalDateTime.now());
+        nuevaSolicitudEstadoEstablecimiento.setRazonRevision(observacionSolicitudDTO.getObservacion());
+        nuevaSolicitudEstadoEstablecimiento.setEstadoSolicitudEstablecimiento(estadoSolicitud);
+        nuevaSolicitudEstadoEstablecimiento.setRevisor(this.obtenerAdminObservador(emailObservador));
+
+        solicitudEstablecimiento.getEstados().add(nuevaSolicitudEstadoEstablecimiento);
+        solicitudEstablecimiento.setEstadoActual(nuevaSolicitudEstadoEstablecimiento);
+
+
+        if (solicitudFueValidada(solicitudEstablecimiento)) {
+            if (existeEstablecimientoVigenteByCuit(solicitudEstablecimiento.getCuit())) {
+                throw new AppException(SolicitudEstablecimientoError.ESTABLECIMIENTO_ALREADY_EXISTS);
+            }
+
+            Establecimiento nuevoEstablecimiento = this.establecimientoService.crearEstablecimiento(
+                    this.solicitudEstablecimientoMapper
+                            .solicitudEstablecimientoToEstablecimiento(solicitudEstablecimiento),
+                    "Validacion de solicitud de establecimiento");
+
+            Productor productorLider = this.productorService
+                    .crearProductorLider(solicitudEstablecimiento.getUsuario(), nuevoEstablecimiento);
+
+            nuevoEstablecimiento.setTitular(productorLider);
+            solicitudEstablecimiento.setEstablecimientoCreado(nuevoEstablecimiento);
+        }
+
+        solicitudEstablecimiento = this.solicitudEstablecimientoRepository.save(solicitudEstablecimiento);
+
+        return this.solicitudEstablecimientoMapper.solicitudEstablecimientoToDTO(solicitudEstablecimiento);
+    }
+
+    private EstadoSolicitudEstablecimiento obtenerEstadoSolicitudByNombre(String estadoNombre) {
+        try {
+            EstadoSolicitudEstablecimientoNombre estadoSolicitudEstablecimientoNombre = EstadoSolicitudEstablecimientoNombre
+                    .valueOf(estadoNombre.toUpperCase());
+            return this.estadoSolicitudEstablecimientoRepository.findByNombre(estadoSolicitudEstablecimientoNombre)
+                    .orElseThrow(() -> new EstadoSolicitudEstablecimientoNotFoundException(estadoSolicitudEstablecimientoNombre.toString()));
+        } catch (IllegalArgumentException e) {
+            throw new AppException(SolicitudEstablecimientoError.ESTADO_INVALIDO);
+        }
+    }
+
+    private AdministradorSistemas obtenerAdminObservador(String emailAdmin) {
+        Usuario usuarioAdmin = this.usuarioRepository
+                .findActiveByEmail(emailAdmin)
+                .orElseThrow(UsuarioNotFound::new);
+
+        return this.administradorSistemasRepository
+                .findByUsuarioAndFechaHoraBajaIsNull(usuarioAdmin)
+                .orElseThrow(() -> new AppException(AdministradorSistemasError.NOT_FOUND));
+    }
+
+    private boolean solicitudFueValidada(SolicitudEstablecimiento solicitudEstablecimiento) {
+        return solicitudEstablecimiento.getEstadoActual()
+                .getEstadoSolicitudEstablecimiento()
+                .getNombre()
+                .equals(EstadoSolicitudEstablecimientoNombre.VALIDADA);
+    }
+
+    private boolean existeEstablecimientoVigenteByCuit(String cuit) {
+        return establecimientoRepository.existsByCuitAndFechaHoraBajaIsNull(cuit);
     }
 }

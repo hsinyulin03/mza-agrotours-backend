@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.entities.solicitud_establecimiento;
 
+import com.mza_agrotours.backend.entities.AdministradorSistemas;
 import com.mza_agrotours.backend.entities.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -24,4 +25,7 @@ public class SolicitudEstablecimientoEstado extends BaseEntity {
 
     @ManyToOne(optional = false)
     private EstadoSolicitudEstablecimiento estadoSolicitudEstablecimiento;
+
+    @ManyToOne
+    private AdministradorSistemas revisor;
 }

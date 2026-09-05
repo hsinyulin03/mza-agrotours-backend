@@ -1,6 +1,9 @@
 package com.mza_agrotours.backend.mappers.reserva;
 
-import com.mza_agrotours.backend.dtos.reservas.*;
+import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDTO;
+import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDetalleDTO;
+import com.mza_agrotours.backend.dtos.reservas.ListarReservaDTO;
+import com.mza_agrotours.backend.dtos.reservas.RealizarReservaDetalleDTO;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;

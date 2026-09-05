@@ -7,6 +7,9 @@ import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.dtos.actividad.DiaActividadReservaDTO;
 import com.mza_agrotours.backend.dtos.actividad.InfoParaReservarDTO;
 import com.mza_agrotours.backend.dtos.actividad.RangoEtarioReservaDTO;
+import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
+import com.mza_agrotours.backend.entities.Archivo;
+import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
@@ -18,15 +21,15 @@ import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveExceptio
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
 import com.mza_agrotours.backend.mappers.ActividadMapper;
+import com.mza_agrotours.backend.mappers.ArchivoMapper;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.ReservaRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
 import com.mza_agrotours.backend.repositories.UsuarioRepository;
 import com.mza_agrotours.backend.repositories.VisitanteRepository;
-import com.mza_agrotours.backend.repositories.actividad.ActividadRespository;
+import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadDiaRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,9 +42,9 @@ import java.util.stream.Collectors;
 
 @Service
 public class ActividadService {
-
+    private final List<String> EXTENSIONES_VALIDAS = List.of("jpg", "jpeg", "png");
     @Autowired
-    private ActividadRespository actividadRepository;
+    private ActividadRepository actividadRepository;
 
     @Autowired
     private ActividadValidaciones actividadValidaciones;
@@ -73,12 +76,18 @@ public class ActividadService {
     @Autowired
     private VisitanteRepository visitanteRepository;
 
+    @Autowired
+    private ArchivoService archivoService;
+
+    @Autowired
+    private ArchivoMapper archivoMapper;
+
     //US-ACT-03 Alta de actividad
     @Transactional
-    public DTOActividadAltaResponse altaActividad(DTOActividadAlta dto) {
+    public DTOActividadAltaResponse altaActividad(UUID establecimientoId, DTOActividadAlta dto) {
 
         //Primero hacemos las validaciones del negocio
-        List<String> errores = actividadValidaciones.obtenerErroresValidacionActividad(dto);
+        List<String> errores = actividadValidaciones.obtenerErroresValidacionActividad(establecimientoId, dto);
 
         if (!errores.isEmpty()) {
             throw new ValidacionMultipleException(errores);
@@ -109,6 +118,18 @@ public class ActividadService {
         tarifas.forEach(actividad::addActividadRangoEtario);
         actividad.addLogAlta(logAltas);
         calendario.forEach(actividad::addActividadDia);
+        actividad.setEstablecimiento(establecimientoRepository.getReferenceById(establecimientoId));
+
+        List<ArchivoUploadResponse> urlsGeneradas = new ArrayList<>();
+
+        if (dto.getFotos() != null && !dto.getFotos().isEmpty()) {
+            // Pedimos las URLs firmadas
+            urlsGeneradas = archivoService.getSignedArchivos(dto.getFotos(), EXTENSIONES_VALIDAS);
+
+            List<Archivo> entidadesArchivo = this.archivoMapper.archivoUploadResponseListToArchivoList(urlsGeneradas);
+
+            entidadesArchivo.forEach(actividad::addFoto);
+        }
 
         // Persistir en la base de datos
         Actividad actividadGuardada = actividadRepository.save(actividad);
@@ -119,23 +140,24 @@ public class ActividadService {
         response.setIdActividad(actividadGuardada.getId());
         response.setMensaje("La actividad fue creada exitosamente.");
         response.setAdvertencias(advertencias);
+        response.setArchivoUploadResponses(urlsGeneradas);
 
         return response;
     }
 
     //US-ACT-02:  Consultar detalle de una actividad
     @Transactional(readOnly = true)
-    public DTOActividadDetalleResponse obtenerDetallePorId(UUID id) {
-        Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + id));
-        return actividadMapper.actividadToDTOActividadDetalle(actividad);
+    public DTOActividadDetalleResponse obtenerDetallePorId(UUID idActividad) {
+        Actividad actividad = obtenerActividad(idActividad);
+        DTOActividadDetalleResponse response = actividadMapper.actividadToDTOActividadDetalle(actividad);
+        response.setFotos(obtenerUrlsDeDescarga(response.getFotos()));
+        return response;
     }
 
     //US-ACT-06: Listado de actividades de un establecimiento - Vista productor
     @Transactional(readOnly = true)
-    public List<DTOActividadesResponse> obtenerListadoActividades(String busqueda, EstadoActividadNombre estado) {
-        // TODO- Se debe filtrar por establecimiento
-        List<Actividad> actividades = actividadRepository.findByFiltrosDinamicos(busqueda, estado);
+    public List<DTOActividadesResponse> obtenerListadoActividades(UUID establecimientoId, String busqueda, EstadoActividadNombre estado) {
+        List<Actividad> actividades = actividadRepository.findByFiltrosDinamicos(establecimientoId, busqueda, estado);
 
         return actividades.stream()
                 .map(actividadMapper::actividadToDTOActividades)
@@ -144,17 +166,16 @@ public class ActividadService {
 
     //US-ACT-07: Consultar todos los días disponibles para una actividad
     @Transactional(readOnly = true)
-    public DTOCalendarioActividadDiaResponse obtenerDetalleCalendario(UUID actividadId, int mes, int anio){
+    public DTOCalendarioActividadDiaResponse obtenerDetalleCalendario(UUID idActividad, int mes, int anio){
 
-        Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(actividadId)
-                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + actividadId));
+        Actividad actividad = obtenerActividad(idActividad);
         int anioActual = java.time.LocalDate.now().getYear();
 
         if (anio < anioActual) {
             throw new ValidacionNegocioException("El año no puede ser menor al año actual (" + anioActual + ")");
         }
 
-        LocalDateTime ultimaFechaConDisponibilidad = actividadRepository.findUltimaFechaByActividadId(actividadId)
+        LocalDateTime ultimaFechaConDisponibilidad = actividadRepository.findUltimaFechaByActividadId(idActividad)
                 .orElseThrow(() -> new ValidacionNegocioException("La actividad no tiene días programados"));
 
 
@@ -180,31 +201,39 @@ public class ActividadService {
 
     //US-ACT-12: Listado de actividades de la plataforma - vista del visitante
     @Transactional(readOnly = true)
-    public List<DTOListadoActividadVisitanteResponse> explorarActividades(List<UUID> cultivoIds) {
-        List<Actividad> actividades;
+    public List<DTOListadoActividadVisitanteResponse> explorarActividades(List<UUID> cultivoIds, UUID departamentoId) {
 
-        // TODO: Falta implementar filtro por departamento
         // TODO: Falta implementar paginación
 
-        if (cultivoIds == null || cultivoIds.isEmpty()) {
-            actividades = actividadRepository.explorarActividadesPublicadas();
-        }else {
-            actividades = actividadRepository.explorarActividadesPublicadas(cultivoIds);
-        }
+        List<UUID> cultivosId = (cultivoIds == null || cultivoIds.isEmpty()) ? null : cultivoIds;
+        List<Actividad> actividades = actividadRepository.explorarActividadesPublicadas(cultivosId, departamentoId);
 
-        return actividades.stream()
-                .map(actividadMapper::actividadToDTOListadoActividadVisitante)
-                .toList();
+        List<DTOListadoActividadVisitanteResponse> response = actividades.stream().map(actividad -> {
+
+            DTOListadoActividadVisitanteResponse dto = actividadMapper.actividadToDTOListadoActividadVisitante(actividad);
+
+            if (actividad.getFotos() != null && !actividad.getFotos().isEmpty()) {
+                Archivo primeraFoto = actividad.getFotos().get(0);
+                DTOFotosResponse fotoDto = new DTOFotosResponse();
+                fotoDto.setKey(primeraFoto.getKey());
+                fotoDto.setNombre(primeraFoto.getNombre());
+                fotoDto.setExtension(primeraFoto.getExtension());
+                fotoDto.setDownloadUrl(archivoService.getDownloadUrl(primeraFoto.getKey()));
+                dto.setFotoPortada(fotoDto);
+            }
+            return dto;
+        }).toList();
+
+        return response;
     }
 
     //US-ACT-04: Modificar Actividad
     @Transactional
-    public DTOActividadGetResponse modificarActividad(UUID idActividad, DTOActividadUpdate dto) {
+    public DTOActividadGetResponse modificarActividad(UUID idEstablecimiento, UUID idActividad, DTOActividadUpdate dto) {
 
-        Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(idActividad)
-                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
+        Actividad actividad = obtenerActividad(idActividad);
 
-        List<String> errores = actividadValidaciones.obtenerErroresValidacionModificacion(idActividad, dto);
+        List<String> errores = actividadValidaciones.obtenerErroresValidacionModificacion(idEstablecimiento, idActividad, dto);
 
         if (!errores.isEmpty()) {
             throw new ValidacionMultipleException(errores);
@@ -230,7 +259,7 @@ public class ActividadService {
                 .filter(r -> r.getFechaHoraBaja() == null)
                 .collect(Collectors.toList());
 
-        List <ActividadRangoEtario> nuevasTarifas = actualizarTarifas(dto.getTarifas(), activosActuales);
+        List<ActividadRangoEtario> nuevasTarifas = actualizarTarifas(dto.getTarifas(), activosActuales);
 
         nuevasTarifas.forEach(actividad::addActividadRangoEtario);
 
@@ -242,19 +271,72 @@ public class ActividadService {
         List<ActividadFAQ> nuevasFaqs = obtenerFaqs(dto.getFaqs());
         actividad.getFaqs().addAll(nuevasFaqs);
 
+        if (dto.getFotosExistentes() != null) {
+            actividad.getFotos().removeIf(foto -> !dto.getFotosExistentes().contains(foto.getKey()));
+        }
+
+        List<ArchivoUploadResponse> urlsGeneradas = new ArrayList<>();
+
+        if (dto.getFotosNuevas() != null && !dto.getFotosNuevas().isEmpty()) {
+            // Pasamos la lista de ArchivoUploadRequest al servicio para que nos dé las URLs de subida
+            urlsGeneradas = archivoService.getSignedArchivos(dto.getFotosNuevas(), EXTENSIONES_VALIDAS);
+            List<Archivo> entidadesArchivoNuevas = archivoMapper.archivoUploadResponseListToArchivoList(urlsGeneradas);
+            entidadesArchivoNuevas.forEach(actividad::addFoto);
+        }
+
         Actividad actividadGuardada = actividadRepository.save(actividad);
         DTOActividadGetResponse response = actividadMapper.actividadToDTOActividadGetResponse(actividadGuardada);
+
+        // Inyectamos la URL de DESCARGA (GET) a TODAS las fotos de la respuesta
+        response.setFotosGuardadas(obtenerUrlsDeDescarga(response.getFotosGuardadas()));
+
+        // Adjuntamos las URLs de SUBIDA (PUT) para que el front cargue las fotos nuevas
+        response.setFotosParaSubir(urlsGeneradas);
         List<String> advertencias = calcularHuecos(dto.getTarifas());
         response.setAdvertencias(advertencias);
+
         return response;
 
     }
     @Transactional(readOnly = true)
     public DTOActividadGetResponse obtenerActividadPorId(UUID idActividad) {
-        Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(idActividad)
-                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
+        Actividad actividad = obtenerActividad(idActividad);
+        DTOActividadGetResponse response = actividadMapper.actividadToDTOActividadGetResponse(actividad);
 
-        return actividadMapper.actividadToDTOActividadGetResponse(actividad);
+        response.setFotosGuardadas(obtenerUrlsDeDescarga(response.getFotosGuardadas()));
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public List<DTOFiltro> obtenerFiltroEstadoActividad(UUID idEstablecimiento) {
+
+        List<DTOFiltro> resultadosBD = actividadRepository.contarActividadesPorEstado(idEstablecimiento);
+
+        Map<String, Long> mapaCantidades = resultadosBD.stream()
+                .collect(Collectors.toMap(
+                        DTOFiltro::getValor,
+                        DTOFiltro::getCantidad
+                ));
+
+        return Arrays.stream(EstadoActividadNombre.values())
+                .map(estado -> {
+                    DTOFiltro dto = new DTOFiltro();
+                    dto.setNombre(estado.getNombre());  // nombre: "Borrador"
+                    dto.setValor(estado.name());   // valor: "BORRADOR"
+                    dto.setCantidad(mapaCantidades.getOrDefault(estado.name(), 0L));
+                    return dto;
+                })
+                .toList();
+
+    }
+    @Transactional(readOnly = true)
+    public List<DTOFiltro> obtenerFiltroDepartamentos() {
+        return actividadRepository.obtenerFiltroDepartamentos();
+    }
+
+    @Transactional(readOnly = true)
+    public List<DTOFiltro> obtenerFiltroCultivos() {
+        return actividadRepository.obtenerFiltroCultivos();
     }
 
     //Métodos auxiliares
@@ -571,6 +653,18 @@ public class ActividadService {
                 idActividad,
                 estadosQueBloquean
         );
+    }
+    private List<DTOFotosResponse> obtenerUrlsDeDescarga(List<DTOFotosResponse> fotos) {
+        if (fotos != null && !fotos.isEmpty()) {
+            fotos.forEach(foto ->
+                    foto.setDownloadUrl(archivoService.getDownloadUrl(foto.getKey()))
+            );
+        }
+        return fotos; // Retornamos la misma lista, pero con las URLs cargadas
+    }
+    private Actividad obtenerActividad(UUID idActividad){
+        return actividadRepository.findByIdAndFechaHoraBajaIsNull(idActividad)
+                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
     }
 
 

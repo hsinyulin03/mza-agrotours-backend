@@ -29,4 +29,5 @@ public interface TipoCultivoRepository
     long contarCultivosConRecetaActiva();
 
 
+
 }
