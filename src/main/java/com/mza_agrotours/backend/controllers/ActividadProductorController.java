@@ -1,9 +1,7 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
-import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
 import com.mza_agrotours.backend.dtos.actividad.*;
-import com.mza_agrotours.backend.dtos.actividad.InfoParaReservarDTO;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.services.ActividadService;
 import jakarta.validation.Valid;
@@ -13,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -94,17 +91,6 @@ public class ActividadProductorController {
     public ResponseEntity<?> obtenerFiltroEstadoActividad(@PathVariable UUID establecimientoId) {
         List<DTOFiltro> estadosRes = servicio.obtenerFiltroEstadoActividad(establecimientoId);
         return ResponseEntity.ok(ApiResponse.ok(estadosRes));
-    }
-
-    //US-RESE-01: Reservar actividad - Información para reservar
-    @GetMapping("/{id}/reservar")
-    public ResponseEntity<ApiResponse<InfoParaReservarDTO>> infoParaReservar(
-            @PathVariable UUID id,
-            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
-    ){
-        String email = usuarioAuthDetails.getEmail();
-        InfoParaReservarDTO infoParaReservar = servicio.getInfoParaReservar(id, email);
-        return ResponseEntity.ok(ApiResponse.ok(infoParaReservar));
     }
 
 }
