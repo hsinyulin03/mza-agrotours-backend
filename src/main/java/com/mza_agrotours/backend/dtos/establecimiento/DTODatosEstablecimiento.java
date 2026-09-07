@@ -21,5 +21,5 @@ public class DTODatosEstablecimiento {
     //Operacion
     private String cvu;
     // Cultivos
-    private List<DTODatosEstablecimientoCultivos> cultivos;
+    private List<DTOCultivoEstablecimientoResponse> cultivos;
 }
