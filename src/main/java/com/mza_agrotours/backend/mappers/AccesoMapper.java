@@ -1,29 +1,40 @@
 package com.mza_agrotours.backend.mappers;
 
-import com.mza_agrotours.backend.dtos.AccesoDTO;
+import com.mza_agrotours.backend.dtos.acceso.AccesoDTO;
+import com.mza_agrotours.backend.dtos.acceso.AccesoEstablecimientoDTO;
 import com.mza_agrotours.backend.entities.roles_permisos.Permiso;
 import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface AccesoMapper {
     /**
-     * Mapea un rol a un AccesoDTO.
-     * 1. Mapea los permisos del rol a una lista de Strings.
-     * 2. Mapea el id del rol y el nombre del rol.
-     * 3. Mapea el tipo de permiso del rol.
-     * Ignora establecimientoNombre y establecimientoId.
+     * Mapea un rol a un AccesoDTO, con sus permisos y detalles del establecimiento si aplicasen.
+     * Tiene limitaciones para obtener información del Productor, si se precisa, se deberá obtener
+     * por repository fuera del mapper
      * @param rol
      * @return AccesoDTO sin los campos establecimientoNombre y establecimientoId mapeados.
      */
-    @Mapping(target = "rolId", source = "rol.id")
-    @Mapping(target = "rolNombre", source = "rol.nombre")
-    @Mapping(target = "tipoPermiso", source = "rol.tipoPermiso.nombre")
-    @Mapping(target = "establecimientoNombre", source = "rol.establecimiento.nombre")
-    @Mapping(target = "establecimientoId", source = "rol.establecimiento.id")
-    @Mapping(target = "establecimientoEstado", source = "rol.establecimiento.estadoActual.estadoEstablecimiento.nombre")
-    AccesoDTO  rolToAccesoDTO(Rol rol);
+    default AccesoDTO rolToAccesoDTO(Rol rol) {
+        AccesoDTO accesoDTO = new AccesoDTO();
+        accesoDTO.setRolId(rol.getId().toString());
+        accesoDTO.setRolNombre(rol.getNombre());
+        accesoDTO.setTipoPermiso(rol.getTipoPermiso().getNombre());
+        accesoDTO.setPermisos(rol.getPermisos().stream().map(this::permisoToString).toList());
+
+
+        if (rol.getEstablecimiento() == null) {
+            return accesoDTO;
+        }
+
+        AccesoEstablecimientoDTO accesoEstablecimientoDTO = new AccesoEstablecimientoDTO();
+        accesoEstablecimientoDTO.setId(rol.getEstablecimiento().getId().toString());
+        accesoEstablecimientoDTO.setNombre(rol.getEstablecimiento().getNombre());
+        accesoEstablecimientoDTO.setEstado(rol.getEstablecimiento().getEstadoActual().getEstadoEstablecimiento().getNombre().name());
+
+        accesoDTO.setEstablecimiento(accesoEstablecimientoDTO);
+        return accesoDTO;
+    }
 
     default String permisoToString(Permiso permiso) {
         return permiso.getCodigo().name();
