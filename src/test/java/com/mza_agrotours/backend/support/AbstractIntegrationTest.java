@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.support;
 
 import com.google.firebase.FirebaseApp;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -30,4 +31,7 @@ public abstract class AbstractIntegrationTest {
 
     @MockitoBean
     protected FirebaseApp firebaseApp;
+
+    @MockitoBean
+    protected JavaMailSender mailSender;
 }
