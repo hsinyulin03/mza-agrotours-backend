@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.repositories.actividad;
 
 import com.mza_agrotours.backend.dtos.actividad.DTOFiltro;
+import com.mza_agrotours.backend.dtos.administrador_sistemas.ConteoPorEstablecimientoDTO;
 import com.mza_agrotours.backend.dtos.reservas.DiaActividadReservaDTO;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Repository
@@ -39,6 +41,7 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
             "LEFT JOIN a.cultivos c " +
             "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
             "AND a.fechaHoraBaja IS NULL " +
+            "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO " +
             "AND (:departamentoId IS NULL OR a.establecimiento.departamento.id = :departamentoId) " +
             "AND (:cultivosIds IS NULL OR c.id IN :cultivosIds )")
     List<Actividad> explorarActividadesPublicadas(@Param("cultivosIds") List <UUID> cultivosIds,
@@ -87,6 +90,20 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
     List<DTOFiltro> obtenerFiltroCultivos();
 
     boolean existsByIdAndEstablecimientoId(UUID idActividad, UUID establecimientoId);
+
+    @Query("select new com.mza_agrotours.backend.dtos.administrador_sistemas.ConteoPorEstablecimientoDTO(a.establecimiento.id, count(a)) " +
+            "from Actividad a " +
+            "where a.establecimiento.id in :ids " +
+            "and a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
+            "group by a.establecimiento.id")
+    List<ConteoPorEstablecimientoDTO> countPublicadasByEstablecimientoIds(@Param("ids") Set<UUID> establecimientoIds);
+
+    @Query("SELECT a FROM Actividad a " +
+            "WHERE a.id = :actividadId " +
+            "AND a.fechaHoraBaja IS NULL " +
+            "AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
+            "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO")
+    Optional<Actividad> findByIdVigenteConEstablecimientoActivo(@Param("actividadId") UUID actividadId);
 
     @Query("""
         SELECT COUNT(DISTINCT a) FROM Actividad a

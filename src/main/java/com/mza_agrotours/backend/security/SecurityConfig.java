@@ -52,6 +52,10 @@ public class SecurityConfig {
                         .requestMatchers("/admin/roles").hasRole(ROL_ADMIN_LIDER)
                         .requestMatchers("/admin/roles/**").hasRole(ROL_ADMIN_LIDER)
 
+                        // Administrador de establecimientos
+                        .requestMatchers("/admin/establecimientos/**").hasAuthority(PermisoCodigo.LEER_ESTABLECIMIENTO.name())
+                        .requestMatchers("/admin/establecimientos").hasAuthority(PermisoCodigo.GESTIONAR_ESTABLECIMIENTO.name())
+
                         // Pais y departamento
                         .requestMatchers("/pais/**").permitAll()
                         .requestMatchers("/departamentos/**").permitAll()

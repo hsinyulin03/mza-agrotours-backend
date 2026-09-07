@@ -22,4 +22,5 @@ public class AccesoDTO {
     // Establecimiento data (optional)
     private String establecimientoNombre;
     private String establecimientoId;
+    private String establecimientoEstado;
 }
