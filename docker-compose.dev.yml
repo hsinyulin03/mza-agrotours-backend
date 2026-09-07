@@ -11,7 +11,21 @@ services:
       PGTZ: America/Argentina/Buenos_Aires
     volumes:
       - pgdata:/var/lib/postgresql/data
+
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    environment:
+      TZ: America/Argentina/Buenos_Aires
+      MP_MAX_MESSAGES: 500
+      MP_DATABASE: /data/mailpit.db
+    volumes:
+      - mailpitdata:/data
+
   # TODO: Añadir Redis al implementar módulo actividades
 
 volumes:
   pgdata:
+  mailpitdata:
