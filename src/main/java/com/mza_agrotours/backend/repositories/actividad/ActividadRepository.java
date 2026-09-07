@@ -97,4 +97,15 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
         """)
     long contarActividadesPublicadasPorCultivo(@Param("tipoCultivoId") UUID tipoCultivoId);
 
+
+    @Query("SELECT COUNT(a) > 0 FROM Actividad a JOIN a.cultivos c " +
+            "WHERE a.establecimiento.id = :establecimientoId " +
+            "AND c.id = :cultivoId " +
+            "AND a.fechaHoraBaja IS NULL " +
+            "AND a.id <> :idActividadActual " +
+            "AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO")
+    boolean existeOtraActividadVigenteConCultivo(
+            @Param("establecimientoId") UUID establecimientoId,
+            @Param("cultivoId") UUID cultivoId,
+            @Param("idActividadActual") UUID idActividadActual);
 }

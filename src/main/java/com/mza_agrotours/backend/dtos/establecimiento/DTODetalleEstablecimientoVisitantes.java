@@ -29,8 +29,8 @@ public class DTODetalleEstablecimientoVisitantes {
     private String telefono;
 
     private String ubicacion;
-// dto cultivos?
-    private List<String> cultivos;
+
+    private List<DTOCultivoEstablecimientoResponse> cultivos;
 
     private List<DTODetalleEstablecimientoActividad> actividades;
 }
