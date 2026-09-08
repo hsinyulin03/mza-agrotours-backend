@@ -59,6 +59,14 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
 
     @Query("SELECT COUNT(r) > 0 FROM Reserva r " +
             "WHERE r.visitante.id = :visitanteId " +
-            "AND r.estadoActual.estadoReserva.nombre = :estadoReservaNombre")
+            "AND r.estadoActual.estadoReserva.nombre = :estadoReservaNombre ")
     boolean tieneReservasEnEstadoByVisitanteId(UUID visitanteId, EstadoReservaNombre estadoReservaNombre);
+
+    @Query("SELECT r FROM Reserva r " +
+            "JOIN FETCH r.visitante v " +
+            "JOIN FETCH r.actividadDia ad " +
+            "WHERE v.id = :visitanteId " +
+            "AND ad.id = :adId " +
+            "AND r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE ")
+    Optional<Reserva> findByVisitanteIdAndActividadDiaId(@Param("visitanteId") UUID visitanteId, @Param("adId") UUID actividadDiaId);
 }

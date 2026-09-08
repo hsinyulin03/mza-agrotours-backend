@@ -170,6 +170,15 @@ public class ReservaService {
 
         Visitante visitante = visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
 
+        // Verificar si la reserva es duplicada (ya hay "Pendiente" de este Visitante para este ActividadDia). En tal caso expirar la vieja y seguir con la nueva
+        Optional<Reserva> reservaDuplicada = reservaRepository.findByVisitanteIdAndActividadDiaId(visitante.getId(), UUID.fromString(realizarReservaDTO.diaActividadId()));
+
+        log.info("Se buscó reserva duplicada sin problemas"); // NOTE borrar
+
+        reservaDuplicada.ifPresent(reserva -> liberarCupoReserva(reserva, reserva.getPago().getIdPagoExterno()));
+
+        log.info("Se encontró reserva duplicada? {}", reservaDuplicada.isPresent()); // NOTE borrar
+
         // Gettear la actividad, chequear que esté activa
         Actividad actividad = actividadRepository.getActividadByDiaActividadId(UUID.fromString(realizarReservaDTO.diaActividadId()))
                 .orElseThrow(ActividadNotFoundException::new);
@@ -370,40 +379,47 @@ public class ReservaService {
 
     @Transactional
     public void handleCancelarPago(String preferenceId, String emailUsuario){
-        LocalDateTime ahora = LocalDateTime.now();
-
-        EstadoReserva estadoReserva = reservaRepository.findEstadoReservaByEstadoReservaNombre(EXPIRADA)
-                .orElseThrow(() -> new EstadoReservaNotFoundException(EXPIRADA));
 
         // Gettear al usuario y visitante
         Usuario usuario = usuarioRepository.findActiveByEmail(emailUsuario)
                 .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
 
         Visitante visitante = visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
+        Optional<Reserva> optReserva = reservaRepository.findByPagoWithIdPagoExterno(preferenceId);
+        if (optReserva.isEmpty()) {
+            throw new ReservaNotFoundException();
+        }
+        Reserva reserva = optReserva.get();
+
+        // Confirmar que sea del usuario
+        if (reserva.getVisitante() != visitante){
+            throw new ReservaNotFoundException();
+        }
+        liberarCupoReserva(reserva, preferenceId);
+        reservaRepository.save(reserva);
+    }
+
+
+    // AUXILIARES
+
+
+    private void liberarCupoReserva(Reserva reserva, String preferenceId){
+        LocalDateTime ahora = LocalDateTime.now();
+
+        EstadoReserva estadoReserva = reservaRepository.findEstadoReservaByEstadoReservaNombre(EXPIRADA)
+                .orElseThrow(() -> new EstadoReservaNotFoundException(EXPIRADA));
+
+        // Cambiar estado reserva
+        reserva.setFechaHoraExpiracion(ahora);
+        self.cambiarEstadoReservaYGuardar(reserva, estadoReserva, ahora);
+
         try{
-            Optional<Reserva> optReserva = reservaRepository.findByPagoWithIdPagoExterno(preferenceId);
-            if (optReserva.isEmpty()) {
-                throw new ReservaNotFoundException();
-            }
-            Reserva reserva = optReserva.get();
-
-            // Confirmar que sea del usuario
-            if (reserva.getVisitante() != visitante){
-                throw new ReservaNotFoundException();
-            }
-
-            // Cambiar estado reserva
-            reserva.setFechaHoraExpiracion(ahora);
-            self.cambiarEstadoReservaYGuardar(reserva, estadoReserva, ahora);
-
             // Expírar la preference para liberar el cupo
             PreferenceClient client = new PreferenceClient();
             PreferenceRequest preferenceRequest = PreferenceRequest.builder()
                     .expirationDateTo(ahora.atZone(ZoneId.systemDefault()).toOffsetDateTime())
                     .build();
             client.update(preferenceId, preferenceRequest);
-
-            reservaRepository.save(reserva);
         } catch (Exception e) {
             log.info("Hubo una reserva cuyo pago no pudo ser cancelado. Quedará hasta expirar sola.");
         }
