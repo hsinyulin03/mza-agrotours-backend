@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.dtos.establecimiento;
 
 import com.mza_agrotours.backend.validation.NumeroTelefono;
+import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
@@ -16,6 +17,7 @@ public class DTOEstablecimientoAlta {
 
     @NotBlank(message = "El nombre es obligatorio")
     @Size(min = 1, max = 100, message = "El nombre debe tener entre 1 y 100 caracteres")
+    @SinCaracteresEspeciales
     private String nombre;
 
     @NotBlank(message = "La razón social es obligatoria")

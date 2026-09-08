@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.dtos.receta;
 
 
 import com.mza_agrotours.backend.enums.Dificultad;
+import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -13,6 +14,7 @@ public class DTORecetaAM {
 
     @NotBlank(message = "El nombre es requerido")
     @Size(max = 100, message = "Máximo 100 caracteres")
+    @SinCaracteresEspeciales
     private String nombre;
 
     @NotEmpty(message = "Agregá al menos un cultivo")

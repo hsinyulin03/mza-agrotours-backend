@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.dtos.tipoCultivo;
 
 import com.mza_agrotours.backend.enums.EstacionalidadNombre;
+import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -15,6 +16,7 @@ public class DTOTipoCultivoAM {
 
     @NotBlank(message = "El nombre es requerido")
     @Size(max = 60, message = "Máximo 60 caracteres")
+    @SinCaracteresEspeciales
     private String nombre;
 
     @NotBlank(message = "La descripción es requerida")

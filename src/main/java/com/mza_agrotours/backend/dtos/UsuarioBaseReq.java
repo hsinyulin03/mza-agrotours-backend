@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.dtos;
 
 import com.mza_agrotours.backend.validation.NumeroTelefono;
+import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -17,6 +18,7 @@ import java.time.LocalDate;
 public class UsuarioBaseReq {
     @NotNull
     @Size(min = 3, max = 20)
+    @SinCaracteresEspeciales
     private String nombre;
 
     @NotNull
