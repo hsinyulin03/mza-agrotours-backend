@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.dtos.establecimiento;
 
+import com.mza_agrotours.backend.validation.NumeroTelefono;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -14,6 +15,7 @@ public class DTOUpdEstablecimientoRequest {
     private String descripcion;
     // Contacto
     @NotBlank(message = "El teléfono es obligatorio")
+    @NumeroTelefono
     private String telefono;
 
     @NotBlank(message = "El email es obligatorio")

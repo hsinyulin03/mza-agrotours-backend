@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.dtos;
 
+import com.mza_agrotours.backend.validation.NumeroTelefono;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -29,7 +30,7 @@ public class UsuarioBaseReq {
     private String paisIso2;
 
     @NotBlank
-    @Size(min = 7, max = 15)
+    @NumeroTelefono
     private String telefono;
 
     @NotNull

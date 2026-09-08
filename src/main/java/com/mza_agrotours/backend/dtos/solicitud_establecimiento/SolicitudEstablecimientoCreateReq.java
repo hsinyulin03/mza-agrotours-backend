@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.dtos.solicitud_establecimiento;
 
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadRequest;
+import com.mza_agrotours.backend.validation.NumeroTelefono;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -40,7 +41,7 @@ public class SolicitudEstablecimientoCreateReq {
     private String departamento;
 
     @NotBlank
-    @Size(min = 7, max = 16)
+    @NumeroTelefono
     private String telefono;
 
     @NotNull
