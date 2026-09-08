@@ -125,4 +125,12 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
             @Param("establecimientoId") UUID establecimientoId,
             @Param("cultivoId") UUID cultivoId,
             @Param("idActividadActual") UUID idActividadActual);
+    @Query("""
+    SELECT DISTINCT a FROM Actividad a
+    JOIN a.cultivos c
+    WHERE c.id = :tipoCultivoId
+    AND a.fechaHoraBaja IS NULL
+    AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO
+    """)
+    List<Actividad> obtenerActividadesPublicadasPorCultivo(@Param("tipoCultivoId") UUID tipoCultivoId);
 }

@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.receta.DTORecetaAMResponse;
 import com.mza_agrotours.backend.dtos.tipoCultivo.*;
+import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.cultivo.Estacionalidad;
 import com.mza_agrotours.backend.entities.cultivo.EstacionalidadMes;
 import com.mza_agrotours.backend.entities.cultivo.InformacionNutricional;
@@ -72,6 +73,12 @@ public class TipoCultivoService {
         long totalFueraDeTemporada = totalTodos - totalEnTemporada;
 
         return new DTOFiltroTemporadaCultivo(totalTodos, totalEnTemporada, totalFueraDeTemporada);
+    }
+
+    // CONSULTAR DETALLE CULTIVO (vista pública / visitante)
+    public DTOTipoCultivoDetalleVisitante obtenerDetalleCultivoVisitante(UUID id) {
+        TipoCultivo tipoCultivo = obtenerTipoCultivo(id);
+        return mapearADetalleVisitante(tipoCultivo);
     }
 
 
@@ -511,8 +518,61 @@ public class TipoCultivoService {
         int fin = Math.min(inicio + pageable.getPageSize(), lista.size());
         return new PageImpl<>(lista.subList(inicio, fin), pageable, lista.size());
     }
+    private DTOTipoCultivoDetalleVisitante mapearADetalleVisitante(TipoCultivo tipoCultivo) {
+        DTOTipoCultivoDetalleVisitante dto = new DTOTipoCultivoDetalleVisitante();
+        dto.setId(tipoCultivo.getId());
+        dto.setNombre(tipoCultivo.getNombre());
+        dto.setDescripcion(tipoCultivo.getDescripcion());
+        dto.setBeneficios(tipoCultivo.getBeneficios());
+        dto.setCalendario(obtenerEstacionalidadPorMes(tipoCultivo));
+        dto.setPorcionReferencia(tipoCultivo.getPorcionReferencia());
+        dto.setInformacionNutricional(tipoCultivoMapper.informacionNutricionalToDto(tipoCultivo.getInformacionNutricional()));
+        dto.setRecetas(obtenerRecetasDelCultivo(tipoCultivo));
+        dto.setActividades(obtenerActividadesDelCultivo(tipoCultivo));
+        return dto;
+    }
 
+    private List<DTORecetaResumenCultivo> obtenerRecetasDelCultivo(TipoCultivo tipoCultivo) {
+        return tipoCultivo.getRecetas().stream()
+                .filter(r -> r.getFechaHoraBaja() == null)
+                .map(r -> {
+                    DTORecetaResumenCultivo dto = new DTORecetaResumenCultivo();
+                    dto.setId(r.getId());
+                    dto.setNombre(r.getNombre());
+                    dto.setTiempo(formatearTiempo(r.getTiempoMinsAprox()));
+                    dto.setPorciones(r.getPorciones());
+                    dto.setDificultad(r.getDificultad());
+                    return dto;
+                })
+                .toList();
+    }
+     private String formatearTiempo(Integer minutos) {
+        int horas = minutos / 60;
+        int minutosRestantes = minutos % 60;
 
+        if (horas == 0) {
+            return minutosRestantes + " min";
+        }
+        if (minutosRestantes == 0) {
+            return horas + " h";
+        }
+        return horas + " h " + minutosRestantes + " min";
+    }
 
+    private List<DTOActividadResumenCultivo> obtenerActividadesDelCultivo(TipoCultivo tipoCultivo) {
+        return actividadRepository.obtenerActividadesPublicadasPorCultivo(tipoCultivo.getId()).stream()
+                .map(this::mapearAActividadResumen)
+                .toList();
+    }
+
+    private DTOActividadResumenCultivo mapearAActividadResumen(Actividad actividad) {
+        DTOActividadResumenCultivo dto = new DTOActividadResumenCultivo();
+        dto.setId(actividad.getId());
+        dto.setTitulo(actividad.getNombre());
+        dto.setNombreEstablecimiento(actividad.getEstablecimiento().getNombre());
+        dto.setNombreDepartamento(actividad.getEstablecimiento().getDepartamento().getNombre());
+
+        return dto;
+    }
 
 }
