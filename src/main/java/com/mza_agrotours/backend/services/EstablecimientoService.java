@@ -8,16 +8,18 @@ import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.establecimiento.EstablecimientoEstado;
 import com.mza_agrotours.backend.entities.establecimiento.EstadoEstablecimiento;
+import com.mza_agrotours.backend.entities.productor.Productor;
+import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
+import com.mza_agrotours.backend.enums.TipoPermisoNombre;
 import com.mza_agrotours.backend.exceptions.EntityAlreadyExistsException;
 import com.mza_agrotours.backend.exceptions.EntityNotFoundException;
 import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
 import com.mza_agrotours.backend.mappers.EstablecimientoMapper;
-import com.mza_agrotours.backend.repositories.DepartamentoRepository;
-import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
-import com.mza_agrotours.backend.repositories.EstadoEstablecimientoRepository;
+import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
+import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -43,8 +45,19 @@ public class EstablecimientoService  {
 
     @Autowired
     private TipoCultivoRepository tipoCultivoRepository;
+
     @Autowired
     private EstablecimientoMapper establecimientoMapper;
+
+    @Autowired
+    private RolRepository rolRepository;
+
+    @Autowired
+    private ProductorRepository productorRepository;
+
+    @Autowired
+    private ActividadRepository actividadRepository;
+
 // ALTA ESTABLECIMIENTO
     @Transactional
     public DTODatosEstablecimiento altaAuxEstablecimiento(DTOEstablecimientoAlta dto){
@@ -107,6 +120,26 @@ public class EstablecimientoService  {
 
         validarQueNoPoseaActividadesPublicadas(establecimiento);
         establecimiento.setFechaHoraBaja(LocalDateTime.now());
+
+        LocalDateTime fechaHoraBajaAhora = LocalDateTime.now();
+
+        EstadoEstablecimiento estadoEstablecimiento = this.estadoEstablecimientoRepository
+                .findByNombreAndFechaBajaIsNull(EstadoEstablecimientoNombre.DADO_DE_BAJA)
+                        .orElseThrow(() -> new ValidacionNegocioException("No se encuentra configurado el estado DADO DE BAJA"));
+        establecimiento.cambiarEstado(estadoEstablecimiento, "Baja del establecimiento");
+
+        List<Productor> productores = this.productorRepository.findVigentesByEstablecimiento(id);
+        productores.forEach(productor -> productor.setFechaHoraBaja(fechaHoraBajaAhora));
+        productorRepository.saveAll(productores);
+
+        List<Rol> roles = this.rolRepository.findVigentesEnScope(TipoPermisoNombre.PRODUCTOR, id);
+        roles.forEach(rol -> rol.setFechaHoraBaja(fechaHoraBajaAhora));
+        rolRepository.saveAll(roles);
+
+        establecimiento.getActividades()
+                .stream().filter(actividad -> actividad.getFechaHoraBaja() == null)
+                .forEach(actividad -> actividad.setFechaHoraBaja(fechaHoraBajaAhora));
+        this.actividadRepository.saveAll(establecimiento.getActividades());
 
         Establecimiento eliminado = establecimientoRepository.save(establecimiento);
         DTOBajaEstablecimientoResponse response = new DTOBajaEstablecimientoResponse();
