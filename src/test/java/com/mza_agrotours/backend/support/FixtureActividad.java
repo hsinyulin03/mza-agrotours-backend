@@ -18,14 +18,26 @@ public class FixtureActividad {
     @Autowired private FixtureCatalogo catalogo;
     @Autowired private ActividadRepository actividadRepository;
 
+    public Actividad actividadBorradorEn(Establecimiento establecimiento) {
+        return actividadEnEstablecimientoEnEstado(establecimiento, EstadoActividadNombre.BORRADOR);
+    }
+
     public Actividad actividadPublicadaEn(Establecimiento establecimiento) {
+        return actividadEnEstablecimientoEnEstado(establecimiento, EstadoActividadNombre.PUBLICADO);
+    }
+
+    public Actividad actividadBajadaEn(Establecimiento establecimiento) {
+        return this.actividadEnEstablecimientoEnEstado(establecimiento, EstadoActividadNombre.DADO_DE_BAJA);
+    }
+
+    public Actividad actividadEnEstablecimientoEnEstado(Establecimiento establecimiento, EstadoActividadNombre estadoActividadNombre) {
         int n = Seq.next();
 
         Actividad actividad = new Actividad();
-        actividad.setNombre("Actividad " + n);
+        actividad.setNombre("Actividad " + Seq.next());
         actividad.setDescripcion("Actividad de prueba numero " + n);
         actividad.setCuposMax(20);
-        actividad.setEstado(catalogo.estadoActividad(EstadoActividadNombre.PUBLICADO));
+        actividad.setEstado(catalogo.estadoActividad(estadoActividadNombre));
         actividad.setEstablecimiento(establecimiento);
         return this.actividadRepository.save(actividad);
     }
