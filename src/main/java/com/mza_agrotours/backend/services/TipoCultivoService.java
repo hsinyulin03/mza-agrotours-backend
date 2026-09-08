@@ -20,8 +20,12 @@ import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.receta.RecetaRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -48,6 +52,30 @@ public class TipoCultivoService {
         List<TipoCultivo> tipoCultivos = this.tipoCultivoRepository.findAllByFechaHoraBajaIsNull();
         return this.tipoCultivoMapper.tipoCultivoToShortDto(tipoCultivos);
     }
+    /// US-CULT-01: Consultar detalle tipo cultivo visitantes
+    public Page<DTOTipoCultivoVisitante> consultarCultivosVisitantes(Boolean enTemporada, Pageable pageable) {
+        List<TipoCultivo> todos = tipoCultivoRepository.findAllByFechaHoraBajaIsNull();
+
+        List<DTOTipoCultivoVisitante> filtrados = todos.stream()
+                .map(this::mapearAVisitante)
+                .filter(dto -> enTemporada == null || dto.isEnTemporada() == enTemporada)
+                .toList();
+
+        return paginarEnMemoria(filtrados, pageable);
+    }
+
+    public DTOFiltroTemporadaCultivo obtenerFiltroTemporada() {
+        List<TipoCultivo> todos = tipoCultivoRepository.findAllByFechaHoraBajaIsNull();
+
+        long totalTodos = todos.size();
+        long totalEnTemporada = todos.stream().filter(this::estaEnTemporada).count();
+        long totalFueraDeTemporada = totalTodos - totalEnTemporada;
+
+        return new DTOFiltroTemporadaCultivo(totalTodos, totalEnTemporada, totalFueraDeTemporada);
+    }
+
+
+
 
 
     ////US-CULT-06 ABM tipo cultivo (AM)
@@ -449,9 +477,39 @@ public class TipoCultivoService {
         }
         return abreviarMes(desde) + "–" + abreviarMes(hasta);
     }
-
     private String abreviarMes(Mes mes) {
         return mes.getNombre().substring(0, 3);
+    }
+
+
+    private DTOTipoCultivoVisitante mapearAVisitante(TipoCultivo tipoCultivo) {
+        DTOTipoCultivoVisitante dto = new DTOTipoCultivoVisitante();
+        dto.setId(tipoCultivo.getId());
+        dto.setNombre(tipoCultivo.getNombre());
+        dto.setResumenCosecha(calcularResumenCosecha(tipoCultivo));
+        dto.setEnTemporada(estaEnTemporada(tipoCultivo));
+        return dto;
+    }
+
+    private boolean estaEnTemporada(TipoCultivo tipoCultivo) {
+        Mes mesActual = obtenerMesActual();
+
+        return tipoCultivo.getEstacionalidadMeses().stream()
+                .filter(em -> em.getMes() == mesActual)
+                .anyMatch(em -> em.getEstacionalidad().getNombre() == EstacionalidadNombre.COSECHA);
+    }
+
+    private Mes obtenerMesActual() {
+        int mesNumero = LocalDate.now().getMonthValue(); // 1 = enero ... 12 = diciembre
+        return Mes.values()[mesNumero - 1];
+    }
+    private <T> Page<T> paginarEnMemoria(List<T> lista, Pageable pageable) {
+        int inicio = (int) pageable.getOffset();
+        if (inicio >= lista.size()) {
+            return new PageImpl<>(List.of(), pageable, lista.size());
+        }
+        int fin = Math.min(inicio + pageable.getPageSize(), lista.size());
+        return new PageImpl<>(lista.subList(inicio, fin), pageable, lista.size());
     }
 
 

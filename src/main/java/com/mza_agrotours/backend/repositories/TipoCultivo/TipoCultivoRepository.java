@@ -1,7 +1,10 @@
 package com.mza_agrotours.backend.repositories.TipoCultivo;
 
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
+import com.mza_agrotours.backend.enums.Mes;
 import com.mza_agrotours.backend.repositories.BaseEntityRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -27,6 +30,7 @@ public interface TipoCultivoRepository
     List<TipoCultivo> findByRecetasId(UUID recetaId);
     @Query("SELECT COUNT(DISTINCT tc) FROM TipoCultivo tc JOIN tc.recetas r WHERE r.fechaHoraBaja IS NULL")
     long contarCultivosConRecetaActiva();
+
 
 
 
