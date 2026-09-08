@@ -7,7 +7,8 @@ import com.mza_agrotours.backend.entities.establecimiento.EstablecimientoEstado;
 import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.support.AbstractIntegrationTest;
-import com.mza_agrotours.backend.support.Fixtures;
+import com.mza_agrotours.backend.support.FixtureEstablecimiento;
+import com.mza_agrotours.backend.support.FixtureUsuario;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,12 +25,15 @@ class AdministradorSistemasServiceIT extends AbstractIntegrationTest {
     private EstablecimientoRepository establecimientoRepository;
 
     @Autowired
-    private Fixtures fixtures;
+    private FixtureEstablecimiento establecimientos;
+
+    @Autowired
+    private FixtureUsuario usuarios;
 
     @Test
     void dadoEstablecimiento_cuandoSuspende_entoncesCierraElTramoVigenteYAbreUnoSuspendido() {
-        Establecimiento establecimiento = fixtures.establecimientoActivo();
-        AdministradorSistemas ejecutor = fixtures.administrador();
+        Establecimiento establecimiento = establecimientos.establecimientoActivo();
+        AdministradorSistemas ejecutor = usuarios.administrador();
 
         EstablecimientoSuspenderReq req = new EstablecimientoSuspenderReq();
         req.setMotivo("Incumplimiento de normativa");

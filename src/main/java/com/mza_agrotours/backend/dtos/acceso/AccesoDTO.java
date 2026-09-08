@@ -1,4 +1,4 @@
-package com.mza_agrotours.backend.dtos;
+package com.mza_agrotours.backend.dtos.acceso;
 
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
 import lombok.Getter;
@@ -20,7 +20,8 @@ public class AccesoDTO {
     private List<String> permisos;
 
     // Establecimiento data (optional)
-    private String establecimientoNombre;
-    private String establecimientoId;
-    private String establecimientoEstado;
+    private AccesoEstablecimientoDTO establecimiento;
+
+    // Suspension data (optional)
+    private AccesoSuspensionDTO suspension;
 }

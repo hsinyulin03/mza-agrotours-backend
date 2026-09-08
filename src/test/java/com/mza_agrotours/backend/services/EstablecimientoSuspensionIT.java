@@ -14,7 +14,9 @@ import com.mza_agrotours.backend.exceptions.EstablecimientoError;
 import com.mza_agrotours.backend.exceptions.ResourceNotFoundException;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
 import com.mza_agrotours.backend.support.AbstractIntegrationTest;
-import com.mza_agrotours.backend.support.Fixtures;
+import com.mza_agrotours.backend.support.FixtureActividad;
+import com.mza_agrotours.backend.support.FixtureEstablecimiento;
+import com.mza_agrotours.backend.support.FixtureUsuario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,15 +50,21 @@ class EstablecimientoSuspensionIT extends AbstractIntegrationTest {
     private ReservaService reservaService;
 
     @Autowired
-    private Fixtures fixtures;
+    private FixtureEstablecimiento establecimientos;
+
+    @Autowired
+    private FixtureActividad actividades;
+
+    @Autowired
+    private FixtureUsuario usuarios;
 
     private Establecimiento establecimiento;
     private AdministradorSistemas ejecutor;
 
     @BeforeEach
     void setUp() {
-        this.establecimiento = fixtures.establecimientoActivo();
-        this.ejecutor = fixtures.administrador();
+        this.establecimiento = establecimientos.establecimientoActivo();
+        this.ejecutor = usuarios.administrador();
     }
 
     @Test
@@ -71,7 +79,7 @@ class EstablecimientoSuspensionIT extends AbstractIntegrationTest {
 
     @Test
     void dadoUnEstablecimiento_cuandoSeSuspende_entoncesNoPuedeModificarActividad() {
-        Actividad actividad = fixtures.actividadPublicadaEn(establecimiento);
+        Actividad actividad = actividades.actividadPublicadaEn(establecimiento);
         suspender();
 
         assertThatThrownBy(() -> actividadService.modificarActividad(
@@ -94,7 +102,7 @@ class EstablecimientoSuspensionIT extends AbstractIntegrationTest {
 
     @Test
     void dadoUnEstablecimiento_cuandoSeSuspende_entoncesNoEsVisibleSuListaDeActividades() {
-        Actividad actividad = fixtures.actividadPublicadaEn(establecimiento);
+        Actividad actividad = actividades.actividadPublicadaEn(establecimiento);
 
         assertThat(actividadService.obtenerDetallePorId(actividad.getId())).isNotNull();
 
@@ -106,8 +114,8 @@ class EstablecimientoSuspensionIT extends AbstractIntegrationTest {
 
     @Test
     void dadoUnEstablecimiento_cuandoSeSuspende_entoncesNoPuedeReservarActividad() {
-        Actividad actividad = fixtures.actividadConDiaReservableEn(establecimiento);
-        Visitante visitante = fixtures.visitante();
+        Actividad actividad = actividades.actividadConDiaReservableEn(establecimiento);
+        Visitante visitante = usuarios.visitante();
         RealizarReservaDTO reserva = new RealizarReservaDTO(
                 actividad.getActividadesDias().get(0).getId().toString(), List.of());
 
@@ -126,7 +134,7 @@ class EstablecimientoSuspensionIT extends AbstractIntegrationTest {
 
     @Test
     void dadoUnEstablecimientoSuspendido_cuandoSeReactiva_entoncesVuelveATodosLosModulos() {
-        Actividad actividad = fixtures.actividadPublicadaEn(establecimiento);
+        Actividad actividad = actividades.actividadPublicadaEn(establecimiento);
 
         suspender();
 
