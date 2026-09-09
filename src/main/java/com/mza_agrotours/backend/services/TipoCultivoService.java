@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.dtos.receta.DTORecetaAMResponse;
 import com.mza_agrotours.backend.dtos.tipoCultivo.*;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
+import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.cultivo.Estacionalidad;
 import com.mza_agrotours.backend.entities.cultivo.EstacionalidadMes;
 import com.mza_agrotours.backend.entities.cultivo.InformacionNutricional;
@@ -26,6 +27,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -568,8 +570,20 @@ public class TipoCultivoService {
         dto.setTitulo(actividad.getNombre());
         dto.setNombreEstablecimiento(actividad.getEstablecimiento().getNombre());
         dto.setNombreDepartamento(actividad.getEstablecimiento().getDepartamento().getNombre());
-
+        dto.setPrecioRegular(obtenerPrecioBaseVigente(actividad));
         return dto;
+    }
+    private BigDecimal obtenerPrecioBaseVigente(Actividad actividad) {
+        if (actividad == null || actividad.getActividadRangoEtarios() == null) {
+            return null;
+        }
+
+        return actividad.getActividadRangoEtarios().stream()
+                .filter(ActividadRangoEtario::isEsTarifaBase)
+                .filter(r -> r.getFechaHoraBaja() == null)
+                .map(ActividadRangoEtario::getPrecio)
+                .findFirst()
+                .orElse(null);
     }
 
 }
