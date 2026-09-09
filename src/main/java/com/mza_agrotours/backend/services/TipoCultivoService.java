@@ -55,14 +55,18 @@ public class TipoCultivoService {
     }
     /// US-CULT-01: Consultar detalle tipo cultivo visitantes
     public Page<DTOTipoCultivoVisitante> consultarCultivosVisitantes(Boolean enTemporada, Pageable pageable) {
-        List<TipoCultivo> todos = tipoCultivoRepository.findAllByFechaHoraBajaIsNull();
+        Mes mesActual = obtenerMesActual();
+        Page<TipoCultivo> page;
 
-        List<DTOTipoCultivoVisitante> filtrados = todos.stream()
-                .map(this::mapearAVisitante)
-                .filter(dto -> enTemporada == null || dto.isEnTemporada() == enTemporada)
-                .toList();
+        if (enTemporada == null) {
+            page = tipoCultivoRepository.findAllByFechaHoraBajaIsNull(pageable);
+        } else if (enTemporada) {
+            page = tipoCultivoRepository.findEnTemporada(mesActual, EstacionalidadNombre.COSECHA, pageable);
+        } else {
+            page = tipoCultivoRepository.findFueraDeTemporada(mesActual, EstacionalidadNombre.COSECHA, pageable);
+        }
 
-        return paginarEnMemoria(filtrados, pageable);
+        return page.map(this::mapearAVisitante);
     }
 
     public DTOFiltroTemporadaCultivo obtenerFiltroTemporada() {
@@ -510,14 +514,7 @@ public class TipoCultivoService {
         int mesNumero = LocalDate.now().getMonthValue(); // 1 = enero ... 12 = diciembre
         return Mes.values()[mesNumero - 1];
     }
-    private <T> Page<T> paginarEnMemoria(List<T> lista, Pageable pageable) {
-        int inicio = (int) pageable.getOffset();
-        if (inicio >= lista.size()) {
-            return new PageImpl<>(List.of(), pageable, lista.size());
-        }
-        int fin = Math.min(inicio + pageable.getPageSize(), lista.size());
-        return new PageImpl<>(lista.subList(inicio, fin), pageable, lista.size());
-    }
+
     private DTOTipoCultivoDetalleVisitante mapearADetalleVisitante(TipoCultivo tipoCultivo) {
         DTOTipoCultivoDetalleVisitante dto = new DTOTipoCultivoDetalleVisitante();
         dto.setId(tipoCultivo.getId());
