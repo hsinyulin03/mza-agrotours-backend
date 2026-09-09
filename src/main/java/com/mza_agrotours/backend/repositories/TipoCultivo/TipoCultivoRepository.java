@@ -53,6 +53,17 @@ public interface TipoCultivoRepository
     """)
     Page<TipoCultivo> findFueraDeTemporada(@Param("mes") Mes mes, @Param("nombre") EstacionalidadNombre nombre, Pageable pageable);
 
+    long countByFechaHoraBajaIsNull();
+
+    @Query("""
+    SELECT COUNT(DISTINCT tc) FROM TipoCultivo tc
+    JOIN tc.estacionalidadMeses em
+    JOIN em.estacionalidad e
+    WHERE tc.fechaHoraBaja IS NULL
+      AND em.mes = :mes
+      AND e.nombre = :nombre
+    """)
+    long countEnTemporada(@Param("mes") Mes mes, @Param("nombre") EstacionalidadNombre nombre);
 
 
 

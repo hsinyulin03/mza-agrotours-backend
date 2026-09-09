@@ -70,10 +70,10 @@ public class TipoCultivoService {
     }
 
     public DTOFiltroTemporadaCultivo obtenerFiltroTemporada() {
-        List<TipoCultivo> todos = tipoCultivoRepository.findAllByFechaHoraBajaIsNull();
+        Mes mesActual = obtenerMesActual();
 
-        long totalTodos = todos.size();
-        long totalEnTemporada = todos.stream().filter(this::estaEnTemporada).count();
+        long totalTodos = tipoCultivoRepository.countByFechaHoraBajaIsNull();
+        long totalEnTemporada = tipoCultivoRepository.countEnTemporada(mesActual, EstacionalidadNombre.COSECHA);
         long totalFueraDeTemporada = totalTodos - totalEnTemporada;
 
         return new DTOFiltroTemporadaCultivo(totalTodos, totalEnTemporada, totalFueraDeTemporada);
