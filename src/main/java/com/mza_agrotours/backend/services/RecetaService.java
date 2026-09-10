@@ -2,7 +2,7 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.dtos.receta.*;
 import com.mza_agrotours.backend.enums.Dificultad;
 import com.mza_agrotours.backend.enums.DuracionNombre;
-import com.mza_agrotours.backend.mappers.RectaMapper;
+import com.mza_agrotours.backend.mappers.RecetaMapper;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.receta.Duracion;
 import com.mza_agrotours.backend.entities.receta.Ingrediente;
@@ -36,7 +36,7 @@ public class RecetaService {
     @Autowired
     private TipoCultivoRepository tipoCultivoRepository;
     @Autowired
-    private  RectaMapper recetaMapper;
+    private RecetaMapper recetaMapper;
 
 //// US-CULT-09 ALTA RECETA
     @Transactional
@@ -196,6 +196,7 @@ public class RecetaService {
     }
 
     public List<DTOFiltroDuracionReceta> obtenerFiltroDuracion() {
+
         return recetaRepository.obtenerFiltroDuracion();
     }
 
@@ -215,6 +216,11 @@ public class RecetaService {
     }
 
 
+    //// US-CULT-03 Consultar receta visitante
+    public DTODetalleVisitanteReceta obtenerDetalleRecetaVisitante(UUID id) {
+        Receta receta = obtenerReceta(id);
+        return mapearADetalleVisitante(receta);
+    }
 
 
 
@@ -311,6 +317,11 @@ public class RecetaService {
 
         return dto;
     }
-
+    // CONSULTAR DETALLE RECETA VISITANTE
+    private DTODetalleVisitanteReceta mapearADetalleVisitante(Receta receta) {
+        DTODetalleVisitanteReceta dto = recetaMapper.recetaToDtoDetalleVisitante(receta);
+        dto.setCultivos(obtenerCultivosDeRecetaVisitante(receta.getId()));
+        return dto;
+    }
 
 }

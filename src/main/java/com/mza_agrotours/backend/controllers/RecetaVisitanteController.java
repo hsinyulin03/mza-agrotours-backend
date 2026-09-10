@@ -12,6 +12,8 @@ import com.mza_agrotours.backend.services.RecetaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -46,7 +48,7 @@ public class RecetaVisitanteController {
             @RequestParam(required = false) Dificultad dificultad,
             @RequestParam(required = false) DuracionNombre duracion,
             @RequestParam(required = false) UUID cultivoId,
-            Pageable pageable) {
+            @PageableDefault(size = 9, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
         Page<DTORecetaCatalogoVisitante> resultado = recetaService.consultarCatalogoVisitante(cultivoId, dificultad, duracion, pageable);
         return ResponseEntity.ok(ApiResponse.ok(resultado));
     }
