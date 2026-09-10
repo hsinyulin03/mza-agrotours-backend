@@ -1,10 +1,7 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
-import com.mza_agrotours.backend.dtos.receta.DTOFiltroCultivoReceta;
-import com.mza_agrotours.backend.dtos.receta.DTOFiltroDificultadReceta;
-import com.mza_agrotours.backend.dtos.receta.DTOFiltroDuracionReceta;
-import com.mza_agrotours.backend.dtos.receta.DTORecetaCatalogoVisitante;
+import com.mza_agrotours.backend.dtos.receta.*;
 import com.mza_agrotours.backend.dtos.tipoCultivo.DTOFiltroTemporadaCultivo;
 import com.mza_agrotours.backend.enums.Dificultad;
 import com.mza_agrotours.backend.enums.DuracionNombre;
@@ -15,10 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
@@ -50,6 +44,12 @@ public class RecetaVisitanteController {
             @RequestParam(required = false) UUID cultivoId,
             @PageableDefault(size = 9, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
         Page<DTORecetaCatalogoVisitante> resultado = recetaService.consultarCatalogoVisitante(cultivoId, dificultad, duracion, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(resultado));
+    }
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<DTODetalleVisitanteReceta>> obtenerDetalleRecetaVisitante(
+            @PathVariable UUID id) {
+        DTODetalleVisitanteReceta resultado = recetaService.obtenerDetalleRecetaVisitante(id);
         return ResponseEntity.ok(ApiResponse.ok(resultado));
     }
 }

@@ -81,7 +81,7 @@ public class TipoCultivoService {
         return new DTOFiltroTemporadaCultivo(totalTodos, totalEnTemporada, totalFueraDeTemporada);
     }
 
-    // CONSULTAR DETALLE CULTIVO (vista pública / visitante)
+    /// US-CULT-02: Consultar detalle tipo cultivo visitantes
     public DTOTipoCultivoDetalleVisitante obtenerDetalleCultivoVisitante(UUID id) {
         TipoCultivo tipoCultivo = obtenerTipoCultivo(id);
         return mapearADetalleVisitante(tipoCultivo);
