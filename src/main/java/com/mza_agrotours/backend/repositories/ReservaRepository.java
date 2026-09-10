@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.repositories;
 
+import com.mza_agrotours.backend.dtos.administrador_sistemas.ConteoPorEstablecimientoDTO;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Repository
@@ -69,4 +71,10 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "AND ad.id = :adId " +
             "AND r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE ")
     Optional<Reserva> findByVisitanteIdAndActividadDiaId(@Param("visitanteId") UUID visitanteId, @Param("adId") UUID actividadDiaId);
+
+    @Query("select new com.mza_agrotours.backend.dtos.administrador_sistemas.ConteoPorEstablecimientoDTO(r.actividad.establecimiento.id, count(r)) " +
+            "from Reserva r " +
+            "where r.actividad.establecimiento.id in :ids " +
+            "group by r.actividad.establecimiento.id")
+    List<ConteoPorEstablecimientoDTO> countReservasTotalesByEstablecimientoIds(@Param("ids") Set<UUID> establecimientoIds);
 }

@@ -1,4 +1,5 @@
 package com.mza_agrotours.backend.entities.establecimiento;
+import com.mza_agrotours.backend.entities.AdministradorSistemas;
 import com.mza_agrotours.backend.entities.BaseEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
@@ -23,5 +24,8 @@ public class EstablecimientoEstado extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "estado_id", nullable = false)
     private EstadoEstablecimiento estadoEstablecimiento;
+
+    @ManyToOne
+    private AdministradorSistemas ejecutor;
 
 }

@@ -1,9 +1,12 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.dtos.AccesoDTO;
+import com.mza_agrotours.backend.dtos.acceso.AccesoDTO;
+import com.mza_agrotours.backend.dtos.acceso.AccesoSuspensionDTO;
 import com.mza_agrotours.backend.entities.AdministradorSistemas;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.productor.Productor;
+import com.mza_agrotours.backend.entities.productor.ProductorEstado;
+import com.mza_agrotours.backend.enums.EstadoProductorNombre;
 import com.mza_agrotours.backend.mappers.AccesoMapper;
 import com.mza_agrotours.backend.repositories.AdministradorSistemasRepository;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
@@ -70,10 +73,34 @@ public class UsuarioAccesoService {
         List<Productor> productores = this.productorRepository
                 .findByUsuarioAndFechaHoraBajaIsNull(usuario);
 
-        return productores
-                .stream()
-                .map(p -> this.accesoMapper
-                                .rolToAccesoDTO(p.getRol())
-                ).toList();
+        List<AccesoDTO> accesos = new ArrayList<>();
+        for (Productor productor : productores) {
+            AccesoDTO accesoDTO = this.accesoMapper.rolToAccesoDTO(productor.getRol());
+
+            ProductorEstado estadoActual = obtenerEstadoActual(productor);
+
+            if (!estadoActual.getEstadoProductor().getNombre()
+                    .equals(EstadoProductorNombre.LICENCIA)) {
+                accesos.add(accesoDTO);
+                continue;
+            }
+
+
+            AccesoSuspensionDTO accesoSuspensionDTO = new AccesoSuspensionDTO();
+            accesoSuspensionDTO.setMotivo(estadoActual.getMotivo());
+            accesoSuspensionDTO.setFechaHoraFin(estadoActual.getFechaHoraFinPrevista());
+
+            accesoDTO.setSuspension(accesoSuspensionDTO);
+
+            accesos.add(accesoDTO);
+        }
+
+
+        return accesos;
+    }
+
+    private ProductorEstado obtenerEstadoActual(Productor productor) {
+        return this.productorRepository.findProductorEstadoActualByProductorId(productor.getId())
+                .orElseThrow(() -> new IllegalStateException("El producto no tiene estado actual"));
     }
 }

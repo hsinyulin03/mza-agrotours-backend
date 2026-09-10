@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.dtos;
 
+import com.mza_agrotours.backend.dtos.acceso.AccesoDTO;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

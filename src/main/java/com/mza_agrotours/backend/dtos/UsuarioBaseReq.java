@@ -1,9 +1,14 @@
 package com.mza_agrotours.backend.dtos;
 
+import com.mza_agrotours.backend.validation.NumeroTelefono;
+import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
@@ -13,6 +18,7 @@ import java.time.LocalDate;
 public class UsuarioBaseReq {
     @NotNull
     @Size(min = 3, max = 20)
+    @SinCaracteresEspeciales
     private String nombre;
 
     @NotNull
@@ -25,8 +31,8 @@ public class UsuarioBaseReq {
     @NotNull
     private String paisIso2;
 
-    @NotNull
-    @Size(min = 7, max = 15)
+    @NotBlank
+    @NumeroTelefono
     private String telefono;
 
     @NotNull

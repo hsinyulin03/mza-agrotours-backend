@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.repositories;
 
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.productor.Productor;
+import com.mza_agrotours.backend.entities.productor.ProductorEstado;
 import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import com.mza_agrotours.backend.enums.PermisoCodigo;
 import org.springframework.data.jpa.repository.Query;
@@ -70,4 +71,20 @@ public interface ProductorRepository extends BaseEntityRepository<Productor, UUI
             "            AND e.fechaHoraFinPrevista IS NOT NULL " +
             "            AND e.fechaHoraFinPrevista <= :ahora)")
     List<UUID> findIdsConSuspensionVencida(@Param("ahora") LocalDateTime ahora);
+
+    @Query("SELECT pe FROM Productor p " +
+            "JOIN p.estados pe " +
+            "WHERE p.id = :productorId " +
+            "AND pe.fechaHoraFin IS NULL")
+    Optional<ProductorEstado> findProductorEstadoActualByProductorId(@Param("productorId") UUID productorId);
+
+    @Query("SELECT COUNT(p) > 0 FROM Productor p " +
+            "WHERE p.usuario.email = :email " +
+            "AND p.establecimiento.id = :establecimientoId " +
+            "AND p.fechaHoraBaja IS NULL " +
+            "AND p.establecimiento.fechaHoraBaja IS NULL " +
+            "AND p.usuario.fechaHoraBaja IS NULL " +
+            "AND p.estadoActual.nombre = com.mza_agrotours.backend.enums.EstadoProductorNombre.ACTIVO")
+    boolean esProductorVigenteyActivo(@Param("email") String email,
+                               @Param("establecimientoId") UUID establecimientoId);
 }

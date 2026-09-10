@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.dtos.establecimiento.*;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
+import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.establecimiento.EstablecimientoEstado;
@@ -14,20 +15,20 @@ import com.mza_agrotours.backend.exceptions.EntityNotFoundException;
 import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
 import com.mza_agrotours.backend.mappers.EstablecimientoMapper;
 import com.mza_agrotours.backend.repositories.DepartamentoRepository;
-import com.mza_agrotours.backend.repositories.EstablecimientoEstadoRepository;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.EstadoEstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import java.util.*;
+
+
 
 @Service
 public class EstablecimientoService  {
@@ -35,23 +36,18 @@ public class EstablecimientoService  {
     private EstablecimientoRepository establecimientoRepository;
 
     @Autowired
-    private EstablecimientoEstadoRepository establecimientoEstadoRepository;
-
-    @Autowired
     private EstadoEstablecimientoRepository estadoEstablecimientoRepository;
 
     @Autowired
     private DepartamentoRepository departamentoRepository;
 
-//    @Autowired
-//    private ProductorRepository productorRepository;
     @Autowired
     private TipoCultivoRepository tipoCultivoRepository;
     @Autowired
     private EstablecimientoMapper establecimientoMapper;
 // ALTA ESTABLECIMIENTO
     @Transactional
-    public DTODatosEstablecimiento altaEstablecimiento(DTOEstablecimientoAlta dto){
+    public DTODatosEstablecimiento altaAuxEstablecimiento(DTOEstablecimientoAlta dto){
         validarCuitDisponible(dto.getCuit());
 
         Departamento departamento = obtenerDepartamento(dto.getDepartamentoId());
@@ -76,92 +72,78 @@ public class EstablecimientoService  {
         nuevoEstablecimiento.getEstados().add(estadoInicial);
         nuevoEstablecimiento.setEstadoActual(estadoInicial);
 
+        LocalDateTime fechaHoraAlta = LocalDateTime.now();
+        nuevoEstablecimiento.setFechaHoraAlta(fechaHoraAlta);
+
         return establecimientoRepository.save(nuevoEstablecimiento);
     }
-
+     ////US-EST-05 BM establecimiento (modificar)
     // Obtener datos establecimiento (panel productor)
     public DTODatosEstablecimiento obtenerDatosEstablecimiento(UUID id) {
         Establecimiento establecimiento = obtenerEstablecimiento(id);
         return mapearADatosEstablecimiento(establecimiento);
     }
     @Transactional
-    public DTODatosEstablecimiento modificarEstablecimiento(UUID id, DTODatosEstablecimientoUpd dto) {
+    public DTOUpdEstablecimientoResponse modificarEstablecimiento(UUID id, DTOUpdEstablecimientoRequest dto) {
         Establecimiento establecimiento = obtenerEstablecimiento(id);
 
         establecimiento.setDescripcion(dto.getDescripcion());
         establecimiento.setTelefono(dto.getTelefono());
         establecimiento.setEmail(dto.getEmail());
         establecimiento.setCvu(dto.getCvu());
+        Establecimiento guardado = establecimientoRepository.save(establecimiento);
 
-        // MODIFICAR CULTIVOS
-        // Lista de cultivos que el establecimiento tiene ASIGNADOS actualmente en la base
-        List<TipoCultivo> cultivosActuales = establecimiento.getTiposCultivos();
+        DTOUpdEstablecimientoResponse response = new DTOUpdEstablecimientoResponse();
+        response.setMensaje("Cambios guardados exitosamente.");
+        response.setDatosEstablecimiento(mapearADatosEstablecimiento(guardado));
+        return response;
 
-        // Busca en la base los TipoCultivo correspondientes a los ids que mandó el frontend.
-        // obtenerCultivos ya valida que todos los ids existan
-        List<TipoCultivo> cultivosNuevos = obtenerCultivos(dto.getCultivosIds());
-
-        // Se pasan ambas listas a Set<UUID> para poder comparar por id
-        Set<UUID> idsActuales = cultivosActuales.stream()
-                .map(TipoCultivo::getId)
-                .collect(Collectors.toSet());
-        Set<UUID> idsNuevos = cultivosNuevos.stream()
-                .map(TipoCultivo::getId)
-                .collect(Collectors.toSet());
-
-        // "A agregar" = cultivos que vinieron del frontend (cultivosNuevos)
-        // y que el establecimiento TODAVÍA NO tiene (su id no está en idsActuales)
-        List<TipoCultivo> cultivosAAgregar = cultivosNuevos.stream()
-                .filter(c -> !idsActuales.contains(c.getId()))
-                .toList();
-
-        // "A eliminar" = cultivos que el establecimiento tiene actualmente (cultivosActuales)
-        // pero que  NO vinieron en la lista del frontend (su id no está en idsNuevos)
-        List<TipoCultivo> cultivosAEliminar = cultivosActuales.stream()
-                .filter(c -> !idsNuevos.contains(c.getId()))
-                .toList();
-
-        // Se recorren los cultivos a eliminar y se sacan
-        for (TipoCultivo cultivo : cultivosAEliminar) {
-            // TODO: Validar si este cultivo posee actividades activas asociadas al establecimiento antes de eliminar la relación.
-            cultivosActuales.remove(cultivo);
-        }
-
-        // Se agregan a la colección actual los cultivos nuevos que faltaban
-        cultivosActuales.addAll(cultivosAAgregar);
-
-        // Persiste los cambios de la relación establecimiento-cultivos
-        establecimientoRepository.save(establecimiento);
-        return mapearADatosEstablecimiento(establecimiento);
     }
-    // BAJA ESTABLECIMIENTO
+    //// US-EST-06 BM establecimiento (baja)
     @Transactional
-    public void bajaEstablecimiento(UUID id) {
+    public DTOBajaEstablecimientoResponse bajaEstablecimiento(UUID id) {
 
         Establecimiento establecimiento = obtenerEstablecimiento(id);
 
         validarQueNoPoseaActividadesPublicadas(establecimiento);
         establecimiento.setFechaHoraBaja(LocalDateTime.now());
 
-        establecimientoRepository.save(establecimiento);
+        Establecimiento eliminado = establecimientoRepository.save(establecimiento);
+        DTOBajaEstablecimientoResponse response = new DTOBajaEstablecimientoResponse();
+        response.setIdestablecimiento(eliminado.getId());
+        response.setMensaje("Establecimiento dado de baja exitosamente.");
+        return response;
     }
-    // CONSULTAR ESTABLECIMIENTOS (listado de visitantes)
-    public List<DTOConsultarEstablecimientoSVisitante> consultarEstablecimientosVisitantes() {
-        // buscar establecimientos
-        List<Establecimiento> establecimientos = establecimientoRepository.obtenerEstablecimientosActivos();
-        return establecimientos.stream()
-                .map(establecimiento -> {
-                    DTOConsultarEstablecimientoSVisitante dto = establecimientoMapper.establecimientoToDtoConsultarEstableciminetoS(establecimiento);
-                    dto.setCultivos(obtenerNombresCultivosActivos(establecimiento));
-                    dto.setCantidadActividades(contarActividadesPublicadas(establecimiento));
+    //// US-EST-01 consulta de establecimientos (vista pública / visitante)
+    public Page<DTOCatalogoEstablecimientoVisitante> consultarEstablecimientosVisitantes(List<UUID> cultivoIds, UUID departamentoId, Pageable pageable) {
 
-                    return dto;
-                })
-                .toList();
+        List<UUID> cultivosId = (cultivoIds == null || cultivoIds.isEmpty()) ? null : cultivoIds;
+
+        Page<Establecimiento> establecimientosPage = establecimientoRepository
+                .obtenerEstablecimientosActivos(cultivosId, departamentoId, pageable);
+
+        return establecimientosPage.map(establecimiento -> {
+            DTOCatalogoEstablecimientoVisitante dto = establecimientoMapper
+                    .establecimientoToDtoConsultarEstableciminetoS(establecimiento);
+            dto.setCultivos(obtenerCultivosConActividadPublicada(establecimiento));
+            dto.setDptoEstablecimiento(establecimientoMapper.departamentoToDto(establecimiento.getDepartamento()));
+            dto.setCantidadActividades(contarActividadesPublicadas(establecimiento));
+            return dto;
+        });
     }
-    // DETALLE ESTABLECIMIENTO (vista pública / visitante)
+
+    public List<DTOFiltroCultivoEstablecimiento> obtenerFiltroCultivos() {
+        return establecimientoRepository.obtenerFiltroCultivos();
+    }
+
+    public List<DTOFiltroDepartamentoEstablecimiento> obtenerFiltroDepartamentos() {
+        return establecimientoRepository.obtenerFiltroDepartamentos();
+    }
+
+   //// US-EST-02 consulta de un establecimiento (vista pública / visitante)
     public DTODetalleEstablecimientoVisitantes obtenerDetalleEstablecimientoVisitante(UUID id) {
-        Establecimiento establecimiento = obtenerEstablecimiento(id);
+        Establecimiento establecimiento = this.establecimientoRepository.obtenerEstablecimientoActivoById(id)
+                .orElseThrow(() -> new EntityNotFoundException("No se encuentra el establecimiento indicado"));
         return mapearADetalleVisitante(establecimiento);
     }
 
@@ -220,22 +202,42 @@ public class EstablecimientoService  {
         dto.setCultivos(obtenerCultivosDelEstablecimiento(establecimiento));
         return dto;
     }
+    private List<DTOCultivoEstablecimientoResponse> obtenerCultivosDelEstablecimiento(Establecimiento establecimiento) {
+        if (establecimiento == null || establecimiento.getTiposCultivos() == null) {
+            return List.of();
+        }
 
-    private List<DTODatosEstablecimientoCultivos> obtenerCultivosDelEstablecimiento(
-            Establecimiento establecimiento) {
-        // TODO falta implementar validación cultivos del establecimiento con actividades activas
-        return establecimiento.getTiposCultivos()
-                .stream()
-                .filter(c -> c.getFechaHoraBaja() == null)
-                .map(c -> {
-                    DTODatosEstablecimientoCultivos dto = new DTODatosEstablecimientoCultivos();
-                    dto.setId(c.getId().toString());
-                    dto.setNombre(c.getNombre());
-                    dto.setTieneActividadesActivas(false);
+        return establecimiento.getTiposCultivos().stream()
+                .filter(cultivo -> cultivo.getFechaHoraBaja() == null)
+                .map(cultivo -> {
+                    DTOCultivoEstablecimientoResponse dto = new DTOCultivoEstablecimientoResponse();
+                    dto.setId(cultivo.getId());
+                    dto.setNombre(cultivo.getNombre());
                     return dto;
                 })
                 .toList();
     }
+
+    private List<DTOCultivoEstablecimientoResponse> obtenerCultivosConActividadPublicada(
+            Establecimiento establecimiento) {
+        Map<UUID, TipoCultivo> cultivosUnicos = new LinkedHashMap<>();
+
+        establecimiento.getActividades().stream()
+                .filter(this::esActividadPublicada)
+                .flatMap(actividad -> actividad.getCultivos().stream())
+                .filter(cultivo -> cultivo.getFechaHoraBaja() == null)
+                .forEach(cultivo -> cultivosUnicos.putIfAbsent(cultivo.getId(), cultivo));
+
+        return cultivosUnicos.values().stream()
+                .map(c -> {
+                    DTOCultivoEstablecimientoResponse dto = new DTOCultivoEstablecimientoResponse();
+                    dto.setId(c.getId());
+                    dto.setNombre(c.getNombre());
+                    return dto;
+                })
+                .toList();
+    }
+
     private List<String> obtenerNombresCultivosActivos(Establecimiento establecimiento) {
         return establecimiento.getTiposCultivos().stream()
                 .filter(cultivo -> cultivo.getFechaHoraBaja() == null)
@@ -266,8 +268,7 @@ public class EstablecimientoService  {
     private DTODetalleEstablecimientoVisitantes mapearADetalleVisitante(Establecimiento establecimiento) {
         DTODetalleEstablecimientoVisitantes dto =
                 establecimientoMapper.establecimientoToDtoDetalleVisitantes(establecimiento);
-
-        dto.setCultivos(obtenerNombresCultivosActivos(establecimiento));
+        dto.setCultivos(obtenerCultivosConActividadPublicada(establecimiento));
         dto.setActividades(obtenerActividadesPublicadasDetalle(establecimiento));
 
         return dto;
@@ -283,17 +284,35 @@ public class EstablecimientoService  {
     private DTODetalleEstablecimientoActividad mapearAActividadDetalle(Actividad actividad) {
         DTODetalleEstablecimientoActividad dto = establecimientoMapper.actividadToDtoDetalle(actividad);
 
-        // TODO: cultivos de la actividad
-        dto.setCultivos(new ArrayList<>());
-
-        // TODO: implementar cálculo real del precio vigente para el rango etario "Adulto"
-        //dto.setPrecioDesde(obtenerPrecioAdulto(actividad));
+        // Cultivos asociados a la actividad
+        List<DTOCultivoEstablecimientoResponse> cultivosAsociados = (actividad.getCultivos() == null)
+                ? List.of()
+                : actividad.getCultivos().stream()
+                  .map(c -> new DTOCultivoEstablecimientoResponse(c.getId(), c.getNombre()))
+                  .toList();
+        dto.setCultivos(cultivosAsociados);
+        // Obtener precio base vigente
+        BigDecimal precioBase = obtenerPrecioBaseVigente(actividad);
+        dto.setPrecioDesde(precioBase);
 
         // TODO: implementar cálculo real del promedio de Calificacion.puntuacion
-       // dto.setPuntuacion(calcularCalificacionPromedio(actividad));
+        // dto.setPuntuacion(calcularCalificacionPromedio(actividad));
 
         return dto;
     }
 
+    private BigDecimal obtenerPrecioBaseVigente(Actividad actividad) {
+        if (actividad == null || actividad.getActividadRangoEtarios() == null) {
+            return null;
+        }
 
+        return actividad.getActividadRangoEtarios().stream()
+                .filter(ActividadRangoEtario::isEsTarifaBase)
+                .filter(r -> r.getFechaHoraBaja() == null)
+                .map(ActividadRangoEtario::getPrecio)
+                .findFirst()
+                .orElse(null);
+    }
 }
+
+

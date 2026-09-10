@@ -85,6 +85,7 @@ public class ActividadService {
     //US-ACT-03 Alta de actividad
     @Transactional
     public DTOActividadAltaResponse altaActividad(UUID establecimientoId, DTOActividadAlta dto) {
+        validarEstablecimientoNoSuspendido(establecimientoId);
 
         //Primero hacemos las validaciones del negocio
         List<String> errores = actividadValidaciones.obtenerErroresValidacionActividad(establecimientoId, dto);
@@ -118,7 +119,14 @@ public class ActividadService {
         tarifas.forEach(actividad::addActividadRangoEtario);
         actividad.addLogAlta(logAltas);
         calendario.forEach(actividad::addActividadDia);
-        actividad.setEstablecimiento(establecimientoRepository.getReferenceById(establecimientoId));
+
+        Establecimiento establecimiento = establecimientoRepository.findByIdAndFechaHoraBajaIsNull(establecimientoId)
+                .orElseThrow(EstablecimientoNotFoundException::new);
+
+        agregarCultivosAEstablecimiento(establecimiento, cultivos);
+        establecimientoRepository.save(establecimiento);
+
+        actividad.setEstablecimiento(establecimiento);
 
         List<ArchivoUploadResponse> urlsGeneradas = new ArrayList<>();
 
@@ -148,7 +156,8 @@ public class ActividadService {
     //US-ACT-02:  Consultar detalle de una actividad
     @Transactional(readOnly = true)
     public DTOActividadDetalleResponse obtenerDetallePorId(UUID idActividad) {
-        Actividad actividad = obtenerActividad(idActividad);
+        Actividad actividad = this.actividadRepository.findByIdVigenteConEstablecimientoActivo(idActividad)
+                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
         DTOActividadDetalleResponse response = actividadMapper.actividadToDTOActividadDetalle(actividad);
         response.setFotos(obtenerUrlsDeDescarga(response.getFotos()));
         return response;
@@ -230,6 +239,7 @@ public class ActividadService {
     //US-ACT-04: Modificar Actividad
     @Transactional
     public DTOActividadGetResponse modificarActividad(UUID idEstablecimiento, UUID idActividad, DTOActividadUpdate dto) {
+        validarEstablecimientoNoSuspendido(idEstablecimiento);
 
         Actividad actividad = obtenerActividad(idActividad);
 
@@ -251,9 +261,22 @@ public class ActividadService {
         actividad.setNombre(dto.getNombre());
         actividad.setDescripcion(dto.getDescripcion());
 
+        List<TipoCultivo> cultivosAnteriores = new ArrayList<>(actividad.getCultivos());
+
         List<TipoCultivo> cultivos = actualizarCultivos(actividad.getCultivos(), dto.getCultivos());
         actividad.getCultivos().clear();
         actividad.getCultivos().addAll(cultivos);
+
+        List<TipoCultivo> cultivosRemovidos = cultivosAnteriores.stream()
+                .filter(cultivoAnterior -> cultivos.stream().noneMatch(c -> c.getId().equals(cultivoAnterior.getId())))
+                .toList();
+
+        Establecimiento establecimiento = establecimientoRepository.findByIdAndFechaHoraBajaIsNull(idEstablecimiento)
+                .orElseThrow(EstablecimientoNotFoundException::new);
+
+        agregarCultivosAEstablecimiento(establecimiento, cultivos);
+        quitarCultivosSinUsoDelEstablecimiento(establecimiento, cultivosRemovidos, idActividad);
+        establecimientoRepository.save(establecimiento);
 
         List<ActividadRangoEtario> activosActuales = actividad.getActividadRangoEtarios().stream()
                 .filter(r -> r.getFechaHoraBaja() == null)
@@ -606,6 +629,35 @@ public class ActividadService {
         return cultivosActivos;
     }
 
+    // Asocia al establecimiento los cultivos de la actividad que aún no tenga asignados.
+    // Si el establecimiento ya tiene el cultivo, no se hace nada.
+    private void agregarCultivosAEstablecimiento(Establecimiento establecimiento, List<TipoCultivo> cultivos) {
+        List<UUID> idsCultivosActuales = establecimiento.getTiposCultivos().stream()
+                .map(TipoCultivo::getId)
+                .toList();
+
+        List<TipoCultivo> cultivosNuevos = cultivos.stream()
+                .filter(cultivo -> !idsCultivosActuales.contains(cultivo.getId()))
+                .toList();
+
+        establecimiento.getTiposCultivos().addAll(cultivosNuevos);
+    }
+
+    // Ante la quita de un cultivo de una actividad, sólo se desasocia del establecimiento
+    // si ninguna otra actividad vigente (no dada de baja) del establecimiento lo sigue utilizando.
+    private void quitarCultivosSinUsoDelEstablecimiento(Establecimiento establecimiento, List<TipoCultivo> cultivosRemovidos, UUID idActividadActual) {
+        if (cultivosRemovidos == null || cultivosRemovidos.isEmpty()) {
+            return;
+        }
+
+        List<UUID> idsARemover = cultivosRemovidos.stream()
+                .map(TipoCultivo::getId)
+                .filter(cultivoId -> !actividadRepository.existeOtraActividadVigenteConCultivo(establecimiento.getId(), cultivoId, idActividadActual))
+                .toList();
+
+        establecimiento.getTiposCultivos().removeIf(cultivo -> idsARemover.contains(cultivo.getId()));
+    }
+
     private List<TipoCultivo> actualizarCultivos(List <TipoCultivo> cultivosActuales, List<UUID> idsRequest) {
         // Obtener IDs de los cultivos que la actividad ya tiene asignados
         List<UUID> idsActuales = cultivosActuales.stream()
@@ -724,6 +776,13 @@ public class ActividadService {
                 usuarioDTO,
                 rangoEtarioReservaDTOList,
                 parametrosService.getInstance().getDiasMinReembolso());
+    }
+
+    void validarEstablecimientoNoSuspendido(UUID establecimientoId) {
+        if (this.establecimientoRepository.establecimientoSuspendido(establecimientoId)) {
+            throw new AppException(EstablecimientoError.ESTABLECIMIENTO_SUSPENDIDO);
+        }
+
     }
 }
 

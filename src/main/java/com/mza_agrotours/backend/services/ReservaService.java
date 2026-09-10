@@ -12,11 +12,11 @@ import com.mercadopago.resources.merchantorder.MerchantOrderPayment;
 import com.mza_agrotours.backend.dtos.reservas.*;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
 import com.mza_agrotours.backend.entities.TipoIdentificacionNombre;
+import com.mza_agrotours.backend.entities.Usuario;
+import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
-import com.mza_agrotours.backend.entities.Usuario;
-import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.pago.EstadoPago;
 import com.mza_agrotours.backend.enums.EstadoPagoNombre;
@@ -28,6 +28,7 @@ import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
 import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
+import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
 import com.mza_agrotours.backend.exceptions.EstablecimientoNotFoundException;
 import com.mza_agrotours.backend.exceptions.TipoIdentificacionInvalidoException;
 import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
@@ -182,7 +183,11 @@ public class ReservaService {
         // Gettear la actividad, chequear que esté activa
         Actividad actividad = actividadRepository.getActividadByDiaActividadId(UUID.fromString(realizarReservaDTO.diaActividadId()))
                 .orElseThrow(ActividadNotFoundException::new);
-        if (actividad.getFechaHoraBaja() != null || actividad.getEstado().getNombre() != EstadoActividadNombre.PUBLICADO)
+        if (actividad.getFechaHoraBaja() != null
+                || actividad.getEstado().getNombre() != EstadoActividadNombre.PUBLICADO
+                || actividad.getEstablecimiento().getEstadoActual()
+                    .getEstadoEstablecimiento()
+                    .getNombre().equals(EstadoEstablecimientoNombre.SUSPENDIDO))
             throw new ActividadNotActiveException();
 
         // Gettear los ActividadRangoEtario activos

@@ -59,4 +59,13 @@ public class EstablecimientoAuthorization {
         return this.establecimientoRepository.esTitularVigente(usuario.getEmail(), establecimientoId);
     }
 
+    @Transactional(readOnly = true)
+    public boolean esProductorVigente(Authentication authentication, UUID establecimientoId) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof UsuarioAuthDetails usuario)) {
+            return false;
+        }
+        return this.productorRepository.esProductorVigenteyActivo(usuario.getEmail(), establecimientoId);
+    }
+
+
 }
