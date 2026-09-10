@@ -12,8 +12,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/recetas")
-public class RecetaController {
+@RequestMapping("/admin/recetas")
+public class RecetaAdminController {
     @Autowired
     private RecetaService recetaService;
 

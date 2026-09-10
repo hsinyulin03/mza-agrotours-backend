@@ -1,5 +1,7 @@
 package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.dtos.receta.*;
+import com.mza_agrotours.backend.enums.Dificultad;
+import com.mza_agrotours.backend.enums.DuracionNombre;
 import com.mza_agrotours.backend.mappers.RectaMapper;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.receta.Duracion;
@@ -14,6 +16,8 @@ import com.mza_agrotours.backend.repositories.receta.DuracionRepository;
 import com.mza_agrotours.backend.repositories.receta.RecetaRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -34,7 +38,7 @@ public class RecetaService {
     @Autowired
     private  RectaMapper recetaMapper;
 
-
+//// US-CULT-09 ALTA RECETA
     @Transactional
    public DTORecetaAMResponse altaReceta(DTORecetaAM dto) {
 
@@ -91,7 +95,7 @@ public class RecetaService {
                 .toList());
         return dto;
     }
-    // MODIFICAR RECETA
+    //// US-CULT-09 MODIFICAR RECETA
     @Transactional
     public DTORecetaAMResponse modificarReceta(UUID id, DTORecetaAM dto) {
 
@@ -159,7 +163,7 @@ public class RecetaService {
         response.setMensaje("Se guardaron los cambios de la receta " + guardada.getNombre() + ".");
         return response;
     }
-    // BAJA RECETA
+    //// US-CULT-09 BAJA RECETA
     @Transactional
     public DTORectaBResponse bajaReceta(UUID id) {
         Receta receta = obtenerReceta(id);
@@ -170,7 +174,7 @@ public class RecetaService {
         response.setMensaje("Se eliminó la receta " + receta.getNombre() + " del catágolo de recetas.");
         return response;
     }
-    // CONSULTAR CATÁLOGO DE RECETAS
+    //// US-CULT-08 Consultar recetas de cultivos administrador.
     public DTOCatalogoReceta consultarCatalogoRecetas() {
         List<Receta> recetas = recetaRepository.findAllByFechaHoraBajaIsNull();
 
@@ -185,8 +189,30 @@ public class RecetaService {
 
         return catalogo;
     }
+    //// US-CULT-03 Consultar recetas de cultivos visitante
+    // FILTROS
+    public List<DTOFiltroDificultadReceta> obtenerFiltroDificultad() {
+        return recetaRepository.obtenerFiltroDificultad();
+    }
 
+    public List<DTOFiltroDuracionReceta> obtenerFiltroDuracion() {
+        return recetaRepository.obtenerFiltroDuracion();
+    }
 
+    public List<DTOFiltroCultivoReceta> obtenerFiltroCultivos() {
+        return tipoCultivoRepository.obtenerFiltroCultivosDeRecetas();
+    }
+
+    public Page<DTORecetaCatalogoVisitante> consultarCatalogoVisitante(
+            UUID cultivoId,
+            Dificultad dificultad,
+            DuracionNombre duracionnombre,
+            Pageable pageable) {
+
+        Page<Receta> recetas = recetaRepository.consultarCatalogoVisitante(cultivoId, dificultad, duracionnombre, pageable);
+
+        return recetas.map(this::mapearACatalogoVisitante);
+    }
 
 
 
@@ -251,6 +277,13 @@ public class RecetaService {
                         cultivo.getNombre()))
                 .toList();
     }
+    private List<DTOCultivoRecetaResponse> obtenerCultivosDeRecetaVisitante(UUID recetaId) {
+        return tipoCultivoRepository.findByRecetasId(recetaId).stream()
+                .map(cultivo -> new DTOCultivoRecetaResponse(
+                        cultivo.getId(),
+                        cultivo.getNombre()))
+                .toList();
+    }
     private void validarNombreDisponibleParaModificar(UUID id, String nombre) {
         recetaRepository.findByNombreIgnoreCaseAndFechaHoraBajaIsNull(nombre)
                 .filter(existente -> !existente.getId().equals(id))
@@ -258,13 +291,22 @@ public class RecetaService {
                     throw new EntityAlreadyExistsException("Ya existe una receta con ese nombre");
                 });
     }
-    // CONSULTAR CATÁLOGO RECETAS
+    // CONSULTAR CATÁLOGO RECETAS ADMIN
     private DTORecetaListado mapearAListado(Receta receta) {
         DTORecetaListado dto = recetaMapper.recetaToDtoListado(receta);
 
         dto.setNombresCultivos(tipoCultivoRepository.findByRecetasId(receta.getId()).stream()
                 .map(TipoCultivo::getNombre)
                 .toList());
+        dto.setCantidadPasos(receta.getPasos().size());
+
+        return dto;
+    }
+    //CONSULTAR CATALOGO RECETAS VISITANTE
+    private DTORecetaCatalogoVisitante mapearACatalogoVisitante(Receta receta) {
+        DTORecetaCatalogoVisitante dto = recetaMapper.recetaToDtoCatalogoVisitante(receta);
+
+        dto.setCultivos(obtenerCultivosDeRecetaVisitante(receta.getId()));
         dto.setCantidadPasos(receta.getPasos().size());
 
         return dto;

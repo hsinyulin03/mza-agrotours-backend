@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.mappers;
 
+import com.mza_agrotours.backend.dtos.receta.DTORecetaCatalogoVisitante;
 import com.mza_agrotours.backend.dtos.receta.DTORecetaDetalleM;
 import com.mza_agrotours.backend.dtos.receta.DTORecetaListado;
 import com.mza_agrotours.backend.entities.receta.Receta;
@@ -12,8 +13,31 @@ public interface RectaMapper {
     @Mapping(target = "ingredientes", ignore = true)
     @Mapping(target = "pasos", ignore = true)
     DTORecetaDetalleM recetaToDtoDetalle(Receta receta);
+
     @Mapping(target = "nombresCultivos", ignore = true)
     @Mapping(source = "duracion.nombre.nombre", target = "duracionNombre")
     @Mapping(target = "cantidadPasos", ignore = true)
     DTORecetaListado recetaToDtoListado(Receta receta);
+
+    @Mapping(target = "cultivos", ignore = true)
+    @Mapping(target = "cantidadPasos", ignore = true)
+    @Mapping(source = "duracion.nombre", target = "duracion")
+    @Mapping(target = "tiempo", expression = "java(formatearTiempo(receta.getTiempoMinsAprox()))")
+    DTORecetaCatalogoVisitante recetaToDtoCatalogoVisitante(Receta receta);
+
+    default String formatearTiempo(Integer minutos) {
+        if (minutos == null) {
+            return null;
+        }
+        int horas = minutos / 60;
+        int minutosRestantes = minutos % 60;
+
+        if (horas == 0) {
+            return minutosRestantes + " min";
+        }
+        if (minutosRestantes == 0) {
+            return horas + " h";
+        }
+        return horas + " h " + minutosRestantes + " min";
+    }
 }

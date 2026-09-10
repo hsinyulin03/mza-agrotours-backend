@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.repositories.TipoCultivo;
 
+import com.mza_agrotours.backend.dtos.receta.DTOFiltroCultivoReceta;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.enums.EstacionalidadNombre;
 import com.mza_agrotours.backend.enums.Mes;
@@ -64,6 +65,16 @@ public interface TipoCultivoRepository
       AND e.nombre = :nombre
     """)
     long countEnTemporada(@Param("mes") Mes mes, @Param("nombre") EstacionalidadNombre nombre);
+    @Query("""
+    SELECT new com.mza_agrotours.backend.dtos.receta.DTOFiltroCultivoReceta(c.id, c.nombre, COUNT(r))
+    FROM TipoCultivo c
+    JOIN c.recetas r
+    WHERE c.fechaHoraBaja IS NULL
+    AND r.fechaHoraBaja IS NULL
+    GROUP BY c.id, c.nombre
+    ORDER BY c.nombre
+    """)
+    List<DTOFiltroCultivoReceta> obtenerFiltroCultivosDeRecetas();
 
 
 
