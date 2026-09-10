@@ -125,4 +125,10 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
             @Param("establecimientoId") UUID establecimientoId,
             @Param("cultivoId") UUID cultivoId,
             @Param("idActividadActual") UUID idActividadActual);
+
+    @Query("SELECT COUNT(a) > 0 FROM Actividad a " +
+            "WHERE a.establecimiento.id = :establecimientoId " +
+            "AND a.establecimiento.fechaHoraBaja IS NULL " +
+            "AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO")
+    boolean existeActividadPublicadaByEstablecimientoId(@Param("establecimientoId") UUID establecimientoId);
 }

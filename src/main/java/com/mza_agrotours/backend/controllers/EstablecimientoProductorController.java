@@ -1,14 +1,11 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
+import com.mza_agrotours.backend.dtos.CondicionDTO;
 import com.mza_agrotours.backend.dtos.establecimiento.*;
 import com.mza_agrotours.backend.services.EstablecimientoService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -49,6 +46,11 @@ public class EstablecimientoProductorController {
 
         DTOBajaEstablecimientoResponse resultado = establecimientoService.bajaEstablecimiento(establecimientoId);
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(resultado));
+    }
+
+    @GetMapping("/condiciones-baja")
+    public ResponseEntity<ApiResponse<List<CondicionDTO>>> getCondicionesBajaEstablecimiento(@PathVariable UUID establecimientoId) {
+        return ResponseEntity.ok(ApiResponse.ok(establecimientoService.getCondicionesDeleteEstablecimiento(establecimientoId)));
     }
 
 }

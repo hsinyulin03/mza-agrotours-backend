@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.dtos.CondicionDTO;
 import com.mza_agrotours.backend.dtos.establecimiento.*;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
@@ -112,6 +113,15 @@ public class EstablecimientoService  {
         return response;
 
     }
+
+    // US-EST-06 helper
+    public List<CondicionDTO> getCondicionesDeleteEstablecimiento(UUID establecimientoId) {
+        Establecimiento establecimiento = this.establecimientoRepository.findByIdAndFechaHoraBajaIsNull(establecimientoId)
+                .orElseThrow(() -> new EntityNotFoundException("No se encuentra el establecimiento indicado"));
+
+        return getCondicionesDeleteEstablecimientoHelper(establecimiento);
+    }
+
     //// US-EST-06 BM establecimiento (baja)
     @Transactional
     public DTOBajaEstablecimientoResponse bajaEstablecimiento(UUID id) {
@@ -290,10 +300,7 @@ public class EstablecimientoService  {
     }
 
     private void validarQueNoPoseaActividadesPublicadas(Establecimiento establecimiento) {
-        boolean tieneActividadesPublicadas = establecimiento.getActividades().stream()
-                .anyMatch(this::esActividadPublicada);
-
-        if (tieneActividadesPublicadas) {
+        if (actividadRepository.existeActividadPublicadaByEstablecimientoId(establecimiento.getId())) {
             throw new ValidacionNegocioException("No se puede dar de baja el establecimiento porque posee actividades publicadas");
         }
     }
@@ -345,6 +352,21 @@ public class EstablecimientoService  {
                 .map(ActividadRangoEtario::getPrecio)
                 .findFirst()
                 .orElse(null);
+    }
+
+    private List<CondicionDTO> getCondicionesDeleteEstablecimientoHelper(Establecimiento establecimiento) {
+        List<CondicionDTO> condiciones = new ArrayList<>();
+
+        if (actividadRepository.existeActividadPublicadaByEstablecimientoId(establecimiento.getId())) {
+            condiciones.add(
+                    new CondicionDTO(
+                        "No se puede dar de baja el establecimiento porque posee actividades publicadas",
+                        "No se puede dar de baja el establecimiento porque posee actividades publicadas"
+                    )
+            );
+        }
+
+        return condiciones;
     }
 }
 
