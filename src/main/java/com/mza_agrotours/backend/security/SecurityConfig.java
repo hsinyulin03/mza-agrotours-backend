@@ -69,6 +69,11 @@ public class SecurityConfig {
                         .requestMatchers("/solicitudes-establecimiento/").hasAuthority(PermisoCodigo.LEER_SOLICITUD_ESTABLECIMIENTO.name())
                         .requestMatchers("/solicitudes-establecimiento/observar/**").hasAuthority(PermisoCodigo.GESTIONAR_SOLICITUD_ESTABLECIMIENTO.name())
 
+                        .requestMatchers(HttpMethod.GET,"/establecimientos/catalogo").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/establecimientos/filtros/cultivos").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/establecimientos/filtros/departamentos").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/establecimientos/*/departamentos").permitAll()
+
                         // Archivos
                         .requestMatchers("/object-storage/**").permitAll()
 
