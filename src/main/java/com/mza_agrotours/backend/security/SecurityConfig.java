@@ -73,6 +73,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,"/establecimientos/filtros/cultivos").permitAll()
                         .requestMatchers(HttpMethod.GET,"/establecimientos/filtros/departamentos").permitAll()
                         .requestMatchers(HttpMethod.GET,"/establecimientos/*/departamentos").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/establecimientos/*/detalle").permitAll()
 
                         // Archivos
                         .requestMatchers("/object-storage/**").permitAll()
