@@ -9,7 +9,8 @@ import org.springframework.http.HttpStatus;
 @Getter
 @Accessors(fluent = true)
 public enum EstablecimientoError implements ErrorCode{
-    ESTABLECIMIENTO_SUSPENDIDO("E.suspendido", HttpStatus.CONFLICT, "El establecimiento está suspendido")
+    ESTABLECIMIENTO_SUSPENDIDO("E.suspendido", HttpStatus.CONFLICT, "El establecimiento está suspendido"),
+    ESTABLECIMIENTO_NOMBRE_YA_EXISTE("E.nombreYaExiste", HttpStatus.CONFLICT, "El nombre del establecimiento ya existe"),
     ;
     private final String code;
     private final HttpStatus httpStatus;
