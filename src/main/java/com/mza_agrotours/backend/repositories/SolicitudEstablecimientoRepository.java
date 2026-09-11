@@ -22,6 +22,6 @@ public interface SolicitudEstablecimientoRepository extends BaseEntityRepository
 
     @Query("select se from SolicitudEstablecimiento se " +
             "where se.id = :solicitudId " +
-            "and se.estadoActual.estadoSolicitudEstablecimiento.nombre = EstadoSolicitudEstablecimientoNombre.PENDIENTE")
+            "and se.estadoActual.estadoSolicitudEstablecimiento.nombre = com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolicitudEstablecimientoNombre.PENDIENTE")
     Optional<SolicitudEstablecimiento> findByIdAndPendiente(@Param("solicitudId") UUID solicitudId);
 }

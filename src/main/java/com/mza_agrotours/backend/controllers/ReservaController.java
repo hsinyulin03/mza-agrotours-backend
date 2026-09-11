@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.controllers;
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
 import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDTO;
+import com.mza_agrotours.backend.dtos.reservas.IniciarReservaDTO;
 import com.mza_agrotours.backend.dtos.reservas.ListarReservaDTO;
 import com.mza_agrotours.backend.dtos.reservas.RealizarReservaDTO;
 import com.mza_agrotours.backend.services.ReservaService;
@@ -22,7 +23,7 @@ public class ReservaController {
         this.service = service;
     }
 
-    @GetMapping("/{uuid}")
+    @GetMapping("/get/{uuid}")
     public ResponseEntity<ApiResponse<ConsultarReservaDTO>> getReserva(
             @PathVariable UUID uuid,
             @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
@@ -33,18 +34,7 @@ public class ReservaController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/reservar")
-    public ResponseEntity<ApiResponse<ConsultarReservaDTO>> iniciarReserva(
-            @Valid @RequestBody RealizarReservaDTO dtoEntrada,
-            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
-    ) {
-        String email = usuarioAuthDetails.getEmail();
-        ConsultarReservaDTO dtoSalida = service.handleIniciarReserva(dtoEntrada, email);
-        ApiResponse<ConsultarReservaDTO> response = ApiResponse.ok(dtoSalida);
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/")
+    @GetMapping("/get")
     public ResponseEntity<ApiResponse<List<ListarReservaDTO>>> getReservaList(
             @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
     ) {
@@ -52,5 +42,26 @@ public class ReservaController {
         List<ListarReservaDTO> dtos = service.getListarReservas(email);
         ApiResponse<List<ListarReservaDTO>> response = ApiResponse.ok(dtos);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/reservar")
+    public ResponseEntity<ApiResponse<IniciarReservaDTO>> iniciarReserva(
+            @Valid @RequestBody RealizarReservaDTO dtoEntrada,
+            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
+    ) {
+        String email = usuarioAuthDetails.getEmail();
+        IniciarReservaDTO dtoSalida = service.handleIniciarReserva(dtoEntrada, email);
+        ApiResponse<IniciarReservaDTO> response = ApiResponse.ok(dtoSalida);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/cancelarPago/{preferenceId}")
+    public ResponseEntity<ApiResponse<?>> cancelarPago(
+            @PathVariable String preferenceId,
+            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
+    ) {
+        String email = usuarioAuthDetails.getEmail();
+        service.handleCancelarPago(preferenceId, email);
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }

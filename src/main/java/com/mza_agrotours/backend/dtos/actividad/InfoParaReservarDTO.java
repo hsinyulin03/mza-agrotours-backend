@@ -1,6 +1,6 @@
-package com.mza_agrotours.backend.dtos.reservas;
+package com.mza_agrotours.backend.dtos.actividad;
 
-import com.mza_agrotours.backend.entities.Parametros;
+import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 
@@ -11,6 +11,8 @@ public record InfoParaReservarDTO(
         List<DiaActividadReservaDTO> diasActividad,
         // RangoEtario []
         List<RangoEtarioReservaDTO> rangosEtarios,
+        // Info del usuario que quiere reservar
+        UsuarioPreviewReservaDTO usuario,
         // Actividad
         String nombre,
         String ubicacion,
@@ -22,11 +24,13 @@ public record InfoParaReservarDTO(
 ) {
     public static InfoParaReservarDTO of(Actividad actividad, Establecimiento establecimiento,
                                           List<DiaActividadReservaDTO> diasActividad,
+                                          UsuarioPreviewReservaDTO usuario,
                                           List<RangoEtarioReservaDTO> rangosEtarios,
                                           Integer diasMinReembolso) {
         return new InfoParaReservarDTO(
                 diasActividad,
                 rangosEtarios,
+                usuario,
                 actividad.getNombre(),
                 establecimiento.getUbicacion(),
                 establecimiento.getRazonSocial(),

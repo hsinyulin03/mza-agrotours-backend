@@ -7,15 +7,20 @@ import org.springframework.stereotype.Component;
 import java.util.concurrent.TimeUnit;
 
 @Component
-public class ReservaExpiracionScheduler {
+public class ReservaEstadosScheduler {
     private final ReservaService reservaService;
 
-    public ReservaExpiracionScheduler(ReservaService reservaService) {
+    public ReservaEstadosScheduler(ReservaService reservaService) {
         this.reservaService = reservaService;
     }
 
     @Scheduled(fixedDelay = 60L, timeUnit = TimeUnit.SECONDS)
     public void checkReservasExpiradas(){
         reservaService.expirarReservas();
+    }
+
+    @Scheduled(fixedDelay = 60L, timeUnit = TimeUnit.SECONDS)
+    public void checkReservasPagadas(){
+        reservaService.pagarReservas();
     }
 }

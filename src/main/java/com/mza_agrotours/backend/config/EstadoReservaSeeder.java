@@ -1,7 +1,7 @@
 package com.mza_agrotours.backend.config;
 
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
-import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
+import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.repositories.EstadoReservaRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;

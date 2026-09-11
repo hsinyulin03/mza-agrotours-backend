@@ -1,4 +1,4 @@
-package com.mza_agrotours.backend.entities.reservas;
+package com.mza_agrotours.backend.enums;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
