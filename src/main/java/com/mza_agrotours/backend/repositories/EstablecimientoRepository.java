@@ -47,8 +47,9 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
 
     @Query("SELECT COUNT(e) > 0 FROM Establecimiento e " +
             "WHERE e.nombre = :nombre " +
+            "AND e.id <> :id " +
             "AND e.fechaHoraBaja IS NULL")
-    boolean existsVigenteByEstablecimientoNombre(@Param("nombre") String nombre);
+    boolean existsEstablecimientoVigenteByNombreOtherThanId(@Param("nombre") String nombre, @Param("id") UUID id);
 
     @Query("SELECT COUNT(e) > 0 FROM Establecimiento e " +
             "WHERE e.id = :establecimientoId " +
@@ -66,29 +67,33 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
 
     @Query(
             value = """
-        SELECT DISTINCT e FROM Establecimiento e
-        JOIN FETCH e.departamento d
-        JOIN e.actividades a
-        JOIN a.cultivos c
+        SELECT e FROM Establecimiento e
+        JOIN FETCH e.departamento
         WHERE e.fechaHoraBaja IS NULL
         AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
-        AND a.fechaHoraBaja IS NULL
-        AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO
-        AND (:departamentoId IS NULL OR d.id = :departamentoId)
-        AND (:cultivosIds IS NULL OR c.id IN :cultivosIds)
-        AND c.fechaHoraBaja IS NULL
+        AND (:departamentoId IS NULL OR e.departamento.id = :departamentoId)
+        AND (:cultivosIds IS NULL OR EXISTS (
+            SELECT 1 FROM e.actividades a
+            JOIN a.cultivos c
+            WHERE a.fechaHoraBaja IS NULL
+            AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO
+            AND c.fechaHoraBaja IS NULL
+            AND c.id IN :cultivosIds
+        ))
     """,
             countQuery = """
-        SELECT COUNT(DISTINCT e) FROM Establecimiento e
-        JOIN e.actividades a
-        JOIN a.cultivos c
+        SELECT COUNT(e) FROM Establecimiento e
         WHERE e.fechaHoraBaja IS NULL
         AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
-        AND a.fechaHoraBaja IS NULL
-        AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO
         AND (:departamentoId IS NULL OR e.departamento.id = :departamentoId)
-        AND (:cultivosIds IS NULL OR c.id IN :cultivosIds)
-        AND c.fechaHoraBaja IS NULL
+        AND (:cultivosIds IS NULL OR EXISTS (
+            SELECT 1 FROM e.actividades a
+            JOIN a.cultivos c
+            WHERE a.fechaHoraBaja IS NULL
+            AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO
+            AND c.fechaHoraBaja IS NULL
+            AND c.id IN :cultivosIds
+        ))
     """
     )
     Page<Establecimiento> obtenerEstablecimientosActivos(

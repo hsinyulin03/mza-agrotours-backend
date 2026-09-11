@@ -104,7 +104,7 @@ public class EstablecimientoService  {
     public DTOUpdEstablecimientoResponse modificarEstablecimiento(UUID id, DTOUpdEstablecimientoRequest dto) {
         Establecimiento establecimiento = obtenerEstablecimiento(id);
 
-        if(establecimientoRepository.existsVigenteByEstablecimientoNombre(dto.getNombre())) {
+        if(establecimientoRepository.existsEstablecimientoVigenteByNombreOtherThanId(dto.getNombre(), id)) {
             throw new AppException(EstablecimientoError.ESTABLECIMIENTO_NOMBRE_YA_EXISTE);
         }
 
