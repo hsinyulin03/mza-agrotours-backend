@@ -5,6 +5,7 @@ import com.mza_agrotours.backend.dtos.establecimiento.*;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
+import com.mza_agrotours.backend.entities.actividad.EstadoActividad;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.establecimiento.EstablecimientoEstado;
@@ -19,6 +20,7 @@ import com.mza_agrotours.backend.mappers.EstablecimientoMapper;
 import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
+import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -56,6 +58,9 @@ public class EstablecimientoService  {
 
     @Autowired
     private ActividadRepository actividadRepository;
+
+    @Autowired
+    private EstadoActividadRepository estadoActividadRepository;
 
 // ALTA ESTABLECIMIENTO
     @Transactional
@@ -149,9 +154,15 @@ public class EstablecimientoService  {
         roles.forEach(rol -> rol.setFechaHoraBaja(fechaHoraBajaAhora));
         rolRepository.saveAll(roles);
 
+        EstadoActividad estadoActividadBaja = this.estadoActividadRepository.findByNombre(EstadoActividadNombre.DADO_DE_BAJA)
+                .orElseThrow(() -> new ValidacionNegocioException("No se encuentra configurado el estado DADO DE BAJA"));
+
         establecimiento.getActividades()
                 .stream().filter(actividad -> actividad.getFechaHoraBaja() == null)
-                .forEach(actividad -> actividad.setFechaHoraBaja(fechaHoraBajaAhora));
+                .forEach(actividad -> {
+                    actividad.setEstado(estadoActividadBaja);
+                    actividad.setFechaHoraBaja(fechaHoraBajaAhora);
+                });
         this.actividadRepository.saveAll(establecimiento.getActividades());
 
         Establecimiento eliminado = establecimientoRepository.save(establecimiento);
