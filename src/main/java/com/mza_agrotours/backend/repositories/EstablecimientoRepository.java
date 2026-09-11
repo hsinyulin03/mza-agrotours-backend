@@ -47,8 +47,9 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
 
     @Query("SELECT COUNT(e) > 0 FROM Establecimiento e " +
             "WHERE e.nombre = :nombre " +
+            "AND e.id <> :id " +
             "AND e.fechaHoraBaja IS NULL")
-    boolean existsVigenteByEstablecimientoNombre(@Param("nombre") String nombre);
+    boolean existsEstablecimientoVigenteByNombreOtherThanId(@Param("nombre") String nombre, @Param("id") UUID id);
 
     @Query("SELECT COUNT(e) > 0 FROM Establecimiento e " +
             "WHERE e.id = :establecimientoId " +
