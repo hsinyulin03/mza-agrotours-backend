@@ -14,9 +14,7 @@ import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
-import com.mza_agrotours.backend.exceptions.EntityAlreadyExistsException;
-import com.mza_agrotours.backend.exceptions.EntityNotFoundException;
-import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
+import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.mappers.EstablecimientoMapper;
 import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
@@ -101,6 +99,11 @@ public class EstablecimientoService  {
     public DTOUpdEstablecimientoResponse modificarEstablecimiento(UUID id, DTOUpdEstablecimientoRequest dto) {
         Establecimiento establecimiento = obtenerEstablecimiento(id);
 
+        if(establecimientoRepository.existsVigenteByEstablecimientoNombre(dto.getNombre())) {
+            throw new AppException(EstablecimientoError.ESTABLECIMIENTO_NOMBRE_YA_EXISTE);
+        }
+
+        establecimiento.setNombre(dto.getNombre());
         establecimiento.setDescripcion(dto.getDescripcion());
         establecimiento.setTelefono(dto.getTelefono());
         establecimiento.setEmail(dto.getEmail());
@@ -366,7 +369,7 @@ public class EstablecimientoService  {
             );
         }
 
-        return condiciones;
+        return List.of();
     }
 }
 

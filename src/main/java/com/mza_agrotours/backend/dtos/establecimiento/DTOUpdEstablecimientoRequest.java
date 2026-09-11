@@ -1,15 +1,18 @@
 package com.mza_agrotours.backend.dtos.establecimiento;
 
 import com.mza_agrotours.backend.validation.NumeroTelefono;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 
 @Data
 public class DTOUpdEstablecimientoRequest {
     //Identidad
+    @NotNull
+    @Size(min = 1, max = 100, message = "El nombre debe tener entre 1 y 100 caracteres")
+    @SinCaracteresEspeciales
+    private String nombre;
+
     @NotBlank(message = "La descripción es obligatoria")
     @Size(max = 2000, message = "La descripción no puede superar los 2000 caracteres")
     private String descripcion;
