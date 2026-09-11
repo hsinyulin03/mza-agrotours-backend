@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,13 +20,16 @@ public class EstablecimientoProductorController {
 
     @Autowired
     private EstablecimientoService establecimientoService;
+
     @PostMapping("/alta")
+    @PreAuthorize("@estAuth.esTitular(authentication, #establecimientoId)")
     public ResponseEntity<ApiResponse<DTODatosEstablecimiento>> altaAuxEstablecimiento(@Valid @RequestBody DTOEstablecimientoAlta dto) throws Exception {
         DTODatosEstablecimiento resultado = establecimientoService.altaAuxEstablecimiento(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(resultado));
     }
     //US-EST-05 BM establecimiento (modificar)
     @GetMapping
+    @PreAuthorize("@estAuth.esTitular(authentication, #establecimientoId)")
     public ResponseEntity<ApiResponse<DTODatosEstablecimiento>> obtenerDatosEstablecimiento(
             @PathVariable UUID establecimientoId) throws Exception {
         DTODatosEstablecimiento dto = establecimientoService.obtenerDatosEstablecimiento(establecimientoId);
@@ -33,6 +37,7 @@ public class EstablecimientoProductorController {
     }
     // MODIFICAR ESTABLECIMIENTO
     @PutMapping
+    @PreAuthorize("@estAuth.esTitular(authentication, #establecimientoId)")
     public ResponseEntity<ApiResponse<DTOUpdEstablecimientoResponse>> modificarEstablecimiento(
             @PathVariable UUID establecimientoId,
             @Valid @RequestBody DTOUpdEstablecimientoRequest dto) {
@@ -41,6 +46,7 @@ public class EstablecimientoProductorController {
     }
     // US-EST-06 BM establecimiento (baja)
     @DeleteMapping
+    @PreAuthorize("@estAuth.esTitular(authentication, #establecimientoId)")
     public ResponseEntity<ApiResponse<DTOBajaEstablecimientoResponse>> bajaEstablecimiento(
             @PathVariable UUID establecimientoId) {
 
@@ -49,6 +55,7 @@ public class EstablecimientoProductorController {
     }
 
     @GetMapping("/condiciones-baja")
+    @PreAuthorize("@estAuth.esTitular(authentication, #establecimientoId)")
     public ResponseEntity<ApiResponse<List<CondicionDTO>>> getCondicionesBajaEstablecimiento(@PathVariable UUID establecimientoId) {
         return ResponseEntity.ok(ApiResponse.ok(establecimientoService.getCondicionesDeleteEstablecimiento(establecimientoId)));
     }
