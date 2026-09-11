@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.dtos.CondicionDTO;
 import com.mza_agrotours.backend.dtos.establecimiento.*;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
@@ -8,16 +9,16 @@ import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.establecimiento.EstablecimientoEstado;
 import com.mza_agrotours.backend.entities.establecimiento.EstadoEstablecimiento;
+import com.mza_agrotours.backend.entities.productor.Productor;
+import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
-import com.mza_agrotours.backend.exceptions.EntityAlreadyExistsException;
-import com.mza_agrotours.backend.exceptions.EntityNotFoundException;
-import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
+import com.mza_agrotours.backend.enums.TipoPermisoNombre;
+import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.mappers.EstablecimientoMapper;
-import com.mza_agrotours.backend.repositories.DepartamentoRepository;
-import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
-import com.mza_agrotours.backend.repositories.EstadoEstablecimientoRepository;
+import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
+import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -43,8 +44,19 @@ public class EstablecimientoService  {
 
     @Autowired
     private TipoCultivoRepository tipoCultivoRepository;
+
     @Autowired
     private EstablecimientoMapper establecimientoMapper;
+
+    @Autowired
+    private RolRepository rolRepository;
+
+    @Autowired
+    private ProductorRepository productorRepository;
+
+    @Autowired
+    private ActividadRepository actividadRepository;
+
 // ALTA ESTABLECIMIENTO
     @Transactional
     public DTODatosEstablecimiento altaAuxEstablecimiento(DTOEstablecimientoAlta dto){
@@ -87,6 +99,11 @@ public class EstablecimientoService  {
     public DTOUpdEstablecimientoResponse modificarEstablecimiento(UUID id, DTOUpdEstablecimientoRequest dto) {
         Establecimiento establecimiento = obtenerEstablecimiento(id);
 
+        if(establecimientoRepository.existsVigenteByEstablecimientoNombre(dto.getNombre())) {
+            throw new AppException(EstablecimientoError.ESTABLECIMIENTO_NOMBRE_YA_EXISTE);
+        }
+
+        establecimiento.setNombre(dto.getNombre());
         establecimiento.setDescripcion(dto.getDescripcion());
         establecimiento.setTelefono(dto.getTelefono());
         establecimiento.setEmail(dto.getEmail());
@@ -99,6 +116,15 @@ public class EstablecimientoService  {
         return response;
 
     }
+
+    // US-EST-06 helper
+    public List<CondicionDTO> getCondicionesDeleteEstablecimiento(UUID establecimientoId) {
+        Establecimiento establecimiento = this.establecimientoRepository.findByIdAndFechaHoraBajaIsNull(establecimientoId)
+                .orElseThrow(() -> new EntityNotFoundException("No se encuentra el establecimiento indicado"));
+
+        return getCondicionesDeleteEstablecimientoHelper(establecimiento);
+    }
+
     //// US-EST-06 BM establecimiento (baja)
     @Transactional
     public DTOBajaEstablecimientoResponse bajaEstablecimiento(UUID id) {
@@ -107,6 +133,26 @@ public class EstablecimientoService  {
 
         validarQueNoPoseaActividadesPublicadas(establecimiento);
         establecimiento.setFechaHoraBaja(LocalDateTime.now());
+
+        LocalDateTime fechaHoraBajaAhora = LocalDateTime.now();
+
+        EstadoEstablecimiento estadoEstablecimiento = this.estadoEstablecimientoRepository
+                .findByNombreAndFechaBajaIsNull(EstadoEstablecimientoNombre.DADO_DE_BAJA)
+                        .orElseThrow(() -> new ValidacionNegocioException("No se encuentra configurado el estado DADO DE BAJA"));
+        establecimiento.cambiarEstado(estadoEstablecimiento, "Baja del establecimiento");
+
+        List<Productor> productores = this.productorRepository.findVigentesByEstablecimiento(id);
+        productores.forEach(productor -> productor.setFechaHoraBaja(fechaHoraBajaAhora));
+        productorRepository.saveAll(productores);
+
+        List<Rol> roles = this.rolRepository.findVigentesEnScope(TipoPermisoNombre.PRODUCTOR, id);
+        roles.forEach(rol -> rol.setFechaHoraBaja(fechaHoraBajaAhora));
+        rolRepository.saveAll(roles);
+
+        establecimiento.getActividades()
+                .stream().filter(actividad -> actividad.getFechaHoraBaja() == null)
+                .forEach(actividad -> actividad.setFechaHoraBaja(fechaHoraBajaAhora));
+        this.actividadRepository.saveAll(establecimiento.getActividades());
 
         Establecimiento eliminado = establecimientoRepository.save(establecimiento);
         DTOBajaEstablecimientoResponse response = new DTOBajaEstablecimientoResponse();
@@ -257,10 +303,7 @@ public class EstablecimientoService  {
     }
 
     private void validarQueNoPoseaActividadesPublicadas(Establecimiento establecimiento) {
-        boolean tieneActividadesPublicadas = establecimiento.getActividades().stream()
-                .anyMatch(this::esActividadPublicada);
-
-        if (tieneActividadesPublicadas) {
+        if (actividadRepository.existeActividadPublicadaByEstablecimientoId(establecimiento.getId())) {
             throw new ValidacionNegocioException("No se puede dar de baja el establecimiento porque posee actividades publicadas");
         }
     }
@@ -312,6 +355,21 @@ public class EstablecimientoService  {
                 .map(ActividadRangoEtario::getPrecio)
                 .findFirst()
                 .orElse(null);
+    }
+
+    private List<CondicionDTO> getCondicionesDeleteEstablecimientoHelper(Establecimiento establecimiento) {
+        List<CondicionDTO> condiciones = new ArrayList<>();
+
+        if (actividadRepository.existeActividadPublicadaByEstablecimientoId(establecimiento.getId())) {
+            condiciones.add(
+                    new CondicionDTO(
+                        "No se puede dar de baja el establecimiento porque posee actividades publicadas",
+                        "No se puede dar de baja el establecimiento porque posee actividades publicadas"
+                    )
+            );
+        }
+
+        return List.of();
     }
 }
 
