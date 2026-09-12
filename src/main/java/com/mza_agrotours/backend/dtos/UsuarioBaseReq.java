@@ -37,8 +37,9 @@ public class UsuarioBaseReq {
     @NotNull
     private String paisIso2;
 
-    @NotNull
-    @Pattern(regexp = "^\\+[1-9]\\d{7,14}$", message = "El teléfono debe estar en formato internacional, ej: +5492611234567")
+    @NotBlank(message = "El teléfono es obligatorio")
+    @NumeroTelefono(estricto = true,
+            message = "El teléfono debe estar en formato internacional con '+' y código de país, ej: +5492611234567")
     private String telefono;
 
     @NotNull
