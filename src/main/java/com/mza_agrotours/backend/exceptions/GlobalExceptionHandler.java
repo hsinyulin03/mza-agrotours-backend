@@ -71,7 +71,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(FirebaseAuthException.class)
     public ResponseEntity<?> handleFirebaseAuthException(FirebaseAuthException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail(ex.getAuthErrorCode().toString(), ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.fail(ex.getAuthErrorCode().toString(), ex.getMessage()));
     }
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<?> handleEntityNotFoundException(EntityNotFoundException ex) {
