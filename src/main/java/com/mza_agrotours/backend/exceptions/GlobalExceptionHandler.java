@@ -27,7 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
+@Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler {
     // --- INICIO EXCEPCIONES USUARIO
@@ -71,6 +71,17 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(FirebaseAuthException.class)
     public ResponseEntity<?> handleFirebaseAuthException(FirebaseAuthException ex) {
+        if (ex.getAuthErrorCode() == null) {
+            String message = ex.getMessage() != null &&
+                    ex.getMessage().contains("INVALID_PHONE_NUMBER")
+                    ? "El teléfono no es válido. Usá formato internacional, ej: +5492611234567"
+                    : "No se pudo completar la operación con el proveedor de autenticación";
+            log.error("Firebase sin AuthErrorCode: {}", ex.getMessage(), ex);
+
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.fail("firebaseError", message));
+        }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.fail(ex.getAuthErrorCode().toString(), ex.getMessage()));
     }
     @ExceptionHandler(EntityNotFoundException.class)
