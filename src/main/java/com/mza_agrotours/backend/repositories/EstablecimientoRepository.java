@@ -1,7 +1,11 @@
 package com.mza_agrotours.backend.repositories;
 
+import com.mza_agrotours.backend.dtos.establecimiento.DTOFiltroCultivoEstablecimiento;
+import com.mza_agrotours.backend.dtos.establecimiento.DTOFiltroDepartamentoEstablecimiento;
 import com.mza_agrotours.backend.dtos.reservas.EstablecimientoPorActividad;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -29,9 +33,23 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
 """)
     List<Establecimiento> obtenerEstablecimientosActivos();
 
+    @Query("SELECT e FROM Establecimiento e " +
+            "WHERE e.id = :establecimientoId " +
+            "AND e.fechaHoraBaja IS NULL " +
+            "AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO")
+    Optional<Establecimiento> obtenerEstablecimientoActivoById(@Param("establecimientoId") UUID establecimientoId);
+
+    List<Establecimiento> findByFechaHoraBajaIsNull();
+
     Optional<Establecimiento> findByIdAndFechaHoraBajaIsNull(UUID id);
     boolean existsByCuitAndFechaHoraBajaIsNull(String cuit);
     boolean existsByTiposCultivosIdAndFechaHoraBajaIsNull(UUID tipoCultivoId);
+
+    @Query("SELECT COUNT(e) > 0 FROM Establecimiento e " +
+            "WHERE e.nombre = :nombre " +
+            "AND e.id <> :id " +
+            "AND e.fechaHoraBaja IS NULL")
+    boolean existsEstablecimientoVigenteByNombreOtherThanId(@Param("nombre") String nombre, @Param("id") UUID id);
 
     @Query("SELECT COUNT(e) > 0 FROM Establecimiento e " +
             "WHERE e.id = :establecimientoId " +
@@ -41,5 +59,71 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
     boolean esTitularVigente(@Param("email") String email,
                              @Param("establecimientoId") UUID establecimientoId);
 
+    @Query("SELECT COUNT(e) > 0 FROM Establecimiento e " +
+            "WHERE e.id = :establecimientoId " +
+            "AND e.fechaHoraBaja IS NULL " +
+            "AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.SUSPENDIDO")
+    boolean establecimientoSuspendido(@Param("establecimientoId") UUID establecimientoId);
+
+    @Query(
+            value = """
+        SELECT e FROM Establecimiento e
+        JOIN FETCH e.departamento
+        WHERE e.fechaHoraBaja IS NULL
+        AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
+        AND (:departamentoId IS NULL OR e.departamento.id = :departamentoId)
+        AND (:cultivosIds IS NULL OR EXISTS (
+            SELECT 1 FROM e.actividades a
+            JOIN a.cultivos c
+            WHERE a.fechaHoraBaja IS NULL
+            AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO
+            AND c.fechaHoraBaja IS NULL
+            AND c.id IN :cultivosIds
+        ))
+    """,
+            countQuery = """
+        SELECT COUNT(e) FROM Establecimiento e
+        WHERE e.fechaHoraBaja IS NULL
+        AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
+        AND (:departamentoId IS NULL OR e.departamento.id = :departamentoId)
+        AND (:cultivosIds IS NULL OR EXISTS (
+            SELECT 1 FROM e.actividades a
+            JOIN a.cultivos c
+            WHERE a.fechaHoraBaja IS NULL
+            AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO
+            AND c.fechaHoraBaja IS NULL
+            AND c.id IN :cultivosIds
+        ))
+    """
+    )
+    Page<Establecimiento> obtenerEstablecimientosActivos(
+            @Param("cultivosIds") List<UUID> cultivosIds,
+            @Param("departamentoId") UUID departamentoId,
+            Pageable pageable
+    );
+    @Query("""
+    SELECT new com.mza_agrotours.backend.dtos.establecimiento.DTOFiltroCultivoEstablecimiento(c.id, c.nombre, COUNT(DISTINCT e))
+    FROM Establecimiento e
+    JOIN e.actividades a
+    JOIN a.cultivos c
+    WHERE e.fechaHoraBaja IS NULL
+    AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
+    AND a.fechaHoraBaja IS NULL
+    AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO
+    AND c.fechaHoraBaja IS NULL
+    GROUP BY c.id, c.nombre
+    ORDER BY c.nombre
+    """)
+    List<DTOFiltroCultivoEstablecimiento> obtenerFiltroCultivos();
+    @Query("""
+    SELECT new com.mza_agrotours.backend.dtos.establecimiento.DTOFiltroDepartamentoEstablecimiento(d.id, d.nombre, COUNT(DISTINCT e))
+    FROM Establecimiento e
+    JOIN e.departamento d
+    WHERE e.fechaHoraBaja IS NULL
+    AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
+    GROUP BY d.id, d.nombre
+    ORDER BY d.nombre ASC
+    """)
+    List<DTOFiltroDepartamentoEstablecimiento> obtenerFiltroDepartamentos();
 
 }

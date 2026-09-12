@@ -1,4 +1,4 @@
-package com.mza_agrotours.backend.dtos.reservas;
+package com.mza_agrotours.backend.dtos.actividad;
 
 import java.time.LocalDateTime;
 

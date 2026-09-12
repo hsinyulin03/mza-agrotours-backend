@@ -1,7 +1,7 @@
 package com.mza_agrotours.backend.repositories.pago;
 
 import com.mza_agrotours.backend.entities.pago.EstadoPago;
-import com.mza_agrotours.backend.entities.pago.EstadoPagoNombre;
+import com.mza_agrotours.backend.enums.EstadoPagoNombre;
 import com.mza_agrotours.backend.repositories.BaseEntityRepository;
 import org.springframework.stereotype.Repository;
 

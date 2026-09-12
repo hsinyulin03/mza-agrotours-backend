@@ -1,7 +1,8 @@
 package com.mza_agrotours.backend.dtos.solicitud_establecimiento;
 
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadRequest;
-import com.mza_agrotours.backend.dtos.archivo.PresignedUrlRequest;
+import com.mza_agrotours.backend.validation.NumeroTelefono;
+import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -19,6 +20,7 @@ import java.util.List;
 public class SolicitudEstablecimientoCreateReq {
     @NotNull
     @Size(min = 1, max = 100)
+    @SinCaracteresEspeciales
     private String nombreEstablecimiento;
 
     @NotNull
@@ -40,8 +42,8 @@ public class SolicitudEstablecimientoCreateReq {
     @NotNull
     private String departamento;
 
-    @NotNull
-    @Size(min = 7, max = 16)
+    @NotBlank
+    @NumeroTelefono
     private String telefono;
 
     @NotNull

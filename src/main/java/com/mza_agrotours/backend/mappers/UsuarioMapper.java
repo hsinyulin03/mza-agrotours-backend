@@ -1,7 +1,11 @@
 package com.mza_agrotours.backend.mappers;
 
 import com.google.firebase.auth.UserRecord.CreateRequest;
-import com.mza_agrotours.backend.dtos.*;
+import com.mza_agrotours.backend.dtos.UsuarioCardDTO;
+import com.mza_agrotours.backend.dtos.UsuarioCreateReq;
+import com.mza_agrotours.backend.dtos.UsuarioGetDTO;
+import com.mza_agrotours.backend.dtos.UsuarioUpdateReq;
+import com.mza_agrotours.backend.dtos.acceso.AccesoDTO;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.Visitante;
 import org.mapstruct.Mapper;

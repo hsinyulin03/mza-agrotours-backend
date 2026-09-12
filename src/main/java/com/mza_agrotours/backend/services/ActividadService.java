@@ -1,22 +1,22 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.actividad.*;
+import com.mza_agrotours.backend.entities.Usuario;
+import com.mza_agrotours.backend.entities.Visitante;
+import com.mza_agrotours.backend.entities.actividad.*;
+import com.mza_agrotours.backend.dtos.actividad.DiaActividadReservaDTO;
+import com.mza_agrotours.backend.dtos.actividad.InfoParaReservarDTO;
+import com.mza_agrotours.backend.dtos.actividad.RangoEtarioReservaDTO;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
-import com.mza_agrotours.backend.dtos.reservas.DiaActividadReservaDTO;
-import com.mza_agrotours.backend.dtos.reservas.InfoParaReservarDTO;
-import com.mza_agrotours.backend.dtos.reservas.RangoEtarioReservaDTO;
 import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
-import com.mza_agrotours.backend.entities.reservas.EstadoReservaNombre;
+import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.enums.Dia;
 import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
-import com.mza_agrotours.backend.exceptions.DatoInvalidoException;
-import com.mza_agrotours.backend.exceptions.EstablecimientoNotFoundException;
-import com.mza_agrotours.backend.exceptions.ResourceNotFoundException;
-import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
+import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
@@ -25,6 +25,8 @@ import com.mza_agrotours.backend.mappers.ArchivoMapper;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.ReservaRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
+import com.mza_agrotours.backend.repositories.UsuarioRepository;
+import com.mza_agrotours.backend.repositories.VisitanteRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadDiaRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
@@ -69,6 +71,12 @@ public class ActividadService {
     private ReservaRepository reservaRepository;
 
     @Autowired
+    private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private VisitanteRepository visitanteRepository;
+
+    @Autowired
     private ArchivoService archivoService;
 
     @Autowired
@@ -77,6 +85,7 @@ public class ActividadService {
     //US-ACT-03 Alta de actividad
     @Transactional
     public DTOActividadAltaResponse altaActividad(UUID establecimientoId, DTOActividadAlta dto) {
+        validarEstablecimientoNoSuspendido(establecimientoId);
 
         //Primero hacemos las validaciones del negocio
         List<String> errores = actividadValidaciones.obtenerErroresValidacionActividad(establecimientoId, dto);
@@ -110,7 +119,14 @@ public class ActividadService {
         tarifas.forEach(actividad::addActividadRangoEtario);
         actividad.addLogAlta(logAltas);
         calendario.forEach(actividad::addActividadDia);
-        actividad.setEstablecimiento(establecimientoRepository.getReferenceById(establecimientoId));
+
+        Establecimiento establecimiento = establecimientoRepository.findByIdAndFechaHoraBajaIsNull(establecimientoId)
+                .orElseThrow(EstablecimientoNotFoundException::new);
+
+        agregarCultivosAEstablecimiento(establecimiento, cultivos);
+        establecimientoRepository.save(establecimiento);
+
+        actividad.setEstablecimiento(establecimiento);
 
         List<ArchivoUploadResponse> urlsGeneradas = new ArrayList<>();
 
@@ -140,7 +156,8 @@ public class ActividadService {
     //US-ACT-02:  Consultar detalle de una actividad
     @Transactional(readOnly = true)
     public DTOActividadDetalleResponse obtenerDetallePorId(UUID idActividad) {
-        Actividad actividad = obtenerActividad(idActividad);
+        Actividad actividad = this.actividadRepository.findByIdVigenteConEstablecimientoActivo(idActividad)
+                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
         DTOActividadDetalleResponse response = actividadMapper.actividadToDTOActividadDetalle(actividad);
         response.setFotos(obtenerUrlsDeDescarga(response.getFotos()));
         return response;
@@ -222,6 +239,7 @@ public class ActividadService {
     //US-ACT-04: Modificar Actividad
     @Transactional
     public DTOActividadGetResponse modificarActividad(UUID idEstablecimiento, UUID idActividad, DTOActividadUpdate dto) {
+        validarEstablecimientoNoSuspendido(idEstablecimiento);
 
         Actividad actividad = obtenerActividad(idActividad);
 
@@ -243,9 +261,22 @@ public class ActividadService {
         actividad.setNombre(dto.getNombre());
         actividad.setDescripcion(dto.getDescripcion());
 
+        List<TipoCultivo> cultivosAnteriores = new ArrayList<>(actividad.getCultivos());
+
         List<TipoCultivo> cultivos = actualizarCultivos(actividad.getCultivos(), dto.getCultivos());
         actividad.getCultivos().clear();
         actividad.getCultivos().addAll(cultivos);
+
+        List<TipoCultivo> cultivosRemovidos = cultivosAnteriores.stream()
+                .filter(cultivoAnterior -> cultivos.stream().noneMatch(c -> c.getId().equals(cultivoAnterior.getId())))
+                .toList();
+
+        Establecimiento establecimiento = establecimientoRepository.findByIdAndFechaHoraBajaIsNull(idEstablecimiento)
+                .orElseThrow(EstablecimientoNotFoundException::new);
+
+        agregarCultivosAEstablecimiento(establecimiento, cultivos);
+        quitarCultivosSinUsoDelEstablecimiento(establecimiento, cultivosRemovidos, idActividad);
+        establecimientoRepository.save(establecimiento);
 
         List<ActividadRangoEtario> activosActuales = actividad.getActividadRangoEtarios().stream()
                 .filter(r -> r.getFechaHoraBaja() == null)
@@ -598,6 +629,35 @@ public class ActividadService {
         return cultivosActivos;
     }
 
+    // Asocia al establecimiento los cultivos de la actividad que aún no tenga asignados.
+    // Si el establecimiento ya tiene el cultivo, no se hace nada.
+    private void agregarCultivosAEstablecimiento(Establecimiento establecimiento, List<TipoCultivo> cultivos) {
+        List<UUID> idsCultivosActuales = establecimiento.getTiposCultivos().stream()
+                .map(TipoCultivo::getId)
+                .toList();
+
+        List<TipoCultivo> cultivosNuevos = cultivos.stream()
+                .filter(cultivo -> !idsCultivosActuales.contains(cultivo.getId()))
+                .toList();
+
+        establecimiento.getTiposCultivos().addAll(cultivosNuevos);
+    }
+
+    // Ante la quita de un cultivo de una actividad, sólo se desasocia del establecimiento
+    // si ninguna otra actividad vigente (no dada de baja) del establecimiento lo sigue utilizando.
+    private void quitarCultivosSinUsoDelEstablecimiento(Establecimiento establecimiento, List<TipoCultivo> cultivosRemovidos, UUID idActividadActual) {
+        if (cultivosRemovidos == null || cultivosRemovidos.isEmpty()) {
+            return;
+        }
+
+        List<UUID> idsARemover = cultivosRemovidos.stream()
+                .map(TipoCultivo::getId)
+                .filter(cultivoId -> !actividadRepository.existeOtraActividadVigenteConCultivo(establecimiento.getId(), cultivoId, idActividadActual))
+                .toList();
+
+        establecimiento.getTiposCultivos().removeIf(cultivo -> idsARemover.contains(cultivo.getId()));
+    }
+
     private List<TipoCultivo> actualizarCultivos(List <TipoCultivo> cultivosActuales, List<UUID> idsRequest) {
         // Obtener IDs de los cultivos que la actividad ya tiene asignados
         List<UUID> idsActuales = cultivosActuales.stream()
@@ -662,10 +722,16 @@ public class ActividadService {
 
     //US-RESE-01: Reservar actividad - información sobre la actividad para reservarla
     @Transactional
-    public InfoParaReservarDTO getInfoParaReservar(UUID idActividad){
-
+    public InfoParaReservarDTO getInfoParaReservar(UUID idActividad, String emailUsuario){
         LocalDateTime fhActual = LocalDateTime.now();
 
+        // Gettear al usuario y visitante
+        Usuario usuario = usuarioRepository.findActiveByEmail(emailUsuario)
+                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+
+        Visitante visitante = visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
+
+        // Gettear la actividad
         Actividad actividad = actividadRepository.findById(idActividad)
                 .orElseThrow(ActividadNotFoundException::new);
 
@@ -694,13 +760,29 @@ public class ActividadService {
             rangoEtarioReservaDTOList.add(actividadMapper.actividadRangoEtarioToDTO(are));
         }
 
+        // Info del usuario a DTO
+        UsuarioPreviewReservaDTO usuarioDTO = UsuarioPreviewReservaDTO.of(
+                usuario.getNombre(),
+                usuario.getFechaNacimiento(),
+                usuario.getTipoIdentificacion().getNombre().name(),
+                usuario.getIdentificacion()
+        );
+
         //Armar el DTO principal y devolver
         return InfoParaReservarDTO.of(
                 actividad,
                 establecimiento,
                 diaActividadReservaDTOList,
+                usuarioDTO,
                 rangoEtarioReservaDTOList,
                 parametrosService.getInstance().getDiasMinReembolso());
+    }
+
+    void validarEstablecimientoNoSuspendido(UUID establecimientoId) {
+        if (this.establecimientoRepository.establecimientoSuspendido(establecimientoId)) {
+            throw new AppException(EstablecimientoError.ESTABLECIMIENTO_SUSPENDIDO);
+        }
+
     }
 }
 

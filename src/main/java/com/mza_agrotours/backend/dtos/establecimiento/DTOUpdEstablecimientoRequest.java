@@ -1,22 +1,24 @@
 package com.mza_agrotours.backend.dtos.establecimiento;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import com.mza_agrotours.backend.validation.NumeroTelefono;
+import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 
-import java.util.List;
-import java.util.UUID;
-
 @Data
-public class DTODatosEstablecimientoUpd {
+public class DTOUpdEstablecimientoRequest {
     //Identidad
+    @NotNull
+    @Size(min = 1, max = 100, message = "El nombre debe tener entre 1 y 100 caracteres")
+    @SinCaracteresEspeciales
+    private String nombre;
+
     @NotBlank(message = "La descripción es obligatoria")
     @Size(max = 2000, message = "La descripción no puede superar los 2000 caracteres")
     private String descripcion;
     // Contacto
     @NotBlank(message = "El teléfono es obligatorio")
+    @NumeroTelefono
     private String telefono;
 
     @NotBlank(message = "El email es obligatorio")
@@ -27,6 +29,5 @@ public class DTODatosEstablecimientoUpd {
     @NotBlank(message = "El CVU es obligatorio")
     @Pattern(regexp = "\\d{22}", message = "El CVU debe contener únicamente números y tener exactamente 22 dígitos")
     private String cvu;
-    // Cultivos
-    private List<UUID> cultivosIds;
+
 }

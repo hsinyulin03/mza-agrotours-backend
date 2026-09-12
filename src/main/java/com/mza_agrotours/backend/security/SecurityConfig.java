@@ -52,6 +52,10 @@ public class SecurityConfig {
                         .requestMatchers("/admin/roles").hasRole(ROL_ADMIN_LIDER)
                         .requestMatchers("/admin/roles/**").hasRole(ROL_ADMIN_LIDER)
 
+                        // Administrador de establecimientos
+                        .requestMatchers("/admin/establecimientos/**").hasAuthority(PermisoCodigo.LEER_ESTABLECIMIENTO.name())
+                        .requestMatchers("/admin/establecimientos").hasAuthority(PermisoCodigo.GESTIONAR_ESTABLECIMIENTO.name())
+
                         // Pais y departamento
                         .requestMatchers("/pais/**").permitAll()
                         .requestMatchers("/departamentos/**").permitAll()
@@ -65,15 +69,34 @@ public class SecurityConfig {
                         .requestMatchers("/solicitudes-establecimiento/").hasAuthority(PermisoCodigo.LEER_SOLICITUD_ESTABLECIMIENTO.name())
                         .requestMatchers("/solicitudes-establecimiento/observar/**").hasAuthority(PermisoCodigo.GESTIONAR_SOLICITUD_ESTABLECIMIENTO.name())
 
+                        .requestMatchers(HttpMethod.GET,"/establecimientos/catalogo").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/establecimientos/filtros/cultivos").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/establecimientos/filtros/departamentos").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/establecimientos/*/departamentos").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/establecimientos/*/detalle").permitAll()
+
                         // Archivos
                         .requestMatchers("/object-storage/**").permitAll()
 
                         //Permisos
                         .requestMatchers( "/permisos/grupos-permisos/admin").hasAuthority(PermisoCodigo.LEER_ADMIN.name())
                         .requestMatchers("/permisos/grupos-permisos/productor").authenticated()
+
                         //Actividades
                         .requestMatchers("/actividades/*/reservar").authenticated()
                         .requestMatchers("/actividades/**").permitAll()
+
+                        //Reserva
+                        .requestMatchers("/reserva/**").authenticated()
+
+                        //Docs
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml"
+                        ).permitAll()
+
                         .anyRequest().authenticated())
                 .addFilterBefore(firebaseTokenFilter, UsernamePasswordAuthenticationFilter.class);
 

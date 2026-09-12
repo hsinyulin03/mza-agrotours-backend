@@ -38,7 +38,7 @@ jobs:
       # (@SpringBootTest), which needs Postgres, Redis and a real Firebase
       # service-account file. Drop `-x test` once tests can run without them.
       - name: Compile and assemble
-        run: ./gradlew build -x test --info
+        run: ./gradlew build --info
 
       - name: Upload boot jar
         uses: actions/upload-artifact@v7

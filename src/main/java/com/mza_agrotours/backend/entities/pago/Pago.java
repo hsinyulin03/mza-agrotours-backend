@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.entities.pago;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
+import com.mza_agrotours.backend.enums.MetodoPago;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -36,7 +37,7 @@ public class Pago extends BaseEntity {
     private PagoEstado estadoActual;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
-    @JoinColumn(name = "pago_id", nullable = false)
+    @JoinColumn(name = "pago_id")
     private List<PagoEstado> estados = new ArrayList<>();
 
     /**

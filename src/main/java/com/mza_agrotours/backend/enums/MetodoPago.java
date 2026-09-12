@@ -1,4 +1,4 @@
-package com.mza_agrotours.backend.entities.pago;
+package com.mza_agrotours.backend.enums;
 
 public enum MetodoPago {
     MANUAL,

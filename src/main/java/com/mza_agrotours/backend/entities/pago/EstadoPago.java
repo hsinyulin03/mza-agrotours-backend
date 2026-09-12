@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.entities.pago;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
+import com.mza_agrotours.backend.enums.EstadoPagoNombre;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

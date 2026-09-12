@@ -1,10 +1,8 @@
 package com.mza_agrotours.backend.dtos.establecimiento;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import com.mza_agrotours.backend.validation.NumeroTelefono;
+import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
+import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.util.List;
@@ -19,6 +17,7 @@ public class DTOEstablecimientoAlta {
 
     @NotBlank(message = "El nombre es obligatorio")
     @Size(min = 1, max = 100, message = "El nombre debe tener entre 1 y 100 caracteres")
+    @SinCaracteresEspeciales
     private String nombre;
 
     @NotBlank(message = "La razón social es obligatoria")
@@ -43,7 +42,7 @@ public class DTOEstablecimientoAlta {
 
     // Contacto
     @NotBlank(message = "El teléfono es obligatorio")
-    @Pattern(regexp = "^[0-9+()\\-\\s]{7,16}$", message = "El teléfono debe tener un formato válido y entre 7 y 16 caracteres")
+    @NumeroTelefono
     private String telefono;
 
     @NotBlank(message = "El email es obligatorio")
