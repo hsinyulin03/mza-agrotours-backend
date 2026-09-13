@@ -36,5 +36,5 @@ public class TipoCultivoVisitanteController {
         DTOTipoCultivoDetalleVisitante resultado = tipoCultivoService.obtenerDetalleCultivoVisitante(id);
         return ResponseEntity.ok(ApiResponse.ok(resultado));
     }
-    }
+}
 
