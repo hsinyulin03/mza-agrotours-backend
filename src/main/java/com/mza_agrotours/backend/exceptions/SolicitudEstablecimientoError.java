@@ -19,10 +19,7 @@ public enum SolicitudEstablecimientoError implements ErrorCode{
     SOLICITUD_ESTABLECIMIENTO_ALREADY_EXISTS("SE.SEAlreadyExists",
             HttpStatus.FORBIDDEN,
     "Ya existe una solicitud de este establecimiento"),
-    ESTADO_INVALIDO("SE.InvalidState", HttpStatus.BAD_REQUEST, "El estado enviado es inválido"),
-    AUTOREVISION_NO_PERMITIDA("SE.autorevision",
-                              HttpStatus.FORBIDDEN,
-                              "No podés revisar una solicitud que vos mismo creaste");
+    ESTADO_INVALIDO("SE.InvalidState", HttpStatus.BAD_REQUEST, "El estado enviado es inválido");
 
     private final String code;
     private final HttpStatus httpStatus;
