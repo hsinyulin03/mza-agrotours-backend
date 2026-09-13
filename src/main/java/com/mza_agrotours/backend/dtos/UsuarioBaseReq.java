@@ -21,7 +21,6 @@ import java.time.LocalDate;
 public class UsuarioBaseReq {
     @NotNull
     @Size(min = 3, max = 20, message = "El nombre debe tener entre 3 y 20 caracteres")
-    @Size(min = 3, max = 20)
     @SinCaracteresEspeciales
     private String nombre;
 
@@ -38,8 +37,7 @@ public class UsuarioBaseReq {
     private String paisIso2;
 
     @NotBlank(message = "El teléfono es obligatorio")
-    @NumeroTelefono(estricto = true,
-            message = "El teléfono debe estar en formato internacional con '+' y código de país, ej: +5492611234567")
+    @NumeroTelefono
     private String telefono;
 
     @NotNull

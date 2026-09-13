@@ -194,6 +194,13 @@ public class SolicitudEstablecimientoService {
         EstadoSolicitudEstablecimiento estadoSolicitud = this
                 .obtenerEstadoSolicitudByNombre(observacionSolicitudDTO.getEstado());
 
+        //un administrador no puede observar su propia solicitud de establecimiento
+        AdministradorSistemas revisor = this.obtenerAdminObservador(emailObservador);
+
+        if (revisor.getUsuario().getId().equals(solicitudEstablecimiento.getUsuario().getId())) {
+            throw new AppException(SolicitudEstablecimientoError.AUTOREVISION_NO_PERMITIDA);
+        }
+
 
         SolicitudEstablecimientoEstado nuevaSolicitudEstadoEstablecimiento = new SolicitudEstablecimientoEstado();
         nuevaSolicitudEstadoEstablecimiento.setFechaHoraRevision(LocalDateTime.now());

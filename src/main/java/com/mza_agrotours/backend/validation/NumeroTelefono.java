@@ -12,10 +12,8 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = NumeroTelefonoValidator.class)
 public @interface NumeroTelefono {
-    /** true = exige formato E.164 (+código país). Para teléfonos que van a Firebase. */
-    boolean estricto() default false;
 
-    String message() default "El campo no es un número de teléfono válido";
+    String message() default "El número de teléfono debe estar en formato internacional con '+' y código de país, ej: +5492611234567";
 
     Class<?>[] groups() default {};
 
