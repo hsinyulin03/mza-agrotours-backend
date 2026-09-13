@@ -111,6 +111,7 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
         WHERE tc.id = :tipoCultivoId
         AND a.fechaHoraBaja IS NULL
         AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO
+        AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
         """)
     long contarActividadesPublicadasPorCultivo(@Param("tipoCultivoId") UUID tipoCultivoId);
 
@@ -131,4 +132,13 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
             "AND a.establecimiento.fechaHoraBaja IS NULL " +
             "AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO")
     boolean existeActividadPublicadaByEstablecimientoId(@Param("establecimientoId") UUID establecimientoId);
+
+    @Query("""
+    SELECT DISTINCT a FROM Actividad a
+    JOIN a.cultivos c
+    WHERE c.id = :tipoCultivoId
+    AND a.fechaHoraBaja IS NULL
+    AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO
+    """)
+    List<Actividad> obtenerActividadesPublicadasPorCultivo(@Param("tipoCultivoId") UUID tipoCultivoId);
 }

@@ -13,8 +13,8 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/tipos-cultivo")
-public class TipoCultivoController {
+@RequestMapping("/admin/tipos-cultivo")
+public class TipoCultivoAdminController {
 
     @Autowired
     private TipoCultivoService tipoCultivoService;
