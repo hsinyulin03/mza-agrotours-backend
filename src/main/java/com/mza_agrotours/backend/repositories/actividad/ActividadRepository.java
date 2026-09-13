@@ -45,11 +45,13 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
             "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
             "AND a.fechaHoraBaja IS NULL " +
             "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO " +
+            "AND (CAST(:busqueda AS string) IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) " +
             "AND (:departamentoId IS NULL OR a.establecimiento.departamento.id = :departamentoId) " +
             "AND (:cultivosIds IS NULL OR EXISTS (" +
             "SELECT 1 FROM a.cultivos c WHERE c.id IN :cultivosIds" +
             "))")
-    Page<Actividad> explorarActividadesPublicadas(@Param("cultivosIds") List <UUID> cultivosIds,
+    Page<Actividad> explorarActividadesPublicadas(@Param("busqueda") String busqueda,
+                                                  @Param("cultivosIds") List <UUID> cultivosIds,
                                                   @Param("departamentoId") UUID departamentoId,
                                                   Pageable pageable);
 

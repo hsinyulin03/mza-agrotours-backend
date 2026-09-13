@@ -210,10 +210,10 @@ public class ActividadService {
 
     //US-ACT-12: Listado de actividades de la plataforma - vista del visitante
     @Transactional(readOnly = true)
-    public Page<DTOListadoActividadVisitanteResponse> explorarActividades(List<UUID> cultivoIds, UUID departamentoId, Pageable pageable) {
+    public Page<DTOListadoActividadVisitanteResponse> explorarActividades(String busqueda, List<UUID> cultivoIds, UUID departamentoId, Pageable pageable) {
 
         List<UUID> cultivosId = (cultivoIds == null || cultivoIds.isEmpty()) ? null : cultivoIds;
-        Page<Actividad> actividadesPage = actividadRepository.explorarActividadesPublicadas(cultivosId, departamentoId, pageable);
+        Page<Actividad> actividadesPage = actividadRepository.explorarActividadesPublicadas(busqueda, cultivosId, departamentoId, pageable);
 
         return actividadesPage.map(actividad -> {
 

@@ -36,10 +36,12 @@ public class ActividadVisitanteController {
 
     //US-ACT-12: Listado de actividades de la plataforma - vista del visitante
     @GetMapping("/explorar")
-    public ResponseEntity<ApiResponse<Page<DTOListadoActividadVisitanteResponse>>> explorarActividades(@RequestParam(required = false) List<UUID> cultivosIds,
+    public ResponseEntity<ApiResponse<Page<DTOListadoActividadVisitanteResponse>>> explorarActividades(
+                                                 @RequestParam(required = false) String busqueda,
+                                                 @RequestParam(required = false) List<UUID> cultivosIds,
                                                  @RequestParam(required = false) UUID departamentoId,
                                                  @PageableDefault(page = 0, size = 10, sort = {"nombre", "id"}, direction = Sort.Direction.ASC) Pageable pageable) throws Exception {
-        Page<DTOListadoActividadVisitanteResponse> listado = servicio.explorarActividades(cultivosIds, departamentoId, pageable);
+        Page<DTOListadoActividadVisitanteResponse> listado = servicio.explorarActividades(busqueda, cultivosIds, departamentoId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(listado));
     }
     //Obtener el filtro de departamentos
