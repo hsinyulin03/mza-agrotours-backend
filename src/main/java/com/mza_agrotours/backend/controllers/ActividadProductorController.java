@@ -49,7 +49,7 @@ public class ActividadProductorController {
                                                      @PageableDefault(page = 0, size = 10, sort = {"nombre", "id"}, direction = Sort.Direction.ASC) Pageable pageable) throws Exception {
 
 
-        Page<DTOActividadesResponse> listado = servicio.obtenerListadoActividades(establecimientoId, busqueda, estado,pageable);
+        Page<DTOActividadesResponse> listado = servicio.obtenerListadoActividades(establecimientoId, busqueda, estado, pageable);
         return ResponseEntity.ok(ApiResponse.ok(listado));
 
     }

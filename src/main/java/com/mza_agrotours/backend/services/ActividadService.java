@@ -168,7 +168,8 @@ public class ActividadService {
     //US-ACT-06: Listado de actividades de un establecimiento - Vista productor
     @Transactional(readOnly = true)
     public Page<DTOActividadesResponse> obtenerListadoActividades(UUID establecimientoId, String busqueda, EstadoActividadNombre estado, Pageable pageable) {
-        Page<Actividad> actividades = actividadRepository.findByFiltrosDinamicos(establecimientoId, busqueda, estado, pageable);
+        String texto = (busqueda == null || busqueda.isBlank()) ? null : busqueda.trim();
+        Page<Actividad> actividades = actividadRepository.findByFiltrosDinamicos(establecimientoId, texto, estado, pageable);
 
         return actividades.map(actividadMapper::actividadToDTOActividades);
     }
@@ -212,8 +213,9 @@ public class ActividadService {
     @Transactional(readOnly = true)
     public Page<DTOListadoActividadVisitanteResponse> explorarActividades(String busqueda, List<UUID> cultivoIds, UUID departamentoId, Pageable pageable) {
 
+        String texto = (busqueda == null || busqueda.isBlank()) ? null : busqueda.trim();
         List<UUID> cultivosId = (cultivoIds == null || cultivoIds.isEmpty()) ? null : cultivoIds;
-        Page<Actividad> actividadesPage = actividadRepository.explorarActividadesPublicadas(busqueda, cultivosId, departamentoId, pageable);
+        Page<Actividad> actividadesPage = actividadRepository.explorarActividadesPublicadas(texto, cultivosId, departamentoId, pageable);
 
         return actividadesPage.map(actividad -> {
 

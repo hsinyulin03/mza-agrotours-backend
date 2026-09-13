@@ -172,12 +172,12 @@ public class EstablecimientoService  {
         return response;
     }
     //// US-EST-01 consulta de establecimientos (vista pública / visitante)
-    public Page<DTOCatalogoEstablecimientoVisitante> consultarEstablecimientosVisitantes(List<UUID> cultivoIds, UUID departamentoId, Pageable pageable) {
-
+    public Page<DTOCatalogoEstablecimientoVisitante> consultarEstablecimientosVisitantes(String busqueda, List<UUID> cultivoIds, UUID departamentoId, Pageable pageable) {
+        String texto = (busqueda == null || busqueda.isBlank()) ? null : busqueda.trim();
         List<UUID> cultivosId = (cultivoIds == null || cultivoIds.isEmpty()) ? null : cultivoIds;
 
         Page<Establecimiento> establecimientosPage = establecimientoRepository
-                .obtenerEstablecimientosActivos(cultivosId, departamentoId, pageable);
+                .obtenerEstablecimientosActivos(texto, cultivosId, departamentoId, pageable);
 
         return establecimientosPage.map(establecimiento -> {
             DTOCatalogoEstablecimientoVisitante dto = establecimientoMapper
