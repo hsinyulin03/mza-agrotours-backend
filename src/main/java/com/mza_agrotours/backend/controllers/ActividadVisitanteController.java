@@ -8,6 +8,10 @@ import com.mza_agrotours.backend.dtos.actividad.DTOListadoActividadVisitanteResp
 import com.mza_agrotours.backend.dtos.actividad.InfoParaReservarDTO;
 import com.mza_agrotours.backend.services.ActividadService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -32,9 +36,10 @@ public class ActividadVisitanteController {
 
     //US-ACT-12: Listado de actividades de la plataforma - vista del visitante
     @GetMapping("/explorar")
-    public ResponseEntity<?> explorarActividades(@RequestParam(required = false) List<UUID> cultivosIds,
-                                                 @RequestParam(required = false) UUID departamentoId) throws Exception {
-        List<DTOListadoActividadVisitanteResponse> listado = servicio.explorarActividades(cultivosIds, departamentoId);
+    public ResponseEntity<ApiResponse<Page<DTOListadoActividadVisitanteResponse>>> explorarActividades(@RequestParam(required = false) List<UUID> cultivosIds,
+                                                 @RequestParam(required = false) UUID departamentoId,
+                                                 @PageableDefault(page = 0, size = 10, sort = {"nombre", "id"}, direction = Sort.Direction.ASC) Pageable pageable) throws Exception {
+        Page<DTOListadoActividadVisitanteResponse> listado = servicio.explorarActividades(cultivosIds, departamentoId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(listado));
     }
     //Obtener el filtro de departamentos

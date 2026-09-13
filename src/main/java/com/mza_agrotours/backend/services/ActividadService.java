@@ -31,6 +31,8 @@ import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadDiaRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -210,14 +212,12 @@ public class ActividadService {
 
     //US-ACT-12: Listado de actividades de la plataforma - vista del visitante
     @Transactional(readOnly = true)
-    public List<DTOListadoActividadVisitanteResponse> explorarActividades(List<UUID> cultivoIds, UUID departamentoId) {
-
-        // TODO: Falta implementar paginación
+    public Page<DTOListadoActividadVisitanteResponse> explorarActividades(List<UUID> cultivoIds, UUID departamentoId, Pageable pageable) {
 
         List<UUID> cultivosId = (cultivoIds == null || cultivoIds.isEmpty()) ? null : cultivoIds;
-        List<Actividad> actividades = actividadRepository.explorarActividadesPublicadas(cultivosId, departamentoId);
+        Page<Actividad> actividadesPage = actividadRepository.explorarActividadesPublicadas(cultivosId, departamentoId, pageable);
 
-        List<DTOListadoActividadVisitanteResponse> response = actividades.stream().map(actividad -> {
+        return actividadesPage.map(actividad -> {
 
             DTOListadoActividadVisitanteResponse dto = actividadMapper.actividadToDTOListadoActividadVisitante(actividad);
 
@@ -231,9 +231,8 @@ public class ActividadService {
                 dto.setFotoPortada(fotoDto);
             }
             return dto;
-        }).toList();
+        });
 
-        return response;
     }
 
     //US-ACT-04: Modificar Actividad
