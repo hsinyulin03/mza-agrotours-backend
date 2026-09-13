@@ -167,12 +167,10 @@ public class ActividadService {
 
     //US-ACT-06: Listado de actividades de un establecimiento - Vista productor
     @Transactional(readOnly = true)
-    public List<DTOActividadesResponse> obtenerListadoActividades(UUID establecimientoId, String busqueda, EstadoActividadNombre estado) {
-        List<Actividad> actividades = actividadRepository.findByFiltrosDinamicos(establecimientoId, busqueda, estado);
+    public Page<DTOActividadesResponse> obtenerListadoActividades(UUID establecimientoId, String busqueda, EstadoActividadNombre estado, Pageable pageable) {
+        Page<Actividad> actividades = actividadRepository.findByFiltrosDinamicos(establecimientoId, busqueda, estado, pageable);
 
-        return actividades.stream()
-                .map(actividadMapper::actividadToDTOActividades)
-                .toList();
+        return actividades.map(actividadMapper::actividadToDTOActividades);
     }
 
     //US-ACT-07: Consultar todos los días disponibles para una actividad

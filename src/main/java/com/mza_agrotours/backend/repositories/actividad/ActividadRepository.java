@@ -32,11 +32,13 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
 
     @Query("SELECT a FROM Actividad a WHERE a.establecimiento.id = :establecimientoId " +
             "AND (CAST(:busqueda AS string) IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) " +
-            "AND (:estado IS NULL OR a.estado.nombre = :estado)")
-    List<Actividad> findByFiltrosDinamicos(
+            "AND (:estado IS NULL OR a.estado.nombre = :estado) " +
+            "ORDER BY CASE WHEN a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.DADO_DE_BAJA THEN 1 ELSE 0 END")
+    Page<Actividad> findByFiltrosDinamicos(
             @Param("establecimientoId") UUID establecimientoId,
             @Param("busqueda") String busqueda,
-            @Param("estado") EstadoActividadNombre estado
+            @Param("estado") EstadoActividadNombre estado,
+            Pageable pageable
     );
 
     @Query("SELECT a FROM Actividad a " +
