@@ -75,6 +75,18 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,"/establecimientos/*/departamentos").permitAll()
                         .requestMatchers(HttpMethod.GET,"/establecimientos/*/detalle").permitAll()
 
+                        .requestMatchers(HttpMethod.GET,"/admin/recetas/*").hasAuthority(PermisoCodigo.LEER_RECETAS.name())
+                        .requestMatchers("/admin/recetas/**").hasAuthority(PermisoCodigo.GESTIONAR_RECETAS.name())
+
+                        .requestMatchers(HttpMethod.GET, "/admin/tipos-cultivo/*").hasAuthority(PermisoCodigo.LEER_CULTIVOS.name())
+                        .requestMatchers("/admin/tipos-cultivo/**").hasAuthority(PermisoCodigo.GESTIONAR_CULTIVOS.name())
+
+                        .requestMatchers("/tipo-cultivo").permitAll()
+                        .requestMatchers("/tipo-cultivo/**").permitAll()
+
+                        .requestMatchers("/recetas").permitAll()
+                        .requestMatchers("/recetas/**").permitAll()
+
                         // Archivos
                         .requestMatchers("/object-storage/**").permitAll()
 
