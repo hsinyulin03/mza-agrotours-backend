@@ -4,6 +4,7 @@ import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.tipoCultivo.DTOFiltroTemporadaCultivo;
 import com.mza_agrotours.backend.dtos.tipoCultivo.DTOTipoCultivoDetalleVisitante;
 import com.mza_agrotours.backend.dtos.tipoCultivo.DTOTipoCultivoVisitante;
+import com.mza_agrotours.backend.dtos.tipoCultivo.TipoCultivoShortDTO;
 import com.mza_agrotours.backend.services.TipoCultivoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -26,6 +28,12 @@ public class TipoCultivoVisitanteController {
         return ResponseEntity.ok(ApiResponse.ok(resultado));
     }
 
+    @GetMapping("/short")
+    public ResponseEntity<ApiResponse<List<TipoCultivoShortDTO>>> consultarCultivosShort() {
+        List<TipoCultivoShortDTO> resultado = tipoCultivoService.obtenerTipoCultivosDisponibles();
+        return ResponseEntity.ok(ApiResponse.ok(resultado));
+    }
+
     @GetMapping("/filtros/temporada")
     public ResponseEntity<ApiResponse<DTOFiltroTemporadaCultivo>> obtenerFiltroTemporada() {
         return ResponseEntity.ok(ApiResponse.ok(tipoCultivoService.obtenerFiltroTemporada()));
@@ -37,4 +45,3 @@ public class TipoCultivoVisitanteController {
         return ResponseEntity.ok(ApiResponse.ok(resultado));
     }
 }
-

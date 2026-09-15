@@ -42,7 +42,7 @@ public class SolicitudEstablecimientoCreateReq {
     @NotNull
     private String departamento;
 
-    @NotBlank
+    @NotBlank(message = "El teléfono es obligatorio")
     @NumeroTelefono
     private String telefono;
 
