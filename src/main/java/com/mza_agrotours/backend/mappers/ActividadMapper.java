@@ -34,8 +34,6 @@ public interface ActividadMapper {
 
     @Mapping(target = "nombreEstablecimiento", source = "nombre")
     @Mapping(target = "direccionEstablecimiento", source = "ubicacion")
-    @Mapping(target = "latitude", source = "departamento.lat")
-    @Mapping(target = "longitude", source = "departamento.lon")
     DTOUbicacion establecimientoToDTOUbicacion(Establecimiento establecimiento);
 
     //US-ACT-06

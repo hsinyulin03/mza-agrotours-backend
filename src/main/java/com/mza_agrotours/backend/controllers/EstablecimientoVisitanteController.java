@@ -29,12 +29,13 @@ public class EstablecimientoVisitanteController {
     //US-EST-01 Consultar establecimientos
     @GetMapping("/catalogo")
     public ResponseEntity<ApiResponse<Page<DTOCatalogoEstablecimientoVisitante>>> getCatalogo(
+            @RequestParam(required = false) String busqueda,
             @RequestParam(required = false) List<UUID> cultivosIds,
             @RequestParam(required = false) UUID departamentoId,
             @PageableDefault(page = 0, size = 10, sort = "nombre", direction = Sort.Direction.ASC) Pageable pageable) {
 
         Page<DTOCatalogoEstablecimientoVisitante> catalogo = establecimientoService
-                .consultarEstablecimientosVisitantes(cultivosIds, departamentoId, pageable);
+                .consultarEstablecimientosVisitantes(busqueda, cultivosIds, departamentoId, pageable);
 
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(catalogo));
     }

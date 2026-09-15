@@ -49,7 +49,7 @@ class EstablecimientoCatalogoVisitanteIT extends AbstractIntegrationTest {
         fixtureActividad.actividadBorradorEn(soloBorrador);
 
         Page<Establecimiento> pagina = establecimientoRepository
-                .obtenerEstablecimientosActivos(null, null, PRIMERA_PAGINA);
+                .obtenerEstablecimientosActivos(null,null, null, PRIMERA_PAGINA);
 
         assertThat(idsDe(pagina)).contains(sinActividades.getId(), soloBorrador.getId());
     }
@@ -67,7 +67,7 @@ class EstablecimientoCatalogoVisitanteIT extends AbstractIntegrationTest {
         Establecimiento sinActividades = fixtureEstablecimiento.establecimientoActivo();
 
         Page<Establecimiento> pagina = establecimientoRepository
-                .obtenerEstablecimientosActivos(List.of(vid.getId()), null, PRIMERA_PAGINA);
+                .obtenerEstablecimientosActivos(null, List.of(vid.getId()), null, PRIMERA_PAGINA);
 
         assertThat(idsDe(pagina))
                 .contains(conVidPublicada.getId())
@@ -83,7 +83,7 @@ class EstablecimientoCatalogoVisitanteIT extends AbstractIntegrationTest {
         agregarCultivo(fixtureActividad.actividadPublicadaEn(establecimiento), vid);
 
         Page<Establecimiento> pagina = establecimientoRepository
-                .obtenerEstablecimientosActivos(List.of(vid.getId()), null, PRIMERA_PAGINA);
+                .obtenerEstablecimientosActivos(null, List.of(vid.getId()), null, PRIMERA_PAGINA);
 
         assertThat(idsDe(pagina)).containsOnlyOnce(establecimiento.getId());
         assertThat(pagina.getTotalElements()).isEqualTo(pagina.getContent().size());
@@ -96,7 +96,7 @@ class EstablecimientoCatalogoVisitanteIT extends AbstractIntegrationTest {
         fixtureActividad.actividadPublicadaEn(suspendido);
 
         Page<Establecimiento> pagina = establecimientoRepository
-                .obtenerEstablecimientosActivos(null, null, PRIMERA_PAGINA);
+                .obtenerEstablecimientosActivos(null, null, null, PRIMERA_PAGINA);
 
         assertThat(idsDe(pagina)).doesNotContain(suspendido.getId());
     }

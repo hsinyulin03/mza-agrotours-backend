@@ -8,6 +8,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -39,12 +43,13 @@ public class ActividadProductorController {
     @GetMapping
     @PreAuthorize("@estAuth.tienePermiso(authentication, #establecimientoId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
     //busqueda es lo que ingresa en el search bar y estado es para filtrar actividad por estado
-    public ResponseEntity<?> obtenerListadoProductor(@PathVariable UUID establecimientoId,
+    public ResponseEntity<ApiResponse<Page<DTOActividadesResponse>>> obtenerListadoProductor(@PathVariable UUID establecimientoId,
                                                      @RequestParam(required = false) String busqueda,
-                                                     @RequestParam(required = false) EstadoActividadNombre estado) throws Exception {
+                                                     @RequestParam(required = false) EstadoActividadNombre estado,
+                                                     @PageableDefault(page = 0, size = 10, sort = {"nombre", "id"}, direction = Sort.Direction.ASC) Pageable pageable) throws Exception {
 
 
-        List<DTOActividadesResponse> listado = servicio.obtenerListadoActividades(establecimientoId, busqueda, estado);
+        Page<DTOActividadesResponse> listado = servicio.obtenerListadoActividades(establecimientoId, busqueda, estado, pageable);
         return ResponseEntity.ok(ApiResponse.ok(listado));
 
     }

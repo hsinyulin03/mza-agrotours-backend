@@ -71,6 +71,7 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
         JOIN FETCH e.departamento
         WHERE e.fechaHoraBaja IS NULL
         AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
+        AND (CAST(:busqueda AS string) IS NULL OR LOWER(e.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%')))
         AND (:departamentoId IS NULL OR e.departamento.id = :departamentoId)
         AND (:cultivosIds IS NULL OR EXISTS (
             SELECT 1 FROM e.actividades a
@@ -85,6 +86,7 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
         SELECT COUNT(e) FROM Establecimiento e
         WHERE e.fechaHoraBaja IS NULL
         AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
+        AND (CAST(:busqueda AS string) IS NULL OR LOWER(e.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%')))
         AND (:departamentoId IS NULL OR e.departamento.id = :departamentoId)
         AND (:cultivosIds IS NULL OR EXISTS (
             SELECT 1 FROM e.actividades a
@@ -97,6 +99,7 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
     """
     )
     Page<Establecimiento> obtenerEstablecimientosActivos(
+            @Param("busqueda") String busqueda,
             @Param("cultivosIds") List<UUID> cultivosIds,
             @Param("departamentoId") UUID departamentoId,
             Pageable pageable

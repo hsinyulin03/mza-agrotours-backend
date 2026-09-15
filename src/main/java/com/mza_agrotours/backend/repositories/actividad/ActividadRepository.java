@@ -6,6 +6,8 @@ import com.mza_agrotours.backend.dtos.administrador_sistemas.ConteoPorEstablecim
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.repositories.BaseEntityRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -30,22 +32,28 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
 
     @Query("SELECT a FROM Actividad a WHERE a.establecimiento.id = :establecimientoId " +
             "AND (CAST(:busqueda AS string) IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) " +
-            "AND (:estado IS NULL OR a.estado.nombre = :estado)")
-    List<Actividad> findByFiltrosDinamicos(
+            "AND (:estado IS NULL OR a.estado.nombre = :estado) " +
+            "ORDER BY CASE WHEN a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.DADO_DE_BAJA THEN 1 ELSE 0 END")
+    Page<Actividad> findByFiltrosDinamicos(
             @Param("establecimientoId") UUID establecimientoId,
             @Param("busqueda") String busqueda,
-            @Param("estado") EstadoActividadNombre estado
+            @Param("estado") EstadoActividadNombre estado,
+            Pageable pageable
     );
 
-    @Query("SELECT DISTINCT a FROM Actividad a " +
-            "LEFT JOIN a.cultivos c " +
+    @Query("SELECT a FROM Actividad a " +
             "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
             "AND a.fechaHoraBaja IS NULL " +
             "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO " +
+            "AND (CAST(:busqueda AS string) IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) " +
             "AND (:departamentoId IS NULL OR a.establecimiento.departamento.id = :departamentoId) " +
-            "AND (:cultivosIds IS NULL OR c.id IN :cultivosIds )")
-    List<Actividad> explorarActividadesPublicadas(@Param("cultivosIds") List <UUID> cultivosIds,
-                                                  @Param("departamentoId") UUID departamentoId);
+            "AND (:cultivosIds IS NULL OR EXISTS (" +
+            "SELECT 1 FROM a.cultivos c WHERE c.id IN :cultivosIds" +
+            "))")
+    Page<Actividad> explorarActividadesPublicadas(@Param("busqueda") String busqueda,
+                                                  @Param("cultivosIds") List <UUID> cultivosIds,
+                                                  @Param("departamentoId") UUID departamentoId,
+                                                  Pageable pageable);
 
     @Query("SELECT MAX(ad.fechaHoraInicio) FROM Actividad a JOIN a.actividadesDias ad WHERE a.id = :actividadId")
     Optional<LocalDateTime> findUltimaFechaByActividadId(@Param("actividadId") UUID actividadId);
