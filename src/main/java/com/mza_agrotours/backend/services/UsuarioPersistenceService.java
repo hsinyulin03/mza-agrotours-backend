@@ -13,10 +13,12 @@ import java.time.LocalDateTime;
 public class UsuarioPersistenceService {
     private final UsuarioRepository usuarioRepository;
     private final VisitanteRepository visitanteRepository;
+    private final SolicitudEstablecimientoService solicitudEstablecimientoService;
 
-    public UsuarioPersistenceService(UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository) {
+    public UsuarioPersistenceService(UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, SolicitudEstablecimientoService solicitudEstablecimientoService) {
         this.usuarioRepository = usuarioRepository;
         this.visitanteRepository = visitanteRepository;
+        this.solicitudEstablecimientoService = solicitudEstablecimientoService;
     }
 
     @Transactional
@@ -30,5 +32,7 @@ public class UsuarioPersistenceService {
     public void softDeleteUsuario(Usuario usuario) {
         usuario.setFechaHoraBaja(LocalDateTime.now());
         this.usuarioRepository.save(usuario);
+        // Las solicitudes pendientes del usuario dado de baja ya no pueden evaluarse y se cambian a estado rechazado
+        this.solicitudEstablecimientoService.rechazarSolicitudesPendientesPorBajaUsuario(usuario);
     }
 }
