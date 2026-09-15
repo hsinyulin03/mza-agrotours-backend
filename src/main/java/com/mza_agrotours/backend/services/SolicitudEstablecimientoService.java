@@ -194,7 +194,6 @@ public class SolicitudEstablecimientoService {
         EstadoSolicitudEstablecimiento estadoSolicitud = this
                 .obtenerEstadoSolicitudByNombre(observacionSolicitudDTO.getEstado());
 
-
         SolicitudEstablecimientoEstado nuevaSolicitudEstadoEstablecimiento = new SolicitudEstablecimientoEstado();
         nuevaSolicitudEstadoEstablecimiento.setFechaHoraRevision(LocalDateTime.now());
         nuevaSolicitudEstadoEstablecimiento.setRazonRevision(observacionSolicitudDTO.getObservacion());

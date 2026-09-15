@@ -30,10 +30,9 @@ class NumeroTelefonoValidatorTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "+5492616563974",
-            "+54-261-656-3974",
-            "+54 (261)6563974",
-            "+234567",
-            "+234567890123456"
+            "+234567890123456",
+            "+2616487206",
+            "+542614215678"
     })
     void aceptaNumerosTelefonicosDelDominio(String numeroTelefono) {
         assertThat(validador.isValid(numeroTelefono, null)).isTrue();
@@ -45,6 +44,9 @@ class NumeroTelefonoValidatorTest {
             "+3242-hola",
             "+3743748737437437437473",
             "+3473743747holalaadofiajfjsf",
+            "+54-261-656-3974",
+            "+54 (261)6563974",
+            "+234 567",
     })
     void rechazaNumerosTelefonicosFueraDelDominio(String numeroTelefono) {
         assertThat(validador.isValid(numeroTelefono, null)).isFalse();

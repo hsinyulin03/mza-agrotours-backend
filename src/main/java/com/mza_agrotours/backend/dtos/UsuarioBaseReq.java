@@ -1,5 +1,8 @@
 package com.mza_agrotours.backend.dtos;
 
+import com.mza_agrotours.backend.validation.EdadMaxima;
+import jakarta.validation.constraints.*;
+import lombok.*;
 import com.mza_agrotours.backend.validation.NumeroTelefono;
 import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
 import jakarta.validation.constraints.Email;
@@ -17,7 +20,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 public class UsuarioBaseReq {
     @NotNull
-    @Size(min = 3, max = 20)
+    @Size(min = 3, max = 20, message = "El nombre debe tener entre 3 y 20 caracteres")
     @SinCaracteresEspeciales
     private String nombre;
 
@@ -26,12 +29,14 @@ public class UsuarioBaseReq {
     private String email;
 
     @NotNull
+    @Past(message = "La fecha de nacimiento debe ser anterior a la fecha actual")
+    @EdadMaxima(120)
     private LocalDate fechaNacimiento;
 
     @NotNull
     private String paisIso2;
 
-    @NotBlank
+    @NotBlank(message = "El teléfono es obligatorio")
     @NumeroTelefono
     private String telefono;
 

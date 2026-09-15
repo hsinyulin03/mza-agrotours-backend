@@ -107,7 +107,7 @@ public class UsuarioService {
     private TipoIdentificacion resolveTipoIdentificacion(String nombre) {
         final TipoIdentificacionNombre tipoNombre;
         try {
-            tipoNombre = TipoIdentificacionNombre.valueOf(nombre);
+            tipoNombre = TipoIdentificacionNombre.valueOf(nombre.toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new TipoIdentificacionInvalidoException("Tipo de identificacion invalido: " + nombre);
         }

@@ -1,8 +1,6 @@
 package com.mza_agrotours.backend.dtos;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -15,7 +13,11 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UsuarioCreateReq extends UsuarioBaseReq {
-    @NotNull
-    @Size(min = 8)
+    @NotBlank(message = "La contraseña es obligatoria")
+    @Size(min = 8, message = "La contraseña debe tener al menos 8 caracteres")
+    @Pattern(
+            regexp = "^(?=.*[^a-zA-Z0-9\\s]).+$",
+            message = "La contraseña debe contener al menos un carácter especial"
+    )
     private String password;
 }

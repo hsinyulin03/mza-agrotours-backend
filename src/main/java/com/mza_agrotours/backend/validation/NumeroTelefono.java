@@ -12,7 +12,8 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = NumeroTelefonoValidator.class)
 public @interface NumeroTelefono {
-    String message() default "El campo no es un número de teléfono válido";
+
+    String message() default "El número de teléfono debe estar en formato internacional con '+' y código de país, ej: +5492611234567";
 
     Class<?>[] groups() default {};
 
