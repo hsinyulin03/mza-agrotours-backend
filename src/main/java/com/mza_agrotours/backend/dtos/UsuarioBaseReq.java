@@ -15,7 +15,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 public class UsuarioBaseReq {
     @NotNull
-    @Size(min = 3, max = 20, message = "El nombre debe tener entre 3 y 20 caracteres")
+    @Size(min = 3, max = 40, message = "El nombre debe tener entre 3 y 20 caracteres")
     @SinCaracteresEspeciales
     private String nombre;
 
