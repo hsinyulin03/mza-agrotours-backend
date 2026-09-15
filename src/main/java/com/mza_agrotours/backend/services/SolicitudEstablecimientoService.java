@@ -220,6 +220,7 @@ public class SolicitudEstablecimientoService {
 
             nuevoEstablecimiento.setTitular(productorLider);
             solicitudEstablecimiento.setEstablecimientoCreado(nuevoEstablecimiento);
+            solicitudEstablecimiento.setFechaHoraBaja(LocalDateTime.now());
 
             this.notificacionService.crearNotificacion(
                     solicitudEstablecimiento.getUsuario(),
@@ -228,6 +229,7 @@ public class SolicitudEstablecimientoService {
                     RutasNotificacionesFront.solicitudEstablecimiento(solicitudEstablecimiento.getId()),
                     solicitudEstablecimiento.getRazonSocial());
         }else{
+            solicitudEstablecimiento.setFechaHoraBaja(LocalDateTime.now());
             this.notificacionService.crearNotificacion(
                     solicitudEstablecimiento.getUsuario(),
                     TipoNotificacionNombre.SOLICITUD_ESTABLECIMIENTO_RECHAZADA,
@@ -240,6 +242,36 @@ public class SolicitudEstablecimientoService {
         solicitudEstablecimiento = this.solicitudEstablecimientoRepository.save(solicitudEstablecimiento);
 
         return this.solicitudEstablecimientoMapper.solicitudEstablecimientoToDTO(solicitudEstablecimiento);
+    }
+
+    @Transactional
+    public void rechazarSolicitudesPendientesPorBajaUsuario(Usuario usuario) {
+        List<SolicitudEstablecimiento> solicitudesPendientes = this.solicitudEstablecimientoRepository
+                .findAllPendientesByUsuario(usuario);
+
+        if (solicitudesPendientes.isEmpty()) {
+            return;
+        }
+
+        EstadoSolicitudEstablecimiento estadoRechazada = this.estadoSolicitudEstablecimientoRepository
+                .findByNombre(EstadoSolicitudEstablecimientoNombre.RECHAZADA)
+                .orElseThrow(() -> new EstadoSolicitudEstablecimientoNotFoundException(
+                        EstadoSolicitudEstablecimientoNombre.RECHAZADA.toString()));
+
+        LocalDateTime ahora = LocalDateTime.now();
+
+        for (SolicitudEstablecimiento solicitud : solicitudesPendientes) {
+            SolicitudEstablecimientoEstado nuevoEstado = new SolicitudEstablecimientoEstado();
+            nuevoEstado.setFechaHoraRevision(ahora);
+            nuevoEstado.setRazonRevision("Debido a la baja del usuario solicitante");
+            nuevoEstado.setEstadoSolicitudEstablecimiento(estadoRechazada);
+
+            solicitud.getEstados().add(nuevoEstado);
+            solicitud.setEstadoActual(nuevoEstado);
+            solicitud.setFechaHoraBaja(LocalDateTime.now());
+        }
+
+        this.solicitudEstablecimientoRepository.saveAll(solicitudesPendientes);
     }
 
     private EstadoSolicitudEstablecimiento obtenerEstadoSolicitudByNombre(String estadoNombre) {
