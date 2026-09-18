@@ -147,6 +147,7 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
     WHERE c.id = :tipoCultivoId
     AND a.fechaHoraBaja IS NULL
     AND a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO
+    AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
     """)
     List<Actividad> obtenerActividadesPublicadasPorCultivo(@Param("tipoCultivoId") UUID tipoCultivoId);
 }
