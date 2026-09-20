@@ -6,11 +6,14 @@ import com.mza_agrotours.backend.dtos.archivo.PresignedUrlResponse;
 import com.mza_agrotours.backend.exceptions.DatoInvalidoException;
 import com.mza_agrotours.backend.enums.CarpetaArchivo;
 import com.mza_agrotours.backend.exceptions.ObjectStorageProviderException;
+import com.mza_agrotours.backend.exceptions.ResourceNotFoundException;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -23,10 +26,12 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 @Service
 public class S3ObjectStorageService {
     private final S3Presigner presigner;
+    private final S3Client s3Client;
     private final ObjectStorageProperties properties;
 
-    public S3ObjectStorageService(S3Presigner presigner, ObjectStorageProperties properties) {
+    public S3ObjectStorageService(S3Presigner presigner, S3Client s3Client, ObjectStorageProperties properties) {
         this.presigner = presigner;
+        this.s3Client = s3Client;
         this.properties = properties;
     }
 
@@ -80,6 +85,24 @@ public class S3ObjectStorageService {
                         .build())
                 .url()
                 .toString();
+    }
+
+    /**
+     * Tamanio real del objeto ya subido. Es la unica forma de saber cuanto
+     * pesa: la url prefirmada no puede imponer un limite, asi que lo que el
+     * cliente declaro al pedirla es apenas una promesa.
+     *
+     * @throws ResourceNotFoundException si el objeto no esta en el bucket
+     */
+    public long tamanioDe(String key) {
+        try {
+            return this.s3Client.headObject(request -> request
+                            .bucket(this.properties.getBucket())
+                            .key(key))
+                    .contentLength();
+        } catch (NoSuchKeyException e) {
+            throw new ResourceNotFoundException("No existe el objeto " + key);
+        }
     }
 
     /**

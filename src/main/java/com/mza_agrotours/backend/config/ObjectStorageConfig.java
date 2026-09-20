@@ -7,6 +7,8 @@ import org.springframework.util.StringUtils;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
@@ -25,6 +27,21 @@ public class ObjectStorageConfig {
                 .serviceConfiguration(S3Configuration.builder()
                         .pathStyleAccessEnabled(properties.isPathStyleAccess())
                         .build());
+
+        if (StringUtils.hasText(properties.getEndpoint())) {
+            builder.endpointOverride(URI.create(properties.getEndpoint()));
+        }
+
+        return builder.build();
+    }
+
+    @Bean
+    public S3Client s3Client(ObjectStorageProperties properties) {
+        S3ClientBuilder builder = S3Client.builder()
+                .region(Region.of(properties.getRegion()))
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(properties.getAccessKey(), properties.getSecretKey())))
+                .forcePathStyle(properties.isPathStyleAccess());
 
         if (StringUtils.hasText(properties.getEndpoint())) {
             builder.endpointOverride(URI.create(properties.getEndpoint()));
