@@ -108,4 +108,12 @@ public class ActividadProductorController {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
+    @DeleteMapping("/{actividadId}")
+    @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
+    public ResponseEntity<ApiResponse<DTOBajaActividadResponse>> darBajaActividad(@PathVariable UUID establecimientoId, @PathVariable UUID actividadId) {
+        DTOBajaActividadResponse response = servicio.darBajaActividad(establecimientoId,actividadId );
+        return ResponseEntity.ok(ApiResponse.ok(response));
+
+    }
+
 }

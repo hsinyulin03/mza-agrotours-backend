@@ -15,6 +15,7 @@ import com.mza_agrotours.backend.enums.Dia;
 import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.exceptions.*;
+import com.mza_agrotours.backend.exceptions.actividad.ActividadError;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
@@ -78,6 +79,9 @@ public class ActividadService {
 
     @Autowired
     private ArchivoService archivoService;
+
+    @Autowired
+    private ReservaService reservaService;
 
     @Autowired
     private ArchivoMapper archivoMapper;
@@ -386,6 +390,25 @@ public class ActividadService {
         actividadRepository.save(actividad);
         return new DTOCambioEstadoActividadResponse(actividad.getId(), estadoAnterior, estadoDestino);
     }
+
+    @Transactional
+    public DTOBajaActividadResponse darBajaActividad(UUID idEstablecimiento, UUID idActividad){
+        validarEstablecimientoNoSuspendido(idEstablecimiento);
+        Actividad actividad = obtenerActividad(idActividad);
+
+        LocalDateTime ahora = LocalDateTime.now();
+
+        if (reservaRepository.existeReservaPagadaFuturaByActividadId(idActividad, ahora)) {
+            throw new AppException(ActividadError.ACTIVIDAD_CON_RESERVAS_PAGADAS);
+        }
+        actividad.setEstado(obtenerEstado(EstadoActividadNombre.DADO_DE_BAJA.name()));
+        actividad.setFechaHoraBaja(ahora);
+        cancelarDiasFuturos(idActividad, ahora);
+        actividadRepository.save(actividad);
+
+        reservaService.cancelarReservasPorBajaDeActividad(actividad, ahora);
+        return actividadMapper.actividadToDTOBajaActividad(actividad);
+    }
     //Métodos auxiliares
 
     private EstadoActividad obtenerEstado(String nombreEstadoDto) {
@@ -423,6 +446,7 @@ public class ActividadService {
         List<ActividadDia> diasGenerados = new ArrayList<>();
         LocalDate fechaActual = dto.getFechaDesde();
         LocalDate limite = dto.getFechaHasta();
+        LocalDateTime ahora = LocalDateTime.now();
 
         EstadoActividadDia estadoActivaEntidad = estadoActividadDiaRepository.findByNombre(EstadoActividadDiaNombre.ACTIVA)
                 .orElseThrow(() -> new ResourceNotFoundException("El estado ACTIVA no está configurado en la base de datos de catálogos."));
@@ -437,7 +461,7 @@ public class ActividadService {
                     LocalDateTime inicioCalculado = LocalDateTime.of(fechaActual, configDia.getHoraInicio());
 
                     // Evitar crear disponibilidades cuya hora de inicio ya haya pasado.
-                    if (!inicioCalculado.isAfter(LocalDateTime.now())) {
+                    if (!inicioCalculado.isAfter(ahora)) {
                         continue; // Salta este horario y sigue buscando
                     }
 
@@ -446,10 +470,7 @@ public class ActividadService {
                     actividadDia.setFechaHoraFin(LocalDateTime.of(fechaActual, configDia.getHoraFin()));
                     actividadDia.setCuposMax(dto.getCuposMax());
 
-                    ActividadDiaEstado estadoInicial = new ActividadDiaEstado();
-                    estadoInicial.setEstado(estadoActivaEntidad);
-                    estadoInicial.setFechaHoraInicio(LocalDateTime.now());
-                    actividadDia.registrarNuevoEstado(estadoInicial);
+                    actividadDia.cambiarEstado(estadoActivaEntidad, ahora, "Alta de la actividad");
 
                     configDia.addActividadDia(actividadDia);
                     diasGenerados.add(actividadDia);
@@ -742,7 +763,7 @@ public class ActividadService {
     }
     private Actividad obtenerActividad(UUID idActividad){
         return actividadRepository.findByIdAndFechaHoraBajaIsNull(idActividad)
-                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
+                .orElseThrow(() -> new ResourceNotFoundException("No hay ninguna actividad vigente con ID: " + idActividad ));
     }
 
 
@@ -809,6 +830,17 @@ public class ActividadService {
             throw new AppException(EstablecimientoError.ESTABLECIMIENTO_SUSPENDIDO);
         }
 
+    }
+    private void cancelarDiasFuturos(UUID idActividad, LocalDateTime ahora) {
+        EstadoActividadDia cancelada = estadoActividadDiaRepository
+                .findByNombre(EstadoActividadDiaNombre.CANCELADA)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No se encontró el registro del estado CANCELADA de ActividadDia en la base de datos."));
+
+        for (ActividadDia dia : actividadRepository.findDiasFuturosVigentes(idActividad, ahora)) {
+            dia.cambiarEstado(cancelada, ahora, "Baja de la actividad");
+            dia.setFechaHoraBaja(ahora);
+        }
     }
 }
 
