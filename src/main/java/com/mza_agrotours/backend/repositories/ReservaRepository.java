@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.repositories;
 
+import com.mza_agrotours.backend.dtos.actividad.DTOConteoReservasPorActividad;
 import com.mza_agrotours.backend.dtos.actividad.DTOReservasBloqueantes;
 import com.mza_agrotours.backend.dtos.actividad.DTOCuposPorDia;
 import com.mza_agrotours.backend.dtos.actividad.DTOMetricasReservasGlobales;
@@ -55,7 +56,6 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "WHERE estado.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE")
     List<Reserva> findReservasPendientes(@Param("currTime") LocalDateTime currTime);
 
-    boolean existsByActividadIdAndEstadoActualEstadoReservaNombreIn(UUID actividadId, List<EstadoReservaNombre> estados);
 
     @Query("SELECT r FROM Reserva r " +
             "JOIN FETCH r.pago p " +
@@ -88,10 +88,23 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "WHERE r.actividad.id = :actividadId " +
             "AND r.estadoActual.estadoReserva.nombre IN (" +
             "  com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE, " +
-            "  com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA)" +
+            "  com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA) " +
             "AND r.actividadDia.fechaHoraInicio > :ahora")
     DTOReservasBloqueantes contarReservasBloqueantes(@Param("actividadId") UUID actividadId,
                                                      @Param("ahora") LocalDateTime ahora);
+
+    @Query("SELECT new com.mza_agrotours.backend.dtos.actividad.DTOConteoReservasPorActividad(" +
+            " r.actividad.id, COUNT(r.id)) " +
+            "FROM Reserva r " +
+            "WHERE r.actividad.id IN :actividadIds " +
+            "AND r.estadoActual.estadoReserva.nombre IN (" +
+            "  com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE, " +
+            "  com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA) " +
+            "AND r.actividadDia.fechaHoraInicio > :ahora " +
+            "GROUP BY r.actividad.id")
+    List<DTOConteoReservasPorActividad> contarReservasBloqueantesPorActividad(
+            @Param("actividadIds") List<UUID> actividadIds,
+            @Param("ahora") LocalDateTime ahora);
 
     @Query("SELECT r FROM Reserva r " +
             "LEFT JOIN FETCH r.pago " +

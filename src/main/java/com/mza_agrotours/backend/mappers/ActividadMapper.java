@@ -41,6 +41,8 @@ public interface ActividadMapper {
     @Mapping(target = "diasYHorasDisponibles", ignore = true)
     @Mapping(target = "precioRegular", ignore = true)
     @Mapping(target = "cultivos", ignore = true)
+    @Mapping(target = "cantidadReservasAsociadas", ignore = true)
+    @Mapping(target = "puedeCambiarEstado", ignore = true)
     DTOActividadesResponse actividadToDTOActividades(Actividad actividad);
 
     //US-ACT-07

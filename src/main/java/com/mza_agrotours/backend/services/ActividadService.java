@@ -172,8 +172,28 @@ public class ActividadService {
     public Page<DTOActividadesResponse> obtenerListadoActividades(UUID establecimientoId, String busqueda, EstadoActividadNombre estado, Pageable pageable) {
         String texto = (busqueda == null || busqueda.isBlank()) ? null : busqueda.trim();
         Page<Actividad> actividades = actividadRepository.findByFiltrosDinamicos(establecimientoId, texto, estado, pageable);
+        LocalDateTime ahora = LocalDateTime.now();
 
-        return actividades.map(actividadMapper::actividadToDTOActividades);
+        List<UUID> ids = actividades.getContent().stream().map(Actividad::getId).toList();
+
+        Map<UUID, Long> reservasPorActividad = ids.isEmpty()
+                ? Map.of()
+                : reservaRepository.contarReservasBloqueantesPorActividad(ids, ahora).stream()
+                  .collect(Collectors.toMap(DTOConteoReservasPorActividad::getActividadId,
+                          DTOConteoReservasPorActividad::getCantidad));
+
+        return actividades.map(actividad -> {
+            DTOActividadesResponse dto = actividadMapper.actividadToDTOActividades(actividad);
+
+            long cantidad = reservasPorActividad.getOrDefault(actividad.getId(), 0L);
+            EstadoActividadNombre estadoActual = actividad.getEstado().getNombre();
+
+            dto.setCantidadReservasAsociadas(cantidad);
+            dto.setPuedeCambiarEstado(
+                    estadoActual != EstadoActividadNombre.DADO_DE_BAJA
+                            && (estadoActual == EstadoActividadNombre.BORRADOR || cantidad == 0));
+            return dto;
+        });
     }
 
     //US-ACT-07: Consultar todos los días disponibles para una actividad
