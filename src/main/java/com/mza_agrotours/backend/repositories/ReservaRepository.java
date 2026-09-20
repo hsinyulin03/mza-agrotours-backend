@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.repositories;
 
+import com.mza_agrotours.backend.dtos.actividad.DTOReservasBloqueantes;
 import com.mza_agrotours.backend.dtos.administrador_sistemas.ConteoPorEstablecimientoDTO;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
@@ -77,4 +78,16 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "where r.actividad.establecimiento.id in :ids " +
             "group by r.actividad.establecimiento.id")
     List<ConteoPorEstablecimientoDTO> countReservasTotalesByEstablecimientoIds(@Param("ids") Set<UUID> establecimientoIds);
+
+    @Query("SELECT new com.mza_agrotours.backend.dtos.actividad.DTOReservasBloqueantes(" +
+            "  COUNT(CASE WHEN r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE THEN r.id END), " +
+            "  COUNT(CASE WHEN r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA THEN r.id END)) " +
+            "FROM Reserva r " +
+            "WHERE r.actividad.id = :actividadId " +
+            "AND r.estadoActual.estadoReserva.nombre IN (" +
+            "  com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE, " +
+            "  com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA)" +
+            "AND r.actividadDia.fechaHoraInicio > :ahora")
+    DTOReservasBloqueantes contarReservasBloqueantes(@Param("actividadId") UUID actividadId,
+                                                     @Param("ahora") LocalDateTime ahora);
 }
