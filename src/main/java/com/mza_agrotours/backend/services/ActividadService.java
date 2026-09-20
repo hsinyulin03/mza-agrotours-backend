@@ -8,7 +8,6 @@ import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.dtos.actividad.DiaActividadReservaDTO;
 import com.mza_agrotours.backend.dtos.actividad.InfoParaReservarDTO;
 import com.mza_agrotours.backend.dtos.actividad.RangoEtarioReservaDTO;
-import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
 import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
@@ -22,7 +21,6 @@ import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveExceptio
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
 import com.mza_agrotours.backend.mappers.ActividadMapper;
-import com.mza_agrotours.backend.mappers.ArchivoMapper;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.ReservaRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
@@ -81,9 +79,6 @@ public class ActividadService {
     @Autowired
     private ArchivoService archivoService;
 
-    @Autowired
-    private ArchivoMapper archivoMapper;
-
     //US-ACT-03 Alta de actividad
     @Transactional
     public DTOActividadAltaResponse altaActividad(UUID establecimientoId, DTOActividadAlta dto) {
@@ -130,16 +125,8 @@ public class ActividadService {
 
         actividad.setEstablecimiento(establecimiento);
 
-        List<ArchivoUploadResponse> urlsGeneradas = new ArrayList<>();
-
-        if (dto.getFotos() != null && !dto.getFotos().isEmpty()) {
-            // Pedimos las URLs firmadas
-            urlsGeneradas = archivoService.getSignedArchivos(dto.getFotos(), CarpetaArchivo.ACTIVIDADES);
-
-            List<Archivo> entidadesArchivo = this.archivoMapper.archivoUploadResponseListToArchivoList(urlsGeneradas);
-
-            entidadesArchivo.forEach(actividad::addFoto);
-        }
+        archivoService.reclamarArchivos(dto.getFotos(), CarpetaArchivo.ACTIVIDADES)
+                .forEach(actividad::addFoto);
 
         // Persistir en la base de datos
         Actividad actividadGuardada = actividadRepository.save(actividad);
@@ -150,7 +137,6 @@ public class ActividadService {
         response.setIdActividad(actividadGuardada.getId());
         response.setMensaje("La actividad fue creada exitosamente.");
         response.setAdvertencias(advertencias);
-        response.setArchivoUploadResponses(urlsGeneradas);
 
         return response;
     }
@@ -297,14 +283,8 @@ public class ActividadService {
             actividad.getFotos().removeIf(foto -> !dto.getFotosExistentes().contains(foto.getKey()));
         }
 
-        List<ArchivoUploadResponse> urlsGeneradas = new ArrayList<>();
-
-        if (dto.getFotosNuevas() != null && !dto.getFotosNuevas().isEmpty()) {
-            // Pasamos la lista de ArchivoUploadRequest al servicio para que nos dé las URLs de subida
-            urlsGeneradas = archivoService.getSignedArchivos(dto.getFotosNuevas(), CarpetaArchivo.ACTIVIDADES);
-            List<Archivo> entidadesArchivoNuevas = archivoMapper.archivoUploadResponseListToArchivoList(urlsGeneradas);
-            entidadesArchivoNuevas.forEach(actividad::addFoto);
-        }
+        archivoService.reclamarArchivos(dto.getFotosNuevas(), CarpetaArchivo.ACTIVIDADES)
+                .forEach(actividad::addFoto);
 
         Actividad actividadGuardada = actividadRepository.save(actividad);
         DTOActividadGetResponse response = actividadMapper.actividadToDTOActividadGetResponse(actividadGuardada);
@@ -312,8 +292,6 @@ public class ActividadService {
         // Inyectamos la URL de DESCARGA (GET) a TODAS las fotos de la respuesta
         response.setFotosGuardadas(obtenerUrlsDeDescarga(response.getFotosGuardadas()));
 
-        // Adjuntamos las URLs de SUBIDA (PUT) para que el front cargue las fotos nuevas
-        response.setFotosParaSubir(urlsGeneradas);
         List<String> advertencias = calcularHuecos(dto.getTarifas());
         response.setAdvertencias(advertencias);
 
