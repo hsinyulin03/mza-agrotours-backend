@@ -5,7 +5,6 @@ import com.mza_agrotours.backend.dtos.actividad.DTOCalendarioActividadDiaRespons
 import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
-import com.mza_agrotours.backend.entities.actividad.ActividadDiaEstado;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
@@ -218,15 +217,13 @@ class ActividadCalendarioIT extends AbstractIntegrationTest {
      * instancia del test quedaría transient.
      */
     private ActividadDia agregarDia(LocalDateTime inicio, LocalDateTime fin) {
-        ActividadDiaEstado estado = new ActividadDiaEstado();
-        estado.setEstado(catalogo.estadoActividadDia(EstadoActividadDiaNombre.ACTIVA));
-        estado.setFechaHoraInicio(LocalDateTime.now().minusDays(1));
-
         ActividadDia dia = new ActividadDia();
         dia.setFechaHoraInicio(inicio);
         dia.setFechaHoraFin(fin);
         dia.setCuposMax(CUPOS_MAX);
-        dia.registrarNuevoEstado(estado);
+        dia.cambiarEstado(catalogo.estadoActividadDia(EstadoActividadDiaNombre.ACTIVA),
+                          LocalDateTime.now(),
+                          "Alta de la actividad");
 
         actividad.addActividadDia(dia);
         entityManager.flush();
