@@ -87,9 +87,6 @@ public class SecurityConfig {
                         .requestMatchers("/recetas").permitAll()
                         .requestMatchers("/recetas/**").permitAll()
 
-                        // Archivos
-                        .requestMatchers("/object-storage/**").permitAll()
-
                         //Permisos
                         .requestMatchers( "/permisos/grupos-permisos/admin").hasAuthority(PermisoCodigo.LEER_ADMIN.name())
                         .requestMatchers("/permisos/grupos-permisos/productor").authenticated()
