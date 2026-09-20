@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.enums.CarpetaArchivo;
 import com.mza_agrotours.backend.dtos.actividad.*;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.Visitante;
@@ -44,7 +45,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class ActividadService {
-    private final List<String> EXTENSIONES_VALIDAS = List.of("jpg", "jpeg", "png");
     @Autowired
     private ActividadRepository actividadRepository;
 
@@ -134,7 +134,7 @@ public class ActividadService {
 
         if (dto.getFotos() != null && !dto.getFotos().isEmpty()) {
             // Pedimos las URLs firmadas
-            urlsGeneradas = archivoService.getSignedArchivos(dto.getFotos(), EXTENSIONES_VALIDAS);
+            urlsGeneradas = archivoService.getSignedArchivos(dto.getFotos(), CarpetaArchivo.ACTIVIDADES);
 
             List<Archivo> entidadesArchivo = this.archivoMapper.archivoUploadResponseListToArchivoList(urlsGeneradas);
 
@@ -301,7 +301,7 @@ public class ActividadService {
 
         if (dto.getFotosNuevas() != null && !dto.getFotosNuevas().isEmpty()) {
             // Pasamos la lista de ArchivoUploadRequest al servicio para que nos dé las URLs de subida
-            urlsGeneradas = archivoService.getSignedArchivos(dto.getFotosNuevas(), EXTENSIONES_VALIDAS);
+            urlsGeneradas = archivoService.getSignedArchivos(dto.getFotosNuevas(), CarpetaArchivo.ACTIVIDADES);
             List<Archivo> entidadesArchivoNuevas = archivoMapper.archivoUploadResponseListToArchivoList(urlsGeneradas);
             entidadesArchivoNuevas.forEach(actividad::addFoto);
         }
