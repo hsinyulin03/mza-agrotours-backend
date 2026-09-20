@@ -14,4 +14,5 @@ public class ArchivoUploadResponse{
     private String key;
     private String extension;
     private String nombre;
+    private String contentType;
 }
