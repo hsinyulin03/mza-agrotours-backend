@@ -4,7 +4,6 @@ import com.mza_agrotours.backend.dtos.actividad.DTOActividadAlta;
 import com.mza_agrotours.backend.dtos.actividad.DTOActividadUpdate;
 import com.mza_agrotours.backend.dtos.actividad.DTODiaDisponibilidad;
 import com.mza_agrotours.backend.dtos.actividad.DTOTarifa;
-import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadRequest;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
@@ -36,7 +35,6 @@ public class ActividadValidaciones {
                 !EstadoActividadNombre.PUBLICADO.name().equalsIgnoreCase(estadoRecibido))) {
             errores.add("Una actividad nueva no puede crearse en estado '" + dto.getEstado() + "'. Solo se permite en estado BORRADOR o PUBLICADO.");
         }
-        errores.addAll(validarTamanioImagenes(dto.getFotos()));
         errores.addAll(validarFechas(dto));
         errores.addAll(validarTarifas(dto.getTarifas()));
         errores.addAll(validarDisponibilidad(dto));
@@ -55,7 +53,6 @@ public class ActividadValidaciones {
             errores.add("Una actividad no puede modificarse en estado '" + dto.getEstado() + "'");
         }
         errores.addAll(validarCantidadFotosModificacion(dto, idActividadActual));
-        errores.addAll(validarTamanioImagenes(dto.getFotosNuevas()));
         errores.addAll(validarNombreUnico(dto.getNombre(), establecimientoId, idActividadActual));
         errores.addAll(validarTarifas(dto.getTarifas()));
         return errores;
@@ -167,22 +164,6 @@ public class ActividadValidaciones {
         return errores;
     }
 
-    private List<String> validarTamanioImagenes(List<ArchivoUploadRequest> fotosNuevas) {
-        List<String> errores = new ArrayList<>();
-
-        if (fotosNuevas == null || fotosNuevas.isEmpty()) {
-            return errores;
-        }
-        //TODO-  confiamos lo que envía el usuario en fileSize, pero cuando hace el PUT de la imagen permitimos hasta 10MB
-        long maxSizeActividad = 5L * 1024 * 1024; //5MB
-        for (ArchivoUploadRequest foto : fotosNuevas) {
-            if (foto.getFileSize() > maxSizeActividad) {
-                errores.add("La imagen '" + foto.getFilename() + "' supera el límite permitido de 5MB.");
-            }
-        }
-
-        return errores;
-    }
 
     public List<String> validarCantidadFotosModificacion(DTOActividadUpdate dto, UUID idActividad) {
         List<String> errores = new ArrayList<>();
