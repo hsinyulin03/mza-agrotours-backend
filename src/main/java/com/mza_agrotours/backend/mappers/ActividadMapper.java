@@ -11,6 +11,7 @@ import org.mapstruct.MappingTarget;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -190,6 +191,18 @@ public interface ActividadMapper {
                     // Filtramos la ventana de fin: que no esté vencida (Hasta >= hoy)
                     .filter(log -> log.getFechaValidaHasta() == null || !log.getFechaValidaHasta().isBefore(hoy))
                     .findFirst();
+
+        //Si no hay vigente, buscamos la futura más próxima
+        if (configuracionActual.isEmpty()) {
+            configuracionActual =  actividad.getLogAltas().stream()
+                    .filter(log -> log.getFechaValidaDesde() != null && log.getFechaValidaDesde().isAfter(hoy))
+                    .min(Comparator.comparing(ActividadLogAltas::getFechaValidaDesde));
+        }
+
+        //Si tampoco hay futura, tomamos la última histórica (la primera de la lista ordenada)
+        if (configuracionActual.isEmpty()) {
+            configuracionActual = actividad.getLogAltas().stream().findFirst();
+        }
 
         if (configuracionActual.isEmpty() || configuracionActual.get().getDias() == null) {
             return List.of();
