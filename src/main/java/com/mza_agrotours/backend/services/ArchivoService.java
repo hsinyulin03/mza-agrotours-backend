@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadRequest;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
 import com.mza_agrotours.backend.dtos.archivo.PresignedUrlResponse;
+import com.mza_agrotours.backend.enums.CarpetaArchivo;
 import com.mza_agrotours.backend.exceptions.DatoInvalidoException;
 import com.mza_agrotours.backend.exceptions.FailedToGenerateResourceSignedUrlException;
 import com.mza_agrotours.backend.exceptions.ObjectStorageProviderException;
@@ -21,27 +22,29 @@ public class ArchivoService {
     /**
      * Genera una lista de urls del object storage para una lista de archivos.
      * @param archivoUploadRequests lista de requests con el nombre del archivo
+     * @param carpeta carpeta destino, que decide el prefijo y las extensiones validas
      * @return lista de archivos con la key y nombre del archivo
      * @throws DatoInvalidoException si el nombre del archivo no tiene una extension
      * @throws FailedToGenerateResourceSignedUrlException si no se pudo generar la url de un archivo
      */
-    public List<ArchivoUploadResponse> getSignedArchivos(List<ArchivoUploadRequest> archivoUploadRequests, List<String> allowedExtensions) {
+    public List<ArchivoUploadResponse> getSignedArchivos(List<ArchivoUploadRequest> archivoUploadRequests, CarpetaArchivo carpeta) {
         return archivoUploadRequests
                 .stream()
                 .map(archivoUploadRequest ->
-                        getSignedArchivo(archivoUploadRequest, allowedExtensions))
+                        getSignedArchivo(archivoUploadRequest, carpeta))
                 .toList();
     }
 
     /**
      * Genera una presignedUrl para un archivo del object storage.
      * @param archivoUploadRequest request con el nombre del archivo
+     * @param carpeta carpeta destino, que decide el prefijo y las extensiones validas
      * @return archivo con la key y nombre del archivo
      * @throws DatoInvalidoException si el nombre del archivo no tiene una extension o
-     * la extension no esta en la lista de extensiones permitidas.
+     * la extension no esta permitida en la carpeta.
      * @throws FailedToGenerateResourceSignedUrlException si no se pudo generar la url
      */
-    public ArchivoUploadResponse getSignedArchivo(ArchivoUploadRequest archivoUploadRequest, List<String> allowedExtensions) {
+    public ArchivoUploadResponse getSignedArchivo(ArchivoUploadRequest archivoUploadRequest, CarpetaArchivo carpeta) {
 
         String filename = archivoUploadRequest.getFilename();
         String extension = getArchivoExtension(filename);
@@ -50,14 +53,15 @@ public class ArchivoService {
             throw new DatoInvalidoException("Archivo invalido: " + filename + " (sin extension)");
         }
 
-        if (allowedExtensions != null  && !allowedExtensions.contains(extension.toLowerCase())) {
-            throw new DatoInvalidoException("Archivo invalido: " + filename + " (extension no permitida)");
+        if (!carpeta.permite(extension)) {
+            throw new DatoInvalidoException("Archivo invalido: " + filename
+                    + " (extension no permitida en " + carpeta.getPrefijo() + ")");
         }
 
         PresignedUrlResponse presignedUrlResponse;
         try {
             presignedUrlResponse = objectStorageService
-                    .generatePresignedUrl(archivoUploadRequest);
+                    .generatePresignedUrl(archivoUploadRequest, carpeta);
         } catch (ObjectStorageProviderException e) {
             throw new FailedToGenerateResourceSignedUrlException(e.getMessage() + " (" + e.getCode() + ")");
         }
