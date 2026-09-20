@@ -55,6 +55,8 @@ public interface ActividadMapper {
     @Mapping(source = "cuposMax", target = "cuposMaximos")
     @Mapping(source = "estadoActual.estado.nombre", target = "estadoActual")
     @Mapping(target = "fecha", expression = "java(dia.getFechaHoraInicio() != null ? dia.getFechaHoraInicio().toLocalDate() : null)")
+    @Mapping(target = "horaInicio", expression = "java(dia.getFechaHoraInicio() != null ? dia.getFechaHoraInicio().toLocalTime() : null)")
+    @Mapping(target = "horaFin", expression = "java(dia.getFechaHoraFin() != null ? dia.getFechaHoraFin().toLocalTime() : null)")
     DTOActividadDiaResponse actividadDiatoDTOActividadDia(ActividadDia dia);
 
     //US-ACT-12

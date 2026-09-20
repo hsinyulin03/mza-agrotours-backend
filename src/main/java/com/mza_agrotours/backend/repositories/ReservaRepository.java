@@ -1,5 +1,7 @@
 package com.mza_agrotours.backend.repositories;
 
+import com.mza_agrotours.backend.dtos.actividad.DTOCuposPorDia;
+import com.mza_agrotours.backend.dtos.actividad.DTOMetricasReservasGlobales;
 import com.mza_agrotours.backend.dtos.administrador_sistemas.ConteoPorEstablecimientoDTO;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
@@ -77,4 +79,27 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "where r.actividad.establecimiento.id in :ids " +
             "group by r.actividad.establecimiento.id")
     List<ConteoPorEstablecimientoDTO> countReservasTotalesByEstablecimientoIds(@Param("ids") Set<UUID> establecimientoIds);
+
+    @Query("SELECT new com.mza_agrotours.backend.dtos.actividad.DTOCuposPorDia(" +
+            "  ad.id, " +
+            "  COUNT(CASE WHEN r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE THEN rd.id END), " +
+            "  COUNT(CASE WHEN r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA THEN rd.id END)) " +
+            "FROM Reserva r " +
+            "JOIN r.actividadDia ad " +
+            "JOIN r.reservaDetalles rd " +          // una fila por persona
+            "WHERE ad.id IN :diaIds " +
+            "AND r.estadoActual.estadoReserva.nombre IN (" +
+            "  com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE, " +
+            "  com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA) " +
+            "GROUP BY ad.id")
+    List<DTOCuposPorDia> contarCuposPorDia(@Param("diaIds") List<UUID> diaIds);
+
+    @Query("SELECT new com.mza_agrotours.backend.dtos.actividad.DTOMetricasReservasGlobales(" +
+            "  COUNT(CASE WHEN r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE THEN rd.id END), " +
+            "  COUNT(CASE WHEN r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA THEN rd.id END), " +
+            "  COUNT(CASE WHEN r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.FINALIZADA THEN rd.id END)) " +
+            "FROM Reserva r " +
+            "JOIN r.reservaDetalles rd " +          // una fila por persona
+            "WHERE r.actividad.id = :actividadId")
+    DTOMetricasReservasGlobales obtenerMetricasDeReservas(@Param("actividadId") UUID actividadId);
 }
