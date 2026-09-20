@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadRequest;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
+import com.mza_agrotours.backend.enums.CarpetaArchivo;
 import com.mza_agrotours.backend.exceptions.DatoInvalidoException;
 import com.mza_agrotours.backend.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
@@ -12,9 +13,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -22,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * disco no podia verificar, porque no firmaba nada.
  */
 class ObjectStorageIT extends AbstractIntegrationTest {
-    private static final List<String> EXTENSIONES = List.of("jpg", "jpeg", "png", "pdf");
 
     @Autowired
     private ArchivoService archivoService;
@@ -32,12 +33,11 @@ class ObjectStorageIT extends AbstractIntegrationTest {
     @Test
     void subeYDescargaUnArchivoConUrlsPrefirmadas() throws Exception {
         byte[] contenido = "contenido de prueba".getBytes(StandardCharsets.UTF_8);
-        ArchivoUploadResponse archivo = firmar("foto.jpg", contenido.length);
+        ArchivoUploadResponse archivo = firmar("foto.jpg", contenido.length, CarpetaArchivo.ACTIVIDADES);
 
         assertThat(archivo.getContentType()).isEqualTo("image/jpeg");
         assertThat(archivo.getExtension()).isEqualTo("jpg");
         assertThat(archivo.getNombre()).isEqualTo("foto.jpg");
-        assertThat(archivo.getKey()).endsWith(".jpg");
 
         assertThat(subir(archivo.getUploadUrl(), archivo.getContentType(), contenido)).isEqualTo(200);
 
@@ -51,8 +51,29 @@ class ObjectStorageIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void guardaCadaArchivoBajoElPrefijoDeSuCarpeta() {
+        assertThat(firmar("foto.jpg", 10, CarpetaArchivo.ACTIVIDADES).getKey())
+                .startsWith("actividades/")
+                .endsWith(".jpg");
+
+        assertThat(firmar("prueba.pdf", 10, CarpetaArchivo.SOLICITUDES_ESTABLECIMIENTO).getKey())
+                .startsWith("solicitudes-establecimiento/")
+                .endsWith(".pdf");
+    }
+
+    @Test
+    void cadaCarpetaAceptaSoloSusExtensiones() {
+        assertThatCode(() -> firmar("prueba.pdf", 10, CarpetaArchivo.SOLICITUDES_ESTABLECIMIENTO))
+                .doesNotThrowAnyException();
+
+        assertThatThrownBy(() -> firmar("prueba.pdf", 10, CarpetaArchivo.ACTIVIDADES))
+                .isInstanceOf(DatoInvalidoException.class)
+                .hasMessageContaining("extension no permitida en actividades");
+    }
+
+    @Test
     void rechazaElUploadSiElContentTypeNoCoincideConElFirmado() throws Exception {
-        ArchivoUploadResponse archivo = firmar("foto.png", 10);
+        ArchivoUploadResponse archivo = firmar("foto.png", 10, CarpetaArchivo.ACTIVIDADES);
 
         assertThat(subir(archivo.getUploadUrl(), "text/html", "<script>".getBytes(StandardCharsets.UTF_8)))
                 .isEqualTo(403);
@@ -60,29 +81,32 @@ class ObjectStorageIT extends AbstractIntegrationTest {
 
     @Test
     void noFirmaUnArchivoQueSuperaElTamanioMaximo() {
-        assertThatThrownBy(() -> firmar("foto.jpg", 10485761L))
+        assertThatThrownBy(() -> firmar("foto.jpg", 10485761L, CarpetaArchivo.ACTIVIDADES))
                 .isInstanceOf(DatoInvalidoException.class)
                 .hasMessageContaining("tamanio maximo");
     }
 
     @Test
-    void noFirmaUnaExtensionNoPermitida() {
-        assertThatThrownBy(() -> firmar("script.exe", 10))
-                .isInstanceOf(DatoInvalidoException.class)
-                .hasMessageContaining("extension no permitida");
+    void sigueSirviendoLasKeysPlanasAnterioresALasCarpetas() {
+        String keyVieja = UUID.randomUUID() + ".jpg";
+
+        assertThatCode(() -> this.archivoService.getDownloadUrl(keyVieja)).doesNotThrowAnyException();
     }
 
     @Test
-    void rechazaUnaKeyInvalidaAlPedirLaUrlDeDescarga() {
+    void rechazaKeysQueNoSalieronDelServidor() {
         assertThatThrownBy(() -> this.archivoService.getDownloadUrl("../../etc/passwd"))
+                .isInstanceOf(DatoInvalidoException.class);
+
+        assertThatThrownBy(() -> this.archivoService.getDownloadUrl("otra-carpeta/" + UUID.randomUUID() + ".jpg"))
                 .isInstanceOf(DatoInvalidoException.class);
     }
 
-    private ArchivoUploadResponse firmar(String filename, long fileSize) {
+    private ArchivoUploadResponse firmar(String filename, long fileSize, CarpetaArchivo carpeta) {
         ArchivoUploadRequest request = new ArchivoUploadRequest();
         request.setFilename(filename);
         request.setFileSize(fileSize);
-        return this.archivoService.getSignedArchivo(request, EXTENSIONES);
+        return this.archivoService.getSignedArchivo(request, carpeta);
     }
 
     private int subir(String uploadUrl, String contentType, byte[] contenido) throws Exception {
