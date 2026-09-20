@@ -4,6 +4,7 @@ import com.mza_agrotours.backend.dtos.actividad.DTOFiltro;
 import com.mza_agrotours.backend.dtos.actividad.DiaActividadReservaDTO;
 import com.mza_agrotours.backend.dtos.administrador_sistemas.ConteoPorEstablecimientoDTO;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
+import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.repositories.BaseEntityRepository;
 import org.springframework.data.domain.Page;
@@ -150,4 +151,13 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
     AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
     """)
     List<Actividad> obtenerActividadesPublicadasPorCultivo(@Param("tipoCultivoId") UUID tipoCultivoId);
+
+    @Query("SELECT ad FROM Actividad a " +
+            "JOIN a.actividadesDias ad " +
+            "LEFT JOIN FETCH ad.estadoActual " +
+            "WHERE a.id = :actividadId " +
+            "AND ad.fechaHoraBaja IS NULL " +
+            "AND ad.fechaHoraInicio > :ahora")
+    List<ActividadDia> findDiasFuturosVigentes(@Param("actividadId") UUID actividadId,
+                                               @Param("ahora") LocalDateTime ahora);
 }

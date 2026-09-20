@@ -75,6 +75,12 @@ public interface ActividadMapper {
     @Mapping(source = "fotos", target = "fotosGuardadas")
     DTOActividadGetResponse actividadToDTOActividadGetResponse(Actividad actividad);
 
+    @Mapping(target = "idActividad", source = "actividad.id")
+    @Mapping(target = "nombre", source = "actividad.nombre")
+    @Mapping(target = "estado", source = "estado.nombre.nombre")
+    @Mapping(target = "mensaje", constant = "La actividad se ha dado de baja correctamente.")
+    DTOBajaActividadResponse actividadToDTOBajaActividad(Actividad actividad);
+
     //US-RESE-01
     RangoEtarioReservaDTO actividadRangoEtarioToDTO(ActividadRangoEtario actividadRangoEtarios);
 

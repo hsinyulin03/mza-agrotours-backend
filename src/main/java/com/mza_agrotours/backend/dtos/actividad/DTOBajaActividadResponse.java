@@ -1,0 +1,15 @@
+package com.mza_agrotours.backend.dtos.actividad;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+import java.util.UUID;
+
+@Data
+@AllArgsConstructor
+public class DTOBajaActividadResponse {
+        private UUID idActividad;
+        private String nombre;
+        private String estado;
+        private String mensaje;
+}
