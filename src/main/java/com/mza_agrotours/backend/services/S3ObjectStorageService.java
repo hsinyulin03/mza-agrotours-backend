@@ -4,6 +4,7 @@ import com.mza_agrotours.backend.config.ObjectStorageProperties;
 import com.mza_agrotours.backend.dtos.archivo.PresignedUrlRequest;
 import com.mza_agrotours.backend.dtos.archivo.PresignedUrlResponse;
 import com.mza_agrotours.backend.exceptions.DatoInvalidoException;
+import com.mza_agrotours.backend.enums.CarpetaArchivo;
 import com.mza_agrotours.backend.exceptions.ObjectStorageProviderException;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
@@ -33,14 +34,14 @@ public class S3ObjectStorageService {
      * @throws DatoInvalidoException si el tamanio declarado supera el maximo
      * @throws ObjectStorageProviderException si el proveedor no pudo firmar la url
      */
-    public PresignedUrlResponse generatePresignedUrl(PresignedUrlRequest request)
+    public PresignedUrlResponse generatePresignedUrl(PresignedUrlRequest request, CarpetaArchivo carpeta)
             throws ObjectStorageProviderException {
         if (request.getFileSize() > this.properties.getMaxFileSize()) {
             throw new DatoInvalidoException("El archivo " + request.getFilename()
                     + " supera el tamanio maximo permitido de " + this.properties.getMaxFileSize() + " bytes");
         }
 
-        String key = ObjectStorageKeys.generate(request.getFilename());
+        String key = ObjectStorageKeys.generate(carpeta, request.getFilename());
         String contentType = contentTypeOf(key);
 
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
