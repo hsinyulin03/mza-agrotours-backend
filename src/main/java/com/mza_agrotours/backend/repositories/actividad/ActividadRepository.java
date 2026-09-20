@@ -163,4 +163,13 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
     List<ActividadDia> findDiasDelMes(@Param("actividadId") UUID actividadId,
                                       @Param("desde") LocalDateTime desde,
                                       @Param("hasta") LocalDateTime hasta);
+
+    @Query("SELECT ad FROM Actividad a " +
+            "JOIN a.actividadesDias ad " +
+            "LEFT JOIN FETCH ad.estadoActual " +
+            "WHERE a.id = :actividadId " +
+            "AND ad.fechaHoraBaja IS NULL " +
+            "AND ad.fechaHoraInicio > :ahora")
+    List<ActividadDia> findDiasFuturosVigentes(@Param("actividadId") UUID actividadId,
+                                               @Param("ahora") LocalDateTime ahora);
 }

@@ -80,6 +80,22 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "group by r.actividad.establecimiento.id")
     List<ConteoPorEstablecimientoDTO> countReservasTotalesByEstablecimientoIds(@Param("ids") Set<UUID> establecimientoIds);
 
+    @Query("SELECT r FROM Reserva r " +
+            "LEFT JOIN FETCH r.pago " +
+            "JOIN FETCH r.visitante v " +
+            "JOIN FETCH v.usuario " +
+            "JOIN FETCH r.actividadDia " +
+            "WHERE r.actividad.id = :actividadId " +
+            "AND r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE")
+    List<Reserva> findPendientesByActividadId(@Param("actividadId") UUID actividadId);
+
+    @Query("SELECT COUNT(r) > 0 FROM Reserva r " +
+            "WHERE r.actividad.id = :actividadId " +
+            "AND r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA " +
+            "AND r.actividadDia.fechaHoraInicio > :ahora")
+    boolean existeReservaPagadaFuturaByActividadId(@Param("actividadId") UUID actividadId,
+                                                   @Param("ahora") LocalDateTime ahora);
+
     @Query("SELECT new com.mza_agrotours.backend.dtos.actividad.DTOCuposPorDia(" +
             "  ad.id, " +
             "  COUNT(CASE WHEN r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE THEN rd.id END), " +

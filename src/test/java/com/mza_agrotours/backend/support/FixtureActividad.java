@@ -45,16 +45,13 @@ public class FixtureActividad {
     public Actividad actividadConDiaReservableEn(Establecimiento establecimiento) {
         Actividad actividad = actividadPublicadaEn(establecimiento);
 
-        ActividadDiaEstado estado = new ActividadDiaEstado();
-        estado.setFechaHoraInicio(LocalDateTime.now().minusDays(1));
-        estado.setEstado(catalogo.estadoActividadDia(EstadoActividadDiaNombre.ACTIVA));
-
         ActividadDia dia = new ActividadDia();
         // handleIniciarReserva solo mira dias cuya fechaHoraInicio ya paso.
         dia.setFechaHoraInicio(LocalDateTime.now().minusHours(1));
         dia.setFechaHoraFin(LocalDateTime.now().plusHours(3));
         dia.setCuposMax(20);
-        dia.registrarNuevoEstado(estado);
+        dia.cambiarEstado(catalogo.estadoActividadDia(EstadoActividadDiaNombre.ACTIVA),
+                LocalDateTime.now().minusDays(1), "Alta de prueba");
 
         actividad.addActividadDia(dia);
         return this.actividadRepository.save(actividad);
