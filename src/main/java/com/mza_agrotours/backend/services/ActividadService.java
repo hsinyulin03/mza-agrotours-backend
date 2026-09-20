@@ -201,15 +201,22 @@ public class ActividadService {
 
         DTOCalendarioActividadDiaResponse dto = actividadMapper.actividadToDTOCalendarioActividadDia(actividad);
 
-        List<DTOActividadDiaResponse> diasDelMesDto = actividad.getActividadesDias().stream()
-                .filter(dia -> dia.getFechaHoraInicio() != null)
-                .filter(dia -> dia.getFechaHoraInicio().getYear() == anio
-                        && dia.getFechaHoraInicio().getMonthValue() == mes)
-                .map(actividadMapper::actividadDiatoDTOActividadDia)
+        LocalDateTime desde = LocalDate.of(anio, mes, 1).atStartOfDay();
+        LocalDateTime hasta = desde.plusMonths(1);
+
+        List<ActividadDia> diasDelMes = actividadRepository.findDiasDelMes(idActividad, desde, hasta);
+        Map<UUID, DTOCuposPorDia> cuposPorDia = obtenerCuposPorDia(diasDelMes);
+
+        List<DTOActividadDiaResponse> diasDelMesDto = diasDelMes.stream()
+                .map(dia -> {
+                    DTOActividadDiaResponse dtoDia = actividadMapper.actividadDiatoDTOActividadDia(dia);
+                    dtoDia.aplicarCupos(cuposPorDia.get(dia.getId()));
+                    return dtoDia;
+                })
                 .toList();
 
         dto.setDiasDelMes(diasDelMesDto);
-
+        dto.setMetricas(reservaRepository.obtenerMetricasDeReservas(idActividad));
         return dto;
     }
 
@@ -814,6 +821,14 @@ public class ActividadService {
             dia.cambiarEstado(cancelada, ahora, "Baja de la actividad");
             dia.setFechaHoraBaja(ahora);
         }
+    }
+    private Map<UUID, DTOCuposPorDia> obtenerCuposPorDia(List<ActividadDia> dias) {
+        if (dias.isEmpty()) {
+            return Map.of();
+        }
+        List<UUID> ids = dias.stream().map(ActividadDia::getId).toList();
+        return reservaRepository.contarCuposPorDia(ids).stream()
+                .collect(Collectors.toMap(DTOCuposPorDia::getActividadDiaId, c -> c));
     }
 }
 

@@ -57,7 +57,7 @@ public class ActividadProductorController {
     //US-ACT-07: Consultar todos los días disponibles para una actividad
     @GetMapping("/{actividadId}/dias")
     @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
-    public ResponseEntity<?> obtenerCalendarioInteractvo(
+    public ResponseEntity<ApiResponse<DTOCalendarioActividadDiaResponse>> obtenerCalendarioInteractvo(
             @PathVariable UUID establecimientoId,
             @PathVariable UUID actividadId,
             @RequestParam @Min(value = 1, message = "El mes debe ser mayor o igual a 1")
