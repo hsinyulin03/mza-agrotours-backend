@@ -1,6 +1,6 @@
 package com.mza_agrotours.backend.dtos.solicitud_establecimiento;
 
-import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadRequest;
+import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
 import com.mza_agrotours.backend.validation.NumeroTelefono;
 import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
 import jakarta.validation.constraints.NotBlank;
@@ -55,5 +55,5 @@ public class SolicitudEstablecimientoCreateReq {
     private String cvu;
 
     @Size(min = 1, max = 10)
-    private List<ArchivoUploadRequest> archivos;
+    private List<ArchivoClaimRequest> archivos;
 }

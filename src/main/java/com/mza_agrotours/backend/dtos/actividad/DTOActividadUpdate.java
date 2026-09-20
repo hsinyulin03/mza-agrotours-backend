@@ -1,6 +1,6 @@
 package com.mza_agrotours.backend.dtos.actividad;
 
-import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadRequest;
+import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
 import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -24,7 +24,7 @@ public class DTOActividadUpdate {
     private List<UUID> cultivos;
 
     @Valid @Size(max = 10)
-    private List<ArchivoUploadRequest> fotosNuevas;
+    private List<ArchivoClaimRequest> fotosNuevas;
     private List<String> fotosExistentes; //para recibir las keys de las fotos
 
     @Valid
