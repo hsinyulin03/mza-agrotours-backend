@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.enums.CarpetaArchivo;
 import com.mza_agrotours.backend.config.RutasNotificacionesFront;
 import com.mza_agrotours.backend.dtos.ObservacionSolicitudDTO;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
@@ -29,7 +30,6 @@ import java.util.UUID;
 
 @Service
 public class SolicitudEstablecimientoService {
-    private final List<String> EXTENSIONES_VALIDAS = List.of("pdf", "jpg", "jpeg", "png");
 
     private final SolicitudEstablecimientoRepository solicitudEstablecimientoRepository;
     private final SolicitudEstablecimientoMapper solicitudEstablecimientoMapper;
@@ -121,7 +121,7 @@ public class SolicitudEstablecimientoService {
         List<ArchivoUploadResponse> archivoUploadResponses = this.archivoService
                 .getSignedArchivos(
                         solicitudEstablecimientoCreateReq.getArchivos(),
-                        this.EXTENSIONES_VALIDAS);
+                        CarpetaArchivo.SOLICITUDES_ESTABLECIMIENTO);
 
         List<Archivo> archivos = this.archivoMapper.archivoUploadResponseListToArchivoList(archivoUploadResponses);
         nuevaSolicitudEstablecimiento.setPruebas(archivos);
