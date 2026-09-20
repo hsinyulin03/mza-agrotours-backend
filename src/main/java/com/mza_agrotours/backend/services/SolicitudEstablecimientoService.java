@@ -3,10 +3,8 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.enums.CarpetaArchivo;
 import com.mza_agrotours.backend.config.RutasNotificacionesFront;
 import com.mza_agrotours.backend.dtos.ObservacionSolicitudDTO;
-import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.*;
 import com.mza_agrotours.backend.entities.AdministradorSistemas;
-import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
@@ -17,7 +15,6 @@ import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEst
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimientoEstado;
 import com.mza_agrotours.backend.enums.TipoNotificacionNombre;
 import com.mza_agrotours.backend.exceptions.*;
-import com.mza_agrotours.backend.mappers.ArchivoMapper;
 import com.mza_agrotours.backend.mappers.SolicitudEstablecimientoMapper;
 import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.services.notificaciones.NotificacionService;
@@ -25,6 +22,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -38,7 +36,6 @@ public class SolicitudEstablecimientoService {
     private final UsuarioRepository usuarioRepository;
     private final EstablecimientoRepository establecimientoRepository;
     private final ArchivoService archivoService;
-    private final ArchivoMapper archivoMapper;
     private final AdministradorSistemasRepository administradorSistemasRepository;
     private final ProductorService productorService;
     private final EstablecimientoService establecimientoService;
@@ -51,7 +48,6 @@ public class SolicitudEstablecimientoService {
                                            UsuarioRepository usuarioRepository,
                                            EstablecimientoRepository establecimientoRepository,
                                            ArchivoService archivoService,
-                                           ArchivoMapper archivoMapper,
                                            AdministradorSistemasRepository administradorSistemasRepository,
                                            ProductorService productorService,
                                            EstablecimientoService establecimientoService,
@@ -63,7 +59,6 @@ public class SolicitudEstablecimientoService {
         this.usuarioRepository = usuarioRepository;
         this.establecimientoRepository = establecimientoRepository;
         this.archivoService = archivoService;
-        this.archivoMapper = archivoMapper;
         this.administradorSistemasRepository = administradorSistemasRepository;
         this.productorService = productorService;
         this.establecimientoService = establecimientoService;
@@ -118,13 +113,9 @@ public class SolicitudEstablecimientoService {
         nuevaSolicitudEstablecimiento.setUsuario(usuarioSolicitante);
 
         // 5. Obtener los archivos
-        List<ArchivoUploadResponse> archivoUploadResponses = this.archivoService
-                .getSignedArchivos(
-                        solicitudEstablecimientoCreateReq.getArchivos(),
-                        CarpetaArchivo.SOLICITUDES_ESTABLECIMIENTO);
-
-        List<Archivo> archivos = this.archivoMapper.archivoUploadResponseListToArchivoList(archivoUploadResponses);
-        nuevaSolicitudEstablecimiento.setPruebas(archivos);
+        nuevaSolicitudEstablecimiento.setPruebas(new ArrayList<>(this.archivoService.reclamarArchivos(
+                solicitudEstablecimientoCreateReq.getArchivos(),
+                CarpetaArchivo.SOLICITUDES_ESTABLECIMIENTO)));
 
         // 6. Guardar la solicitud en estado pendiente asociado al usuario
         nuevaSolicitudEstablecimiento.setFechaHoraAlta(LocalDateTime.now());
@@ -134,7 +125,6 @@ public class SolicitudEstablecimientoService {
         SolicitudEstablecimientoCreateResp solicitudEstablecimientoCreateResp = new SolicitudEstablecimientoCreateResp();
         solicitudEstablecimientoCreateResp.setSolicitudId(nuevaSolicitudEstablecimiento.getId().toString());
         solicitudEstablecimientoCreateResp.setNombreEstablecimiento(nuevaSolicitudEstablecimiento.getRazonSocial());
-        solicitudEstablecimientoCreateResp.setArchivoUploadResponses(archivoUploadResponses);
 
         notificacionService.crearNotificacion(
                 nuevaSolicitudEstablecimiento.getUsuario(),
