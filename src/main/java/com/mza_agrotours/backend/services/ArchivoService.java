@@ -1,6 +1,5 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.config.ObjectStorageProvider;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadRequest;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
 import com.mza_agrotours.backend.dtos.archivo.PresignedUrlResponse;
@@ -13,14 +12,14 @@ import java.util.List;
 
 @Service
 public class ArchivoService {
-    private final ObjectStorageProvider objectStorageProvider;
+    private final S3ObjectStorageService objectStorageService;
 
-    public ArchivoService(ObjectStorageProvider objectStorageProvider) {
-        this.objectStorageProvider = objectStorageProvider;
+    public ArchivoService(S3ObjectStorageService objectStorageService) {
+        this.objectStorageService = objectStorageService;
     }
 
     /**
-     * Genera una lista de urls del object storage provider para una lista de archivos.
+     * Genera una lista de urls del object storage para una lista de archivos.
      * @param archivoUploadRequests lista de requests con el nombre del archivo
      * @return lista de archivos con la key y nombre del archivo
      * @throws DatoInvalidoException si el nombre del archivo no tiene una extension
@@ -35,7 +34,7 @@ public class ArchivoService {
     }
 
     /**
-     * Genera una presignedUrl para un archivo del object storage provider.
+     * Genera una presignedUrl para un archivo del object storage.
      * @param archivoUploadRequest request con el nombre del archivo
      * @return archivo con la key y nombre del archivo
      * @throws DatoInvalidoException si el nombre del archivo no tiene una extension o
@@ -47,18 +46,6 @@ public class ArchivoService {
         String filename = archivoUploadRequest.getFilename();
         String extension = getArchivoExtension(filename);
 
-        PresignedUrlResponse presignedUrlResponse;
-        try {
-            presignedUrlResponse = objectStorageProvider
-                    .generatePresignedUrl(archivoUploadRequest);
-        } catch (ObjectStorageProviderException e) {
-            throw new FailedToGenerateResourceSignedUrlException(e.getMessage() + e.getCode());
-        }
-
-        String key = presignedUrlResponse.getKey();
-        String uploadUrl = presignedUrlResponse.getUploadUrl();
-
-
         if (extension == null) {
             throw new DatoInvalidoException("Archivo invalido: " + filename + " (sin extension)");
         }
@@ -67,11 +54,20 @@ public class ArchivoService {
             throw new DatoInvalidoException("Archivo invalido: " + filename + " (extension no permitida)");
         }
 
+        PresignedUrlResponse presignedUrlResponse;
+        try {
+            presignedUrlResponse = objectStorageService
+                    .generatePresignedUrl(archivoUploadRequest);
+        } catch (ObjectStorageProviderException e) {
+            throw new FailedToGenerateResourceSignedUrlException(e.getMessage() + " (" + e.getCode() + ")");
+        }
+
         return new ArchivoUploadResponse(
-                uploadUrl,
-                key,
+                presignedUrlResponse.getUploadUrl(),
+                presignedUrlResponse.getKey(),
                 extension,
-                filename
+                filename,
+                presignedUrlResponse.getContentType()
         );
     }
 
@@ -94,6 +90,6 @@ public class ArchivoService {
     }
 
     public String getDownloadUrl(String key) {
-        return objectStorageProvider.generateDownloadUrl(key);
+        return objectStorageService.generateDownloadUrl(key);
     }
 }
