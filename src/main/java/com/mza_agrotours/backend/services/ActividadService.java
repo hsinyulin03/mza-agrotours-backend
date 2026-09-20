@@ -9,10 +9,8 @@ import com.mza_agrotours.backend.dtos.actividad.InfoParaReservarDTO;
 import com.mza_agrotours.backend.dtos.actividad.RangoEtarioReservaDTO;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
 import com.mza_agrotours.backend.entities.Archivo;
-import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
-import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.enums.Dia;
 import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
@@ -174,8 +172,28 @@ public class ActividadService {
     public Page<DTOActividadesResponse> obtenerListadoActividades(UUID establecimientoId, String busqueda, EstadoActividadNombre estado, Pageable pageable) {
         String texto = (busqueda == null || busqueda.isBlank()) ? null : busqueda.trim();
         Page<Actividad> actividades = actividadRepository.findByFiltrosDinamicos(establecimientoId, texto, estado, pageable);
+        LocalDateTime ahora = LocalDateTime.now();
 
-        return actividades.map(actividadMapper::actividadToDTOActividades);
+        List<UUID> ids = actividades.getContent().stream().map(Actividad::getId).toList();
+
+        Map<UUID, Long> reservasPorActividad = ids.isEmpty()
+                ? Map.of()
+                : reservaRepository.contarReservasBloqueantesPorActividad(ids, ahora).stream()
+                  .collect(Collectors.toMap(DTOConteoReservasPorActividad::getActividadId,
+                          DTOConteoReservasPorActividad::getCantidad));
+
+        return actividades.map(actividad -> {
+            DTOActividadesResponse dto = actividadMapper.actividadToDTOActividades(actividad);
+
+            long cantidad = reservasPorActividad.getOrDefault(actividad.getId(), 0L);
+            EstadoActividadNombre estadoActual = actividad.getEstado().getNombre();
+
+            dto.setCantidadReservasAsociadas(cantidad);
+            dto.setPuedeCambiarEstado(
+                    estadoActual != EstadoActividadNombre.DADO_DE_BAJA
+                            && (estadoActual == EstadoActividadNombre.BORRADOR || cantidad == 0));
+            return dto;
+        });
     }
 
     //US-ACT-07: Consultar todos los días disponibles para una actividad
@@ -260,10 +278,8 @@ public class ActividadService {
         }
 
         EstadoActividad nuevoEstado = obtenerEstado(dto.getEstado());
-        if (EstadoActividadNombre.BORRADOR.name().equalsIgnoreCase(dto.getEstado()) &&
-                tieneReservasPendientesOPagadas(idActividad)) {
-
-            throw new ValidacionNegocioException("No se permite cambiar a estado borrador: la actividad posee reservas en estado pendiente o pagada.");
+        if (EstadoActividadNombre.BORRADOR.name().equalsIgnoreCase(dto.getEstado())){
+            validarSinReservasBloqueantes(idActividad);
         }
 
         actividad.setEstado(nuevoEstado);
@@ -372,6 +388,35 @@ public class ActividadService {
         return actividadRepository.obtenerFiltroCultivos();
     }
 
+    @Transactional
+    public DTOCambioEstadoActividadResponse cambiarEstadoActividad(UUID idEstablecimiento, UUID idActividad, DTOCambioEstadoActividad dto) {
+        validarEstablecimientoNoSuspendido(idEstablecimiento);
+
+        Actividad actividad = obtenerActividad(idActividad);
+        EstadoActividad nuevoEstado = obtenerEstado(dto.getEstado());
+
+        EstadoActividadNombre estadoAnterior = actividad.getEstado().getNombre();
+        EstadoActividadNombre estadoDestino = nuevoEstado.getNombre();
+
+        if (estadoDestino != EstadoActividadNombre.BORRADOR && estadoDestino != EstadoActividadNombre.PUBLICADO) {
+            throw new ValidacionNegocioException("Solo se permite cambiar entre los estados Borrador y Publicado.");
+        }
+
+        if (estadoAnterior == EstadoActividadNombre.DADO_DE_BAJA) {
+            throw new ValidacionNegocioException("La actividad está dada de baja, no se puede cambiar su estado de publicación.");
+        }
+        if (estadoAnterior == estadoDestino) {
+            throw new ValidacionNegocioException("La actividad ya se encuentra en estado " + estadoDestino.getNombre());
+        }
+
+        if (estadoDestino == EstadoActividadNombre.BORRADOR) {
+            validarSinReservasBloqueantes(idActividad);
+        }
+
+        actividad.setEstado(nuevoEstado);
+        actividadRepository.save(actividad);
+        return new DTOCambioEstadoActividadResponse(actividad.getId(), estadoAnterior, estadoDestino);
+    }
 
     @Transactional
     public DTOBajaActividadResponse darBajaActividad(UUID idEstablecimiento, UUID idActividad){
@@ -722,16 +767,18 @@ public class ActividadService {
         return cultivosDefinitivos;
     }
 
-    private boolean tieneReservasPendientesOPagadas(UUID idActividad) {
-        List<EstadoReservaNombre> estadosQueBloquean = List.of(
-                EstadoReservaNombre.PENDIENTE,
-                EstadoReservaNombre.PAGADA
-        );
+    private void validarSinReservasBloqueantes(UUID idActividad) {
+        LocalDateTime ahora = LocalDateTime.now();
+        DTOReservasBloqueantes reservas = reservaRepository.contarReservasBloqueantes(idActividad, ahora);
 
-        return reservaRepository.existsByActividadIdAndEstadoActualEstadoReservaNombreIn(
-                idActividad,
-                estadosQueBloquean
-        );
+        if (reservas.getTotal() > 0) {
+            String mensaje = "No se puede pasar la actividad a borrador: posee "
+                    + reservas.getTotal() + (reservas.getTotal() == 1 ? " reserva" : " reservas")
+                    + " en estado pendiente o pagada (pendientes: " + reservas.getPendientes()
+                    + ", pagadas: " + reservas.getPagadas() + ").";
+
+            throw new AppException(ActividadError.ACTIVIDAD_CON_RESERVAS_ACTIVAS, mensaje, reservas);
+        }
     }
     private List<DTOFotosResponse> obtenerUrlsDeDescarga(List<DTOFotosResponse> fotos) {
         if (fotos != null && !fotos.isEmpty()) {
