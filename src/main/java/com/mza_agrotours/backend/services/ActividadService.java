@@ -1,21 +1,15 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.enums.CarpetaArchivo;
 import com.mza_agrotours.backend.dtos.actividad.*;
+import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
+import com.mza_agrotours.backend.entities.ActividadFoto;
+import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.actividad.*;
-import com.mza_agrotours.backend.dtos.actividad.DiaActividadReservaDTO;
-import com.mza_agrotours.backend.dtos.actividad.InfoParaReservarDTO;
-import com.mza_agrotours.backend.dtos.actividad.RangoEtarioReservaDTO;
-import com.mza_agrotours.backend.entities.Archivo;
-import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
-import com.mza_agrotours.backend.enums.EstadoReservaNombre;
-import com.mza_agrotours.backend.enums.Dia;
-import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
-import com.mza_agrotours.backend.enums.EstadoActividadNombre;
+import com.mza_agrotours.backend.enums.*;
 import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
@@ -125,8 +119,7 @@ public class ActividadService {
 
         actividad.setEstablecimiento(establecimiento);
 
-        archivoService.reclamarArchivos(dto.getFotos(), CarpetaArchivo.ACTIVIDADES)
-                .forEach(actividad::addFoto);
+        sincronizarFotos(dto.getFotos().stream().map(archivoReq -> new DTOActividadFotoReq(archivoReq.getKey(), archivoReq.getNombre())).toList(), actividad);
 
         // Persistir en la base de datos
         Actividad actividadGuardada = actividadRepository.save(actividad);
@@ -208,7 +201,7 @@ public class ActividadService {
             DTOListadoActividadVisitanteResponse dto = actividadMapper.actividadToDTOListadoActividadVisitante(actividad);
 
             if (actividad.getFotos() != null && !actividad.getFotos().isEmpty()) {
-                Archivo primeraFoto = actividad.getFotos().get(0);
+                Archivo primeraFoto = actividad.getFotos().get(0).getArchivo();
                 DTOFotosResponse fotoDto = new DTOFotosResponse();
                 fotoDto.setKey(primeraFoto.getKey());
                 fotoDto.setNombre(primeraFoto.getNombre());
@@ -279,12 +272,7 @@ public class ActividadService {
         List<ActividadFAQ> nuevasFaqs = obtenerFaqs(dto.getFaqs());
         actividad.getFaqs().addAll(nuevasFaqs);
 
-        if (dto.getFotosExistentes() != null) {
-            actividad.getFotos().removeIf(foto -> !dto.getFotosExistentes().contains(foto.getKey()));
-        }
-
-        archivoService.reclamarArchivos(dto.getFotosNuevas(), CarpetaArchivo.ACTIVIDADES)
-                .forEach(actividad::addFoto);
+        sincronizarFotos(dto.getFotos(), actividad);
 
         Actividad actividadGuardada = actividadRepository.save(actividad);
         DTOActividadGetResponse response = actividadMapper.actividadToDTOActividadGetResponse(actividadGuardada);
@@ -760,6 +748,38 @@ public class ActividadService {
             throw new AppException(EstablecimientoError.ESTABLECIMIENTO_SUSPENDIDO);
         }
 
+    }
+
+    private void sincronizarFotos(List<DTOActividadFotoReq> fotos, Actividad actividad) {
+        List<DTOActividadFotoReq> pedidas = fotos == null ? List.of() : fotos;
+
+        List<String> keyPedidas = pedidas.stream().map(DTOActividadFotoReq::getKey).toList();
+        if (Set.copyOf(keyPedidas).size() != keyPedidas.size()) {
+            throw new DatoInvalidoException("La actividad no puede repetir la misma foto");
+        }
+
+        actividad.getFotos().removeIf(foto -> !keyPedidas.contains(foto.getArchivo().getKey()));
+
+        Map<String, ActividadFoto> conocidas = actividad.getFotos().stream()
+                .collect(Collectors
+                        .toMap(foto -> foto.getArchivo().getKey(), foto -> foto));
+
+        for(int orden = 0; orden < pedidas.size(); orden++) {
+            DTOActividadFotoReq pedida = pedidas.get(orden);
+            ActividadFoto conocida = conocidas.get(pedida.getKey());
+
+            if (conocida != null) {
+                conocida.setOrden(orden);
+                continue;
+            }
+
+            Archivo archivo = this.archivoService.reclamarArchivo(new ArchivoClaimRequest(pedida.getKey(), pedida.getNombre()), CarpetaArchivo.ACTIVIDADES);
+
+            ActividadFoto nueva = new ActividadFoto();
+            nueva.setArchivo(archivo);
+            nueva.setOrden(orden);
+            actividad.getFotos().add(nueva);
+        }
     }
 }
 

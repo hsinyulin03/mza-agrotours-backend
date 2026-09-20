@@ -1,7 +1,7 @@
 package com.mza_agrotours.backend.mappers;
 
 import com.mza_agrotours.backend.dtos.actividad.*;
-import com.mza_agrotours.backend.dtos.actividad.RangoEtarioReservaDTO;
+import com.mza_agrotours.backend.entities.ActividadFoto;
 import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import org.mapstruct.AfterMapping;
@@ -27,6 +27,11 @@ public interface ActividadMapper {
     @Mapping(target = "cultivos", ignore = true)
     @Mapping(target = "ubicacion", source = "establecimiento")
     DTOActividadDetalleResponse actividadToDTOActividadDetalle(Actividad actividad);
+
+    @Mapping(target = "key", source = "archivo.key")
+    @Mapping(target = "nombre", source = "archivo.nombre")
+    @Mapping(target = "extension", source = "archivo.extension")
+    DTOFotosResponse actividadFotoToDTOFotoResponse(ActividadFoto actividadFoto);
 
     @Mapping(target = "departamento",source = "departamento.nombre")
     @Mapping(target = "estado", source = "estadoActual.estadoEstablecimiento.nombre")
