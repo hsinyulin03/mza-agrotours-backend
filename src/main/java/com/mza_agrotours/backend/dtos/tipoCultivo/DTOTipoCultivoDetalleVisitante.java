@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.dtos.tipoCultivo;
 
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import lombok.Data;
 
 import java.util.List;
@@ -16,4 +17,5 @@ public class DTOTipoCultivoDetalleVisitante {
     private List<DTOInformacionNutricionalDatos> informacionNutricional;
     private List<DTORecetaResumenCultivo> recetas;
     private List<DTOActividadResumenCultivo> actividades;
+    private DTOFotosResponse foto;
 }
