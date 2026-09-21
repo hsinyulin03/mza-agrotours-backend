@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.support;
 
 import com.google.firebase.FirebaseApp;
+import com.mza_agrotours.backend.services.ObjectStoragePolicies;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
@@ -53,8 +54,13 @@ public abstract class AbstractIntegrationTest {
         registry.add("object-storage.endpoint", MINIO::getS3URL);
         registry.add("object-storage.access-key", MINIO::getUserName);
         registry.add("object-storage.secret-key", MINIO::getPassword);
+        registry.add("object-storage.public-base-url", () -> MINIO.getS3URL() + "/" + BUCKET);
     }
 
+    /**
+     * El bucket de los tests queda como el de produccion: privado salvo las
+     * carpetas publicas, que abre la misma policy que se aplica alla.
+     */
     private static void crearBucket() {
         try (S3Client client = S3Client.builder()
                 .endpointOverride(URI.create(MINIO.getS3URL()))
@@ -64,6 +70,8 @@ public abstract class AbstractIntegrationTest {
                 .forcePathStyle(true)
                 .build()) {
             client.createBucket(request -> request.bucket(BUCKET));
+            ObjectStoragePolicies.lecturaPublica(BUCKET).ifPresent(policy ->
+                    client.putBucketPolicy(request -> request.bucket(BUCKET).policy(policy)));
         }
     }
 
