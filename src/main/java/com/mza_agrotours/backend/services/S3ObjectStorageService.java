@@ -10,6 +10,7 @@ import com.mza_agrotours.backend.exceptions.ResourceNotFoundException;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -18,6 +19,8 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
+
+import java.util.Optional;
 
 /**
  * Urls prefirmadas contra un storage compatible con S3: MinIO en desarrollo y
@@ -69,11 +72,36 @@ public class S3ObjectStorageService {
         }
     }
 
+    /**
+     * Url de lectura de un objeto: directa y permanente si cae en una carpeta
+     * publica, prefirmada y con vencimiento en cualquier otro caso.
+     *
+     * @throws DatoInvalidoException si la key no la emitio el servidor
+     */
     public String generateDownloadUrl(String key) {
         if (!ObjectStorageKeys.isValid(key)) {
             throw new DatoInvalidoException("Key de objeto invalida: " + key);
         }
 
+        return urlPublicaDe(key).orElseGet(() -> presignedUrlDe(key));
+    }
+
+    /**
+     * Vacio si la carpeta del objeto no es publica, o si no hay raiz publica
+     * configurada: en ambos casos el objeto se sirve firmado.
+     */
+    private Optional<String> urlPublicaDe(String key) {
+        if (!StringUtils.hasText(this.properties.getPublicBaseUrl())) {
+            return Optional.empty();
+        }
+
+        return CarpetaArchivo.de(key)
+                .filter(CarpetaArchivo::isPublica)
+                .map(carpeta -> StringUtils.trimTrailingCharacter(this.properties.getPublicBaseUrl(), '/')
+                        + "/" + key);
+    }
+
+    private String presignedUrlDe(String key) {
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(this.properties.getBucket())
                 .key(key)

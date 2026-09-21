@@ -54,7 +54,11 @@ services:
       /bin/sh -c "
       mc alias set local http://minio:9000 minioadmin minioadmin &&
       mc mb --ignore-existing local/mza-agrotours &&
-      mc anonymous set none local/mza-agrotours
+      mc anonymous set none local/mza-agrotours &&
+      mc anonymous set download local/mza-agrotours/establecimientos &&
+      mc anonymous set download local/mza-agrotours/actividades &&
+      mc anonymous set download local/mza-agrotours/cultivos &&
+      mc anonymous set download local/mza-agrotours/recetas
       "
 
   # TODO: Añadir Redis al implementar módulo actividades
