@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.dtos.establecimiento;
 
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import lombok.Data;
 
 import java.util.List;
@@ -13,4 +14,6 @@ public class DTOCatalogoEstablecimientoVisitante {
     private DTODptoEstablecimientoResponse dptoEstablecimiento;
     private List<DTOCultivoEstablecimientoResponse> cultivos;
     private Integer cantidadActividades;
+
+    private DTOFotosResponse foto;
 }
