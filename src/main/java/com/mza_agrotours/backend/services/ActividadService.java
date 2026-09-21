@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import com.mza_agrotours.backend.dtos.actividad.*;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
 import com.mza_agrotours.backend.entities.ActividadFoto;

@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.mappers;
 
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import com.mza_agrotours.backend.dtos.actividad.*;
 import com.mza_agrotours.backend.entities.ActividadFoto;
 import com.mza_agrotours.backend.entities.actividad.*;
