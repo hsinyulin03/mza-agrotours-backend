@@ -17,7 +17,6 @@ import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
-import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.pago.EstadoPago;
 import com.mza_agrotours.backend.enums.EstadoPagoNombre;
 import com.mza_agrotours.backend.enums.MetodoPago;
@@ -29,7 +28,6 @@ import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
 import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
-import com.mza_agrotours.backend.exceptions.EstablecimientoNotFoundException;
 import com.mza_agrotours.backend.exceptions.TipoIdentificacionInvalidoException;
 import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadDiaNotFound;
@@ -72,7 +70,6 @@ public class ReservaService {
 
     private final ReservaRepository reservaRepository;
     private final ReservaMapper reservaMapper;
-    private final EstablecimientoRepository establecimientoRepository;
     private final UsuarioRepository usuarioRepository;
     private final VisitanteRepository visitanteRepository;
     private final ActividadRepository actividadRepository;
@@ -82,10 +79,9 @@ public class ReservaService {
     private final EstrategiaPagoFactory estrategiaPagoFactory;
     private final ReservaService self;
 
-    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, EstablecimientoRepository establecimientoRepository, ActividadRepository actividadRepository, ParametrosService parametrosService, UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstrategiaPagoFactory estrategiaPagoFactory, @Lazy ReservaService self, EstadoPagoRepository estadoPagoRepository) {
+    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, ActividadRepository actividadRepository, ParametrosService parametrosService, UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstrategiaPagoFactory estrategiaPagoFactory, @Lazy ReservaService self, EstadoPagoRepository estadoPagoRepository) {
         this.reservaRepository = reservaRepository;
         this.reservaMapper = reservaMapper;
-        this.establecimientoRepository = establecimientoRepository;
         this.usuarioRepository = usuarioRepository;
         this.visitanteRepository = visitanteRepository;
         this.actividadRepository = actividadRepository;
@@ -100,10 +96,9 @@ public class ReservaService {
     public ConsultarReservaDTO getConsultarReserva(UUID id, String emailUsuario){
 
         // Gettear al usuario y visitante
-        Usuario usuario = usuarioRepository.findActiveByEmail(emailUsuario)
-                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+        Usuario usuario = getUsuario(emailUsuario);
 
-        Visitante visitante = visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
+        Visitante visitante = getVisitante(usuario);
 
         // Obtenemos la reserva, si no existe error.
         Reserva reserva = reservaRepository.findById(id)
@@ -113,12 +108,8 @@ public class ReservaService {
          if (!reserva.getVisitante().getId().equals(visitante.getId()))
              throw new ReservaNotFoundException();
 
-        // Buscar el establecimiento de esa actividad
-        Establecimiento establecimiento = establecimientoRepository.findEstablecimientoByActividadId(reserva.getActividad().getId())
-                .orElseThrow(EstablecimientoNotFoundException::new);
-
         // Armamos el DTO
-        return reservaMapper.reservaToConsultarReservaDTO(reserva, establecimiento);
+        return reservaMapper.reservaToConsultarReservaDTO(reserva);
     }
 
     @Transactional(readOnly = true)
@@ -127,34 +118,18 @@ public class ReservaService {
         List<ListarReservaDTO> dtos = new ArrayList<>();
 
         // Gettear al usuario y visitante
-        Usuario usuario = usuarioRepository.findActiveByEmail(emailUsuario)
-                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+        Usuario usuario = getUsuario(emailUsuario);
 
-        Visitante visitante = visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
+        Visitante visitante = getVisitante(usuario);
 
         // Obtenemos las reservas. Si está vacío devolvemos el array vacío
         List<Reserva> reservas = reservaRepository.findByVisitanteId(visitante.getId());
         if (reservas.isEmpty())
             return dtos;
 
-        // Obtenemos las id de las actividades que ha reservado
-        List<UUID> uuidsActividad = new ArrayList<>();
-        reservas.forEach(reserva -> uuidsActividad.add(reserva.getActividad().getId()));
-
-        // Buscamos los establecimientos de las actividades en masse
-        List<EstablecimientoPorActividad> establecimientosPorActividad = establecimientoRepository.findEstablecimientosByActividadIds(uuidsActividad);
-
-        Map<UUID, Establecimiento> actividadEstablecimientoMap = new HashMap<>();
-        establecimientosPorActividad.forEach(establecimientoPorActividad ->
-                actividadEstablecimientoMap.put(establecimientoPorActividad.actividadID(), establecimientoPorActividad.establecimiento())
-        );
-
         // Armamos el dto para cada reserva
         for (Reserva reserva: reservas){
-            Establecimiento establecimiento =  Optional.ofNullable(actividadEstablecimientoMap.get(reserva.getActividad().getId()))
-                    .orElseThrow(EstablecimientoNotFoundException::new);
-
-            dtos.add(reservaMapper.reservaToListarReservaDTO(reserva, establecimiento));
+            dtos.add(reservaMapper.reservaToListarReservaDTO(reserva));
         }
 
         // Armamos el DTO
@@ -166,10 +141,9 @@ public class ReservaService {
         LocalDateTime fechaHoraActual = LocalDateTime.now();
 
         // Gettear al usuario y visitante
-        Usuario usuario = usuarioRepository.findActiveByEmail(emailUsuario)
-                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+        Usuario usuario = getUsuario(emailUsuario);
 
-        Visitante visitante = visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
+        Visitante visitante = getVisitante(usuario);
 
         // Verificar si la reserva es duplicada (ya hay "Pendiente" de este Visitante para este ActividadDia). En tal caso expirar la vieja y seguir con la nueva
         Optional<Reserva> reservaDuplicada = reservaRepository.findByVisitanteIdAndActividadDiaId(visitante.getId(), UUID.fromString(realizarReservaDTO.diaActividadId()));
@@ -239,8 +213,7 @@ public class ReservaService {
         nuevaReserva.setFechaHoraInicio(fechaHoraActual);
         nuevaReserva.setFechaHoraExpiracion(fechaHoraActual.plusMinutes(parametrosService.getInstance().getTtlReserva()));
 
-        EstadoReserva estadoReserva = reservaRepository.findEstadoReservaByEstadoReservaNombre(PENDIENTE)
-                .orElseThrow(() -> new EstadoReservaNotFoundException(EstadoReservaNombre.PENDIENTE));
+        EstadoReserva estadoReserva = getEstadoReserva(PENDIENTE);
 
         nuevaReserva.cambiarEstado(estadoReserva,fechaHoraActual);
 
@@ -274,11 +247,8 @@ public class ReservaService {
 
         reservaRepository.save(nuevaReserva);
 
-        Establecimiento establecimiento = establecimientoRepository.findEstablecimientoByActividadId(nuevaReserva.getActividad().getId())
-                .orElseThrow(EstablecimientoNotFoundException::new);
-
         // Avisar al frontend de qué pasó
-        return new IniciarReservaDTO(reservaMapper.reservaToConsultarReservaDTO(nuevaReserva, establecimiento), preferenceID);
+        return new IniciarReservaDTO(reservaMapper.reservaToConsultarReservaDTO(nuevaReserva), preferenceID);
     }
 
     @Transactional(readOnly = true)
@@ -286,8 +256,7 @@ public class ReservaService {
         LocalDateTime ahora = LocalDateTime.now();
         List<Reserva> reservas = reservaRepository.findReservasExpiradas(ahora);
 
-        EstadoReserva estadoReserva = reservaRepository.findEstadoReservaByEstadoReservaNombre(EXPIRADA)
-                .orElseThrow(() -> new EstadoReservaNotFoundException(EXPIRADA));
+        EstadoReserva estadoReserva = getEstadoReserva(EXPIRADA);
 
         List<String> idFallidas = new ArrayList<>();
 
@@ -304,26 +273,14 @@ public class ReservaService {
                 reservas.size() - idFallidas.size(), reservas.size(), idFallidas.size(), idFallidas);
     }
 
-    /**
-     * Cambia el estado de una única reserva y guarda en su propia transacción, para que un fallo al guardar
-     * una reserva no revierta cambios de otras ya confirmadas (expiraciones y pagadas).
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void cambiarEstadoReservaYGuardar(Reserva r, EstadoReserva estadoReserva, LocalDateTime ahora){
-        r.cambiarEstado(estadoReserva, ahora);
-        reservaRepository.save(r);
-    }
-
     @Transactional(readOnly = true)
     public void pagarReservas(){
         LocalDateTime ahora = LocalDateTime.now();
         List<Reserva> reservas = reservaRepository.findReservasPendientes(ahora);
         MerchantOrderClient merchantOrderClient = new MerchantOrderClient();
 
-        EstadoReserva estadoReserva = reservaRepository.findEstadoReservaByEstadoReservaNombre(PAGADA)
-                .orElseThrow(() -> new EstadoReservaNotFoundException(PAGADA));
-        EstadoPago estadoPago = estadoPagoRepository.findByNombre(EstadoPagoNombre.APROBADO)
-                .orElseThrow(() -> new EstadoPagoNotFoundException(EstadoPagoNombre.APROBADO));
+        EstadoReserva estadoReserva = getEstadoReserva(PAGADA);
+        EstadoPago estadoPago = getEstadoPago(EstadoPagoNombre.APROBADO);
 
         List<String> idFallidas = new ArrayList<>(); // Array de las id de reserva que fallaron en pasarse a pagada
         int pagosExitosos = 0; // Cantidad de pagos exitosos
@@ -386,10 +343,9 @@ public class ReservaService {
     public void handleCancelarPago(String preferenceId, String emailUsuario){
 
         // Gettear al usuario y visitante
-        Usuario usuario = usuarioRepository.findActiveByEmail(emailUsuario)
-                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+        Usuario usuario = getUsuario(emailUsuario);
+        Visitante visitante = getVisitante(usuario);
 
-        Visitante visitante = visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
         Optional<Reserva> optReserva = reservaRepository.findByPagoWithIdPagoExterno(preferenceId);
         if (optReserva.isEmpty()) {
             throw new ReservaNotFoundException();
@@ -411,8 +367,7 @@ public class ReservaService {
     private void liberarCupoReserva(Reserva reserva, String preferenceId){
         LocalDateTime ahora = LocalDateTime.now();
 
-        EstadoReserva estadoReserva = reservaRepository.findEstadoReservaByEstadoReservaNombre(EXPIRADA)
-                .orElseThrow(() -> new EstadoReservaNotFoundException(EXPIRADA));
+        EstadoReserva estadoReserva = getEstadoReserva(EXPIRADA);
 
         // Cambiar estado reserva
         reserva.setFechaHoraExpiracion(ahora);
@@ -428,5 +383,34 @@ public class ReservaService {
         } catch (Exception e) {
             log.info("Hubo una reserva cuyo pago no pudo ser cancelado. Quedará hasta expirar sola.");
         }
+    }
+
+    /**
+     * Cambia el estado de una única reserva y guarda en su propia transacción, para que un fallo al guardar
+     * una reserva no revierta cambios de otras ya confirmadas (expiraciones y pagadas).
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected void cambiarEstadoReservaYGuardar(Reserva r, EstadoReserva estadoReserva, LocalDateTime ahora){
+        r.cambiarEstado(estadoReserva, ahora);
+        reservaRepository.save(r);
+    }
+
+    private Usuario getUsuario(String emailUsuario){
+        return usuarioRepository.findActiveByEmail(emailUsuario)
+                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+    }
+
+    private Visitante getVisitante(Usuario usuario){
+        return visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
+    }
+
+    private EstadoReserva getEstadoReserva(EstadoReservaNombre estadoReservaNombre){
+        return reservaRepository.findEstadoReservaByEstadoReservaNombre(estadoReservaNombre)
+                .orElseThrow(() -> new EstadoReservaNotFoundException(estadoReservaNombre));
+    }
+
+    private EstadoPago getEstadoPago(EstadoPagoNombre estadoPagoNombre){
+        return estadoPagoRepository.findByNombre(estadoPagoNombre)
+                .orElseThrow(() -> new EstadoPagoNotFoundException(estadoPagoNombre));
     }
 }
