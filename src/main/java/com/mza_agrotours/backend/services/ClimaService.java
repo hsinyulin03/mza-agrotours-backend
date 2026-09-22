@@ -5,6 +5,7 @@ import com.mza_agrotours.backend.dtos.clima.PronosticoSlot;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.clima.ClimaDptoDia;
 import com.mza_agrotours.backend.enums.CondicionClima;
+import com.mza_agrotours.backend.exceptions.EntityNotFoundException;
 import com.mza_agrotours.backend.repositories.ClimaRepository;
 import com.mza_agrotours.backend.repositories.DepartamentoRepository;
 import org.slf4j.Logger;
@@ -13,11 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
@@ -40,6 +37,13 @@ public class ClimaService {
         this.climaRepository = climaRepository;
         this.departamentoRepository = departamentoRepository;
         this.openWeatherClient = openWeatherClient;
+    }
+
+    public List<ClimaDptoDia> obtenerPronosticoByDepartamentoNombre(String departamentoNombre) {
+        Departamento departamento = this.departamentoRepository.findByNombre(departamentoNombre)
+                .orElseThrow(() -> new EntityNotFoundException("Departamento " + departamentoNombre + " no encontrado"));
+
+        return this.climaRepository.findByDepartamento(departamento);
     }
 
     public void actualizarPronosticos() {
