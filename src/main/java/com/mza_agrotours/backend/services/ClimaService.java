@@ -10,6 +10,8 @@ import com.mza_agrotours.backend.repositories.ClimaRepository;
 import com.mza_agrotours.backend.repositories.DepartamentoRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -39,6 +41,7 @@ public class ClimaService {
         this.openWeatherClient = openWeatherClient;
     }
 
+    @Cacheable(value = "pronosticos", key = "#departamentoNombre")
     public List<ClimaDptoDia> obtenerPronosticoByDepartamentoNombre(String departamentoNombre) {
         Departamento departamento = this.departamentoRepository.findByNombre(departamentoNombre)
                 .orElseThrow(() -> new EntityNotFoundException("Departamento " + departamentoNombre + " no encontrado"));
@@ -46,6 +49,7 @@ public class ClimaService {
         return this.climaRepository.findByDepartamento(departamento);
     }
 
+    @CacheEvict(value = "pronosticos", allEntries = true)
     public void actualizarPronosticos() {
         List<Departamento> departamentos = this.departamentoRepository.findAll();
         int actualizados = 0;
