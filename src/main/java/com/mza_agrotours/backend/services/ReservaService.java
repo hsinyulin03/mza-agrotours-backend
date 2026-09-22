@@ -61,9 +61,7 @@ import java.util.UUID;
 
 import java.util.*;
 
-import static com.mza_agrotours.backend.enums.EstadoReservaNombre.EXPIRADA;
-import static com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA;
-import static com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE;
+import static com.mza_agrotours.backend.enums.EstadoReservaNombre.*;
 
 @Service
 public class ReservaService {
@@ -139,6 +137,26 @@ public class ReservaService {
         return dtos;
     }
 
+    /**
+     * Inicia una nueva reserva para el usuario indicado: valida la actividad y el día elegido, calcula el
+     * rango etario y el precio de cada detalle, verifica cupo disponible y crea la reserva en estado
+     * "Pendiente". Dispara el procesamiento de pago mediante la estrategia correspondiente al método de pago;
+     * si el pago queda aprobado de forma inmediata (pago manual), la reserva pasa directamente a "Pagada",
+     * caso contrario queda pendiente de confirmación.
+     * <p>Si el visitante ya tenía una reserva pendiente para el mismo día de actividad, esta se
+     * libera (se expira) antes de crear la nueva.
+     *
+     * @param realizarReservaDTO datos de la reserva a crear: día de actividad y detalle de cada visitante
+     * @param emailUsuario email del usuario autenticado que realiza la reserva
+     * @return DTO con la reserva creada y el ID de preferencia de pago generado
+     * @throws UsuarioNotFound si no existe un usuario activo con ese email
+     * @throws ActividadNotFoundException si no existe una actividad para el día indicado
+     * @throws ActividadNotActiveException si la actividad o el establecimiento no están disponibles para reservar
+     * @throws ActividadDiaNotFound si el día de actividad no existe o no está disponible para reservar
+     * @throws ActividadFullException si no hay cupo suficiente para la cantidad de detalles solicitados
+     * @throws TipoIdentificacionInvalidoException si algún visitante tiene un tipo de identificación inválido
+     * @throws FechaNacimientoInvalidaException si la fecha de nacimiento de algún detalle no corresponde a ningún rango etario activo
+     */
     @Transactional
     public IniciarReservaDTO handleIniciarReserva(RealizarReservaDTO realizarReservaDTO, String emailUsuario){
         LocalDateTime fechaHoraActual = LocalDateTime.now();
@@ -254,6 +272,12 @@ public class ReservaService {
         return new IniciarReservaDTO(reservaMapper.reservaToConsultarReservaDTO(nuevaReserva), preferenceID);
     }
 
+    /**
+     * Tarea programada que busca todas las reservas "Pendiente" cuya fecha y hora de expiración ya pasó,
+     * las marca como "Expirada" y les quita la fecha de expiración para que no sean revisadas nuevamente.
+     * Cada reserva se cambia y guarda en su propia transacción, por lo que el fallo de una no afecta a las demás.
+     * Las reservas que no pudieron expirarse quedan registradas en el log para su seguimiento.
+     */
     @Transactional(readOnly = true)
     public void expirarReservas(){
         LocalDateTime ahora = LocalDateTime.now();
@@ -276,6 +300,17 @@ public class ReservaService {
                 reservas.size() - idFallidas.size(), reservas.size(), idFallidas.size(), idFallidas);
     }
 
+    /**
+     * Workaround al todavía no tener notificaciones webhook de MercadoPago.
+     * <p>
+     * Tarea programada que busca todas las reservas "Pendiente" aún no expiradas y consulta a Mercado Pago,
+     * por medio de la preference de cada una, si existe una merchant order con algún pago aprobado.
+     * <p>
+     * Cuando encuentra un pago aprobado, marca el pago como "Aprobado", la reserva como "Pagada", le quita la
+     * fecha de expiración y expira la preference en Mercado Pago para reducir la chance de un pago
+     * duplicado. Los errores de comunicación con la API de Mercado Pago o de backend al procesar una
+     * reserva particular no interrumpen el procesamiento del resto y quedan registrados en el log.
+     */
     @Transactional(readOnly = true)
     public void pagarReservas(){
         LocalDateTime ahora = LocalDateTime.now();
@@ -342,6 +377,15 @@ public class ReservaService {
                 pagosExitosos, reservas.size(), idFallidas.size(), idFallidas);
     }
 
+    /**
+     * Cancela el pago pendiente de una reserva a pedido del usuario: libera el cupo de la reserva
+     * (pasándola a "Expirada") y expira la preference correspondiente en Mercado Pago.
+     *
+     * @param preferenceId ID externo de la preference de Mercado Pago asociada al pago de la reserva
+     * @param emailUsuario email del usuario autenticado dueño de la reserva
+     * @throws UsuarioNotFound si no existe un usuario activo con ese email
+     * @throws ReservaNotFoundException si no existe una reserva con ese preferenceId o si no pertenece al usuario
+     */
     @Transactional
     public void handleCancelarPago(String preferenceId, String emailUsuario){
 
@@ -362,14 +406,13 @@ public class ReservaService {
         liberarCupoReserva(reserva, preferenceId);
         reservaRepository.save(reserva);
     }
+
     @Transactional
     public void cancelarReservasPorBajaDeActividad(Actividad actividad,LocalDateTime ahora) {
         List<Reserva> pendientes = reservaRepository.findPendientesByActividadId(actividad.getId());
         if (pendientes.isEmpty()) return;
 
-        EstadoReserva cancelada = reservaRepository
-                .findEstadoReservaByEstadoReservaNombre(EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO)
-                .orElseThrow(() -> new EstadoReservaNotFoundException(EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO));
+        EstadoReserva cancelada = getEstadoReserva(CANCELADA_SIN_REEMBOLSO);
 
         for (Reserva r : pendientes) {
             r.setFechaHoraExpiracion(null);
@@ -389,6 +432,13 @@ public class ReservaService {
     // AUXILIARES
 
 
+    /**
+     * Libera el cupo ocupado por una reserva: la pasa al estado "Expirada" con fecha de expiración igual
+     * al momento actual y expira la preference de Mercado Pago asociada, si existe.
+     *
+     * @param reserva reserva cuyo cupo se libera
+     * @param preferenceId ID externo de la preference de Mercado Pago asociada, puede ser null si no tiene
+     */
     private void liberarCupoReserva(Reserva reserva, String preferenceId){
         LocalDateTime ahora = LocalDateTime.now();
 
@@ -400,6 +450,16 @@ public class ReservaService {
         expirarPreferenceMercadoPago(preferenceId, ahora);
 
     }
+
+    // TODO: No me gusta mucho que las preference puedan quedar no expiradas si hay error, pero por ahora queda así
+    /**
+     * Expira en Mercado Pago la preference indicada, seteando su fecha de expiración al momento actual,
+     * para que ya no pueda pagarse. Cualquier error al comunicarse con Mercado Pago se registra
+     * en el log y la preference quedará hasta que expire por cuenta propia.
+     *
+     * @param preferenceId ID externo de la preference de Mercado Pago a expirar
+     * @param ahora fecha y hora a usar como nueva fecha de expiración de la preference
+     */
     private void expirarPreferenceMercadoPago(String preferenceId, LocalDateTime ahora) {
         if (preferenceId == null) return;
         try{
@@ -417,6 +477,10 @@ public class ReservaService {
     /**
      * Cambia el estado de una única reserva y guarda en su propia transacción, para que un fallo al guardar
      * una reserva no revierta cambios de otras ya confirmadas (expiraciones y pagadas).
+     *
+     * @param r reserva a modificar
+     * @param estadoReserva nuevo estado a asignarle a la reserva
+     * @param ahora fecha y hora en la que se produce el cambio de estado
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected void cambiarEstadoReservaYGuardar(Reserva r, EstadoReserva estadoReserva, LocalDateTime ahora){

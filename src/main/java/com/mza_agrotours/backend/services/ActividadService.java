@@ -745,6 +745,19 @@ public class ActividadService {
 
 
     //US-RESE-01: Reservar actividad - información sobre la actividad para reservarla
+    /**
+     * Arma la información necesaria para que un usuario pueda reservar una actividad: los días de actividad
+     * disponibles, los rangos etarios activos con su precio, y los datos personales del usuario precargados
+     * para el formulario de reserva. Verifica previamente que la actividad esté publicada y el
+     * establecimiento no esté suspendido.
+     *
+     * @param idActividad ID de la actividad para la cual se quiere reservar
+     * @param emailUsuario email del usuario autenticado que va a reservar
+     * @return DTO con los días disponibles, rangos etarios, datos del usuario y días mínimos para reembolso
+     * @throws UsuarioNotFound si no existe un usuario activo con ese email
+     * @throws ActividadNotFoundException si no existe una actividad con ese ID
+     * @throws ActividadNotActiveException si la actividad no está publicada o el establecimiento está suspendido
+     */
     @Transactional
     public InfoParaReservarDTO getInfoParaReservar(UUID idActividad, String emailUsuario){
         LocalDateTime fhActual = LocalDateTime.now();
