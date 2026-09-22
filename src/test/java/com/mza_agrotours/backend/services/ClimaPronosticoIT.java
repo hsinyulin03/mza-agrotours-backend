@@ -90,11 +90,11 @@ class ClimaPronosticoIT extends AbstractIntegrationTest {
         this.climaService.actualizarPronosticos();
         this.climaService.actualizarPronosticos();
 
-        assertThat(this.climaRepository.findByDepartamento(this.departamento)).hasSize(2);
+        assertThat(this.climaRepository.findByDepartamentoOrderByFecha(this.departamento)).hasSize(2);
     }
 
     private Map<LocalDate, ClimaDptoDia> porFecha() {
-        return this.climaRepository.findByDepartamento(this.departamento).stream()
+        return this.climaRepository.findByDepartamentoOrderByFecha(this.departamento).stream()
                 .collect(Collectors.toMap(ClimaDptoDia::getFecha, Function.identity()));
     }
 

@@ -76,7 +76,7 @@ public class ClimaService {
     private List<ClimaDptoDia> agregarPorDia(Departamento departamento, List<PronosticoSlot> slots) {
         LocalDate hoy = LocalDate.now(ZONA);
 
-        Map<LocalDate, ClimaDptoDia> existentes = this.climaRepository.findByDepartamento(departamento)
+        Map<LocalDate, ClimaDptoDia> existentes = this.climaRepository.findByDepartamentoOrderByFecha(departamento)
                 .stream()
                 .collect(Collectors.toMap(ClimaDptoDia::getFecha, Function.identity(), (a, b) -> a));
 

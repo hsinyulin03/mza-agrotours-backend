@@ -15,7 +15,7 @@ import java.util.UUID;
 
 @Repository
 public interface ClimaRepository extends BaseEntityRepository<ClimaDptoDia, UUID>{
-    List<ClimaDptoDia> findByDepartamento(Departamento departamento);
+    List<ClimaDptoDia> findByDepartamentoOrderByFecha(Departamento departamento);
 
     @Transactional
     @Modifying
