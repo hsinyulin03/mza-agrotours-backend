@@ -1,11 +1,13 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.clients.openweather.OpenWeatherClient;
+import com.mza_agrotours.backend.dtos.clima.ClimaPronosticoGetResponse;
 import com.mza_agrotours.backend.dtos.clima.PronosticoSlot;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.clima.ClimaDptoDia;
 import com.mza_agrotours.backend.enums.CondicionClima;
 import com.mza_agrotours.backend.exceptions.EntityNotFoundException;
+import com.mza_agrotours.backend.mappers.ClimaMapper;
 import com.mza_agrotours.backend.repositories.ClimaRepository;
 import com.mza_agrotours.backend.repositories.DepartamentoRepository;
 import org.slf4j.Logger;
@@ -33,20 +35,25 @@ public class ClimaService {
     private final DepartamentoRepository departamentoRepository;
     private final OpenWeatherClient openWeatherClient;
 
+    private final ClimaMapper climaMapper;
+
     public ClimaService(ClimaRepository climaRepository,
                         DepartamentoRepository departamentoRepository,
-                        OpenWeatherClient openWeatherClient) {
+                        OpenWeatherClient openWeatherClient,
+                        ClimaMapper climaMapper) {
         this.climaRepository = climaRepository;
         this.departamentoRepository = departamentoRepository;
         this.openWeatherClient = openWeatherClient;
+        this.climaMapper = climaMapper;
     }
 
     @Cacheable(value = "pronosticos", key = "#departamentoNombre")
-    public List<ClimaDptoDia> obtenerPronosticoByDepartamentoNombre(String departamentoNombre) {
+    public ClimaPronosticoGetResponse obtenerPronosticoByDepartamentoNombre(String departamentoNombre) {
         Departamento departamento = this.departamentoRepository.findByNombre(departamentoNombre)
                 .orElseThrow(() -> new EntityNotFoundException("Departamento " + departamentoNombre + " no encontrado"));
 
-        return this.climaRepository.findByDepartamento(departamento);
+        List<ClimaDptoDia> clima = this.climaRepository.findByDepartamentoOrderByFecha(departamento);
+        return climaMapper.climaAndDepartamentoToDTO(departamento, clima);
     }
 
     @CacheEvict(value = "pronosticos", allEntries = true)
