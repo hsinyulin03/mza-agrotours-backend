@@ -9,6 +9,7 @@ import com.mercadopago.net.MPElementsResourcesPage;
 import com.mercadopago.net.MPSearchRequest;
 import com.mercadopago.resources.merchantorder.MerchantOrder;
 import com.mercadopago.resources.merchantorder.MerchantOrderPayment;
+import com.mza_agrotours.backend.config.RutasNotificacionesFront;
 import com.mza_agrotours.backend.dtos.reservas.*;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
 import com.mza_agrotours.backend.entities.TipoIdentificacionNombre;
@@ -18,11 +19,9 @@ import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.pago.EstadoPago;
-import com.mza_agrotours.backend.enums.EstadoPagoNombre;
-import com.mza_agrotours.backend.enums.MetodoPago;
+import com.mza_agrotours.backend.enums.*;
 import com.mza_agrotours.backend.entities.pago.Pago;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
-import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
 import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
@@ -42,6 +41,7 @@ import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
 import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.repositories.pago.EstadoPagoRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
+import com.mza_agrotours.backend.services.notificaciones.NotificacionService;
 import com.mza_agrotours.backend.services.pago.EstrategiaPago;
 import com.mza_agrotours.backend.services.pago.EstrategiaPagoFactory;
 import org.slf4j.Logger;
@@ -54,6 +54,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -78,8 +79,9 @@ public class ReservaService {
     private final EstadoPagoRepository estadoPagoRepository;
     private final EstrategiaPagoFactory estrategiaPagoFactory;
     private final ReservaService self;
+    private final NotificacionService notificacionService;
 
-    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, ActividadRepository actividadRepository, ParametrosService parametrosService, UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstrategiaPagoFactory estrategiaPagoFactory, @Lazy ReservaService self, EstadoPagoRepository estadoPagoRepository) {
+    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, ActividadRepository actividadRepository, ParametrosService parametrosService, UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstrategiaPagoFactory estrategiaPagoFactory, @Lazy ReservaService self, EstadoPagoRepository estadoPagoRepository, NotificacionService notificacionService) {
         this.reservaRepository = reservaRepository;
         this.reservaMapper = reservaMapper;
         this.usuarioRepository = usuarioRepository;
@@ -90,6 +92,7 @@ public class ReservaService {
         this.estadoPagoRepository = estadoPagoRepository;
         this.estrategiaPagoFactory = estrategiaPagoFactory;
         this.self = self;
+        this.notificacionService = notificacionService;
     }
 
     @Transactional
@@ -359,6 +362,28 @@ public class ReservaService {
         liberarCupoReserva(reserva, preferenceId);
         reservaRepository.save(reserva);
     }
+    @Transactional
+    public void cancelarReservasPorBajaDeActividad(Actividad actividad,LocalDateTime ahora) {
+        List<Reserva> pendientes = reservaRepository.findPendientesByActividadId(actividad.getId());
+        if (pendientes.isEmpty()) return;
+
+        EstadoReserva cancelada = reservaRepository
+                .findEstadoReservaByEstadoReservaNombre(EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO)
+                .orElseThrow(() -> new EstadoReservaNotFoundException(EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO));
+
+        for (Reserva r : pendientes) {
+            r.setFechaHoraExpiracion(null);
+            r.cambiarEstado(cancelada, ahora);
+            expirarPreferenceMercadoPago(r.getPago() != null ? r.getPago().getIdPagoExterno() : null, ahora);
+            notificacionService.crearNotificacion(
+                    r.getVisitante().getUsuario(),
+                    TipoNotificacionNombre.RESERVA_CANCELADA_POR_BAJA_ACTIVIDAD,
+                    r.getActividad().getEstablecimiento(),
+                    RutasNotificacionesFront.detalleReserva(r.getId()),
+                    actividad.getNombre(), r.getActividadDia().getFechaHoraInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+        }
+        log.info("Se cancelaron {} reservas pendientes por baja de la actividad {}", pendientes.size(), actividad.getId());
+    }
 
 
     // AUXILIARES
@@ -372,7 +397,11 @@ public class ReservaService {
         // Cambiar estado reserva
         reserva.setFechaHoraExpiracion(ahora);
         self.cambiarEstadoReservaYGuardar(reserva, estadoReserva, ahora);
+        expirarPreferenceMercadoPago(preferenceId, ahora);
 
+    }
+    private void expirarPreferenceMercadoPago(String preferenceId, LocalDateTime ahora) {
+        if (preferenceId == null) return;
         try{
             // Expírar la preference para liberar el cupo
             PreferenceClient client = new PreferenceClient();

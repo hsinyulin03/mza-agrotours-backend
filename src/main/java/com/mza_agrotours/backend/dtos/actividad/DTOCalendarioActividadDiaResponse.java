@@ -15,9 +15,8 @@ public class DTOCalendarioActividadDiaResponse {
     private List<DTOCultivoResponse> cultivos;
     private String nombreEstablecimiento;
     private String nombreDepartamento;
+    private DTOMetricasReservasGlobales metricas;
 
     // Para armar el Calendario (Solo los días del mes solicitado)
     private List<DTOActividadDiaResponse> diasDelMes;
-
-    //TODO- Falta agregar las metricas globales y barras sobre reservas
 }
