@@ -12,10 +12,7 @@ import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
-import com.mza_agrotours.backend.enums.EstadoReservaNombre;
-import com.mza_agrotours.backend.enums.Dia;
-import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
-import com.mza_agrotours.backend.enums.EstadoActividadNombre;
+import com.mza_agrotours.backend.enums.*;
 import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadError;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
@@ -756,19 +753,17 @@ public class ActividadService {
         Usuario usuario = usuarioRepository.findActiveByEmail(emailUsuario)
                 .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
 
-        Visitante visitante = visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
-
         // Gettear la actividad
         Actividad actividad = actividadRepository.findById(idActividad)
                 .orElseThrow(ActividadNotFoundException::new);
 
-        // Que la actividad esté disponible (estado Publicado)
-        if (actividad.getEstado().getNombre() != EstadoActividadNombre.PUBLICADO)
+        // Que la actividad esté disponible (estado Publicado) y el establecimiento activo
+        if (actividad.getFechaHoraBaja() != null
+                || actividad.getEstado().getNombre() != EstadoActividadNombre.PUBLICADO
+                || actividad.getEstablecimiento().getEstadoActual()
+                .getEstadoEstablecimiento()
+                .getNombre().equals(EstadoEstablecimientoNombre.SUSPENDIDO))
             throw new ActividadNotActiveException();
-
-        // Buscar el Establecimiento de la actividad
-        Establecimiento establecimiento = establecimientoRepository.findEstablecimientoByActividadId(actividad.getId())
-                .orElseThrow(EstablecimientoNotFoundException::new);
 
         // Encontramos los ActividadDia y lo pasamos a DTO
         List<DiaActividadReservaDTO> diaActividadReservaDTOList = actividadRepository.getDiaActividadReservaDTO(actividad.getId());
@@ -798,7 +793,6 @@ public class ActividadService {
         //Armar el DTO principal y devolver
         return InfoParaReservarDTO.of(
                 actividad,
-                establecimiento,
                 diaActividadReservaDTOList,
                 usuarioDTO,
                 rangoEtarioReservaDTOList,
