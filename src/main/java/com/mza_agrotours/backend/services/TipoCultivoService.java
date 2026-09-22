@@ -552,6 +552,7 @@ public class TipoCultivoService {
                     dto.setTiempo(formatearTiempo(r.getTiempoMinsAprox()));
                     dto.setPorciones(r.getPorciones());
                     dto.setDificultad(r.getDificultad());
+                    dto.setFoto(mapearFoto(r.getFoto()));
                     return dto;
                 })
                 .toList();
