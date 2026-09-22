@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.dtos.receta;
 
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import com.mza_agrotours.backend.enums.Dificultad;
 import lombok.Data;
 
@@ -16,4 +17,5 @@ public class DTORecetaListado {
     private String duracionNombre;
     private Integer cantidadPasos;
     private Integer porciones;
+    private DTOFotosResponse foto;
 }
