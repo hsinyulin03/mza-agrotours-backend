@@ -19,10 +19,10 @@ import java.util.List;
 @AllArgsConstructor
 public class Incidencia extends BaseEntity {
 
-    @Column(nullable = false, length = 150)
+    @Column(nullable = false, length = 50)
     private String titulo;
 
-    @Column(nullable = false, length = 2000)
+    @Column(nullable = false, length = 300)
     private String descripcion;
 
     @Column(name = "fecha_hora_incio")
