@@ -35,9 +35,17 @@ public class ActividadDia extends BaseEntity {
     @JoinColumn(name = "estado_actual_id")
     private ActividadDiaEstado estadoActual;
 
-    public void registrarNuevoEstado(ActividadDiaEstado nuevoEstado) {
-        this.estados.add(nuevoEstado);
-        this.estadoActual = nuevoEstado;
+    public void cambiarEstado(EstadoActividadDia estado, LocalDateTime ahora, String motivo) {
+
+        // Al último estado le damos FechaHoraFin en caso de que exista
+        if (this.estadoActual != null){
+            this.estadoActual.setFechaHoraFin(ahora);
+        }
+
+        ActividadDiaEstado nuevoADE = new ActividadDiaEstado(ahora, null, motivo, estado);
+
+        this.estadoActual = nuevoADE;
+        this.estados.add(nuevoADE);
     }
 
 }
