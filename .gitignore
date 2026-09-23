@@ -46,3 +46,6 @@ replay_pid*.log
 
 # Sobras del object storage en disco, reemplazado por MinIO. Se puede borrar.
 uploads/
+
+# Redis Data
+redis-data/
