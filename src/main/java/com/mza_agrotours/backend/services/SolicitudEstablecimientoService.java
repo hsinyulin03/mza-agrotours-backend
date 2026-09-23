@@ -5,6 +5,7 @@ import com.mza_agrotours.backend.config.RutasNotificacionesFront;
 import com.mza_agrotours.backend.dtos.ObservacionSolicitudDTO;
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.*;
 import com.mza_agrotours.backend.entities.AdministradorSistemas;
+import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
@@ -171,6 +172,27 @@ public class SolicitudEstablecimientoService {
                 .findById(UUID.fromString(id))
                 .orElseThrow(() -> new AppException(SolicitudEstablecimientoError.NOT_FOUND));
         return this.solicitudEstablecimientoMapper.solicitudEstablecimientoToDTOAdmin(solicitudEstablecimiento);
+    }
+
+    /**
+     * Firma la prueba recien cuando el admin la abre. Se resuelve contra las
+     * pruebas de la solicitud y no contra el archivo suelto, asi un id de otra
+     * solicitud no alcanza para descargar nada.
+     */
+    @Transactional
+    public SolicitudEstablecimientoPruebaUrlDTO obtenerUrlDePrueba(String solicitudId, String archivoId) {
+        SolicitudEstablecimiento solicitudEstablecimiento = this.solicitudEstablecimientoRepository
+                .findById(UUID.fromString(solicitudId))
+                .orElseThrow(() -> new AppException(SolicitudEstablecimientoError.NOT_FOUND));
+
+        UUID idBuscado = UUID.fromString(archivoId);
+        Archivo prueba = solicitudEstablecimiento.getPruebas().stream()
+                .filter(archivo -> archivo.getId().equals(idBuscado))
+                .findFirst()
+                .orElseThrow(() -> new AppException(SolicitudEstablecimientoError.PRUEBA_NOT_FOUND));
+
+        return new SolicitudEstablecimientoPruebaUrlDTO(prueba.getNombre(),
+                this.archivoService.getDownloadUrl(prueba.getKey()));
     }
 
     @Transactional
