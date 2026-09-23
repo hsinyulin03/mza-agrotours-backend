@@ -12,6 +12,7 @@ import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.enums.*;
 import com.mza_agrotours.backend.exceptions.*;
+import com.mza_agrotours.backend.exceptions.actividad.ActividadError;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
 import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
@@ -73,6 +74,9 @@ public class ActividadService {
 
     @Autowired
     private ArchivoService archivoService;
+
+    @Autowired
+    private ReservaService reservaService;
 
     //US-ACT-03 Alta de actividad
     @Transactional
@@ -177,15 +181,22 @@ public class ActividadService {
 
         DTOCalendarioActividadDiaResponse dto = actividadMapper.actividadToDTOCalendarioActividadDia(actividad);
 
-        List<DTOActividadDiaResponse> diasDelMesDto = actividad.getActividadesDias().stream()
-                .filter(dia -> dia.getFechaHoraInicio() != null)
-                .filter(dia -> dia.getFechaHoraInicio().getYear() == anio
-                        && dia.getFechaHoraInicio().getMonthValue() == mes)
-                .map(actividadMapper::actividadDiatoDTOActividadDia)
+        LocalDateTime desde = LocalDate.of(anio, mes, 1).atStartOfDay();
+        LocalDateTime hasta = desde.plusMonths(1);
+
+        List<ActividadDia> diasDelMes = actividadRepository.findDiasDelMes(idActividad, desde, hasta);
+        Map<UUID, DTOCuposPorDia> cuposPorDia = obtenerCuposPorDia(diasDelMes);
+
+        List<DTOActividadDiaResponse> diasDelMesDto = diasDelMes.stream()
+                .map(dia -> {
+                    DTOActividadDiaResponse dtoDia = actividadMapper.actividadDiatoDTOActividadDia(dia);
+                    dtoDia.aplicarCupos(cuposPorDia.get(dia.getId()));
+                    return dtoDia;
+                })
                 .toList();
 
         dto.setDiasDelMes(diasDelMesDto);
-
+        dto.setMetricas(reservaRepository.obtenerMetricasDeReservas(idActividad));
         return dto;
     }
 
@@ -328,6 +339,25 @@ public class ActividadService {
         return actividadRepository.obtenerFiltroCultivos();
     }
 
+
+    @Transactional
+    public DTOBajaActividadResponse darBajaActividad(UUID idEstablecimiento, UUID idActividad){
+        validarEstablecimientoNoSuspendido(idEstablecimiento);
+        Actividad actividad = obtenerActividad(idActividad);
+
+        LocalDateTime ahora = LocalDateTime.now();
+
+        if (reservaRepository.existeReservaPagadaFuturaByActividadId(idActividad, ahora)) {
+            throw new AppException(ActividadError.ACTIVIDAD_CON_RESERVAS_PAGADAS);
+        }
+        actividad.setEstado(obtenerEstado(EstadoActividadNombre.DADO_DE_BAJA.name()));
+        actividad.setFechaHoraBaja(ahora);
+        cancelarDiasFuturos(idActividad, ahora);
+        actividadRepository.save(actividad);
+
+        reservaService.cancelarReservasPorBajaDeActividad(actividad, ahora);
+        return actividadMapper.actividadToDTOBajaActividad(actividad);
+    }
     //Métodos auxiliares
 
     private EstadoActividad obtenerEstado(String nombreEstadoDto) {
@@ -365,6 +395,7 @@ public class ActividadService {
         List<ActividadDia> diasGenerados = new ArrayList<>();
         LocalDate fechaActual = dto.getFechaDesde();
         LocalDate limite = dto.getFechaHasta();
+        LocalDateTime ahora = LocalDateTime.now();
 
         EstadoActividadDia estadoActivaEntidad = estadoActividadDiaRepository.findByNombre(EstadoActividadDiaNombre.ACTIVA)
                 .orElseThrow(() -> new ResourceNotFoundException("El estado ACTIVA no está configurado en la base de datos de catálogos."));
@@ -379,7 +410,7 @@ public class ActividadService {
                     LocalDateTime inicioCalculado = LocalDateTime.of(fechaActual, configDia.getHoraInicio());
 
                     // Evitar crear disponibilidades cuya hora de inicio ya haya pasado.
-                    if (!inicioCalculado.isAfter(LocalDateTime.now())) {
+                    if (!inicioCalculado.isAfter(ahora)) {
                         continue; // Salta este horario y sigue buscando
                     }
 
@@ -388,10 +419,7 @@ public class ActividadService {
                     actividadDia.setFechaHoraFin(LocalDateTime.of(fechaActual, configDia.getHoraFin()));
                     actividadDia.setCuposMax(dto.getCuposMax());
 
-                    ActividadDiaEstado estadoInicial = new ActividadDiaEstado();
-                    estadoInicial.setEstado(estadoActivaEntidad);
-                    estadoInicial.setFechaHoraInicio(LocalDateTime.now());
-                    actividadDia.registrarNuevoEstado(estadoInicial);
+                    actividadDia.cambiarEstado(estadoActivaEntidad, ahora, "Alta de la actividad");
 
                     configDia.addActividadDia(actividadDia);
                     diasGenerados.add(actividadDia);
@@ -682,11 +710,24 @@ public class ActividadService {
     }
     private Actividad obtenerActividad(UUID idActividad){
         return actividadRepository.findByIdAndFechaHoraBajaIsNull(idActividad)
-                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
+                .orElseThrow(() -> new ResourceNotFoundException("No hay ninguna actividad vigente con ID: " + idActividad ));
     }
 
 
     //US-RESE-01: Reservar actividad - información sobre la actividad para reservarla
+    /**
+     * Arma la información necesaria para que un usuario pueda reservar una actividad: los días de actividad
+     * disponibles, los rangos etarios activos con su precio, y los datos personales del usuario precargados
+     * para el formulario de reserva. Verifica previamente que la actividad esté publicada y el
+     * establecimiento no esté suspendido.
+     *
+     * @param idActividad ID de la actividad para la cual se quiere reservar
+     * @param emailUsuario email del usuario autenticado que va a reservar
+     * @return DTO con los días disponibles, rangos etarios, datos del usuario y días mínimos para reembolso
+     * @throws UsuarioNotFound si no existe un usuario activo con ese email
+     * @throws ActividadNotFoundException si no existe una actividad con ese ID
+     * @throws ActividadNotActiveException si la actividad no está publicada o el establecimiento está suspendido
+     */
     @Transactional
     public InfoParaReservarDTO getInfoParaReservar(UUID idActividad, String emailUsuario){
         LocalDateTime fhActual = LocalDateTime.now();
@@ -695,19 +736,17 @@ public class ActividadService {
         Usuario usuario = usuarioRepository.findActiveByEmail(emailUsuario)
                 .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
 
-        Visitante visitante = visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
-
         // Gettear la actividad
         Actividad actividad = actividadRepository.findById(idActividad)
                 .orElseThrow(ActividadNotFoundException::new);
 
-        // Que la actividad esté disponible (estado Publicado)
-        if (actividad.getEstado().getNombre() != EstadoActividadNombre.PUBLICADO)
+        // Que la actividad esté disponible (estado Publicado) y el establecimiento activo
+        if (actividad.getFechaHoraBaja() != null
+                || actividad.getEstado().getNombre() != EstadoActividadNombre.PUBLICADO
+                || actividad.getEstablecimiento().getEstadoActual()
+                .getEstadoEstablecimiento()
+                .getNombre().equals(EstadoEstablecimientoNombre.SUSPENDIDO))
             throw new ActividadNotActiveException();
-
-        // Buscar el Establecimiento de la actividad
-        Establecimiento establecimiento = establecimientoRepository.findEstablecimientoByActividadId(actividad.getId())
-                .orElseThrow(EstablecimientoNotFoundException::new);
 
         // Encontramos los ActividadDia y lo pasamos a DTO
         List<DiaActividadReservaDTO> diaActividadReservaDTOList = actividadRepository.getDiaActividadReservaDTO(actividad.getId());
@@ -737,7 +776,6 @@ public class ActividadService {
         //Armar el DTO principal y devolver
         return InfoParaReservarDTO.of(
                 actividad,
-                establecimiento,
                 diaActividadReservaDTOList,
                 usuarioDTO,
                 rangoEtarioReservaDTOList,
@@ -749,6 +787,25 @@ public class ActividadService {
             throw new AppException(EstablecimientoError.ESTABLECIMIENTO_SUSPENDIDO);
         }
 
+    }
+    private void cancelarDiasFuturos(UUID idActividad, LocalDateTime ahora) {
+        EstadoActividadDia cancelada = estadoActividadDiaRepository
+                .findByNombre(EstadoActividadDiaNombre.CANCELADA)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No se encontró el registro del estado CANCELADA de ActividadDia en la base de datos."));
+
+        for (ActividadDia dia : actividadRepository.findDiasFuturosVigentes(idActividad, ahora)) {
+            dia.cambiarEstado(cancelada, ahora, "Baja de la actividad");
+            dia.setFechaHoraBaja(ahora);
+        }
+    }
+    private Map<UUID, DTOCuposPorDia> obtenerCuposPorDia(List<ActividadDia> dias) {
+        if (dias.isEmpty()) {
+            return Map.of();
+        }
+        List<UUID> ids = dias.stream().map(ActividadDia::getId).toList();
+        return reservaRepository.contarCuposPorDia(ids).stream()
+                .collect(Collectors.toMap(DTOCuposPorDia::getActividadDiaId, c -> c));
     }
 
     private void sincronizarFotos(List<DTOActividadFotoReq> fotos, Actividad actividad) {

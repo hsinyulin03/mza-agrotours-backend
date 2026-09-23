@@ -25,6 +25,10 @@ public enum TipoNotificacionNombre {
     PRODUCTOR_AGREGADO(
             "Te sumaron a un establecimiento",
             "Ya formás parte del equipo de %s.",
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
+    RESERVA_CANCELADA_POR_BAJA_ACTIVIDAD(
+            "Tu reserva fue cancelada",
+            "La actividad %s fue dada de baja por el productor, así que cancelamos tu reserva del %s. No se te realizó ningún cobro.",
             EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH));
 
         private final String titulo;

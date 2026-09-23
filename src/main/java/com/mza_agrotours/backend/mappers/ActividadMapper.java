@@ -61,6 +61,8 @@ public interface ActividadMapper {
     @Mapping(source = "cuposMax", target = "cuposMaximos")
     @Mapping(source = "estadoActual.estado.nombre", target = "estadoActual")
     @Mapping(target = "fecha", expression = "java(dia.getFechaHoraInicio() != null ? dia.getFechaHoraInicio().toLocalDate() : null)")
+    @Mapping(target = "horaInicio", expression = "java(dia.getFechaHoraInicio() != null ? dia.getFechaHoraInicio().toLocalTime() : null)")
+    @Mapping(target = "horaFin", expression = "java(dia.getFechaHoraFin() != null ? dia.getFechaHoraFin().toLocalTime() : null)")
     DTOActividadDiaResponse actividadDiatoDTOActividadDia(ActividadDia dia);
 
     //US-ACT-12
@@ -80,6 +82,12 @@ public interface ActividadMapper {
     @Mapping(target = "cultivos", ignore = true)
     @Mapping(source = "fotos", target = "fotosGuardadas")
     DTOActividadGetResponse actividadToDTOActividadGetResponse(Actividad actividad);
+
+    @Mapping(target = "idActividad", source = "actividad.id")
+    @Mapping(target = "nombre", source = "actividad.nombre")
+    @Mapping(target = "estado", source = "estado.nombre.nombre")
+    @Mapping(target = "mensaje", constant = "La actividad se ha dado de baja correctamente.")
+    DTOBajaActividadResponse actividadToDTOBajaActividad(Actividad actividad);
 
     //US-RESE-01
     RangoEtarioReservaDTO actividadRangoEtarioToDTO(ActividadRangoEtario actividadRangoEtarios);
