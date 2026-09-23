@@ -22,9 +22,6 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
     @Query("select e from Establecimiento e join e.actividades a where a.id = :actId")
     Optional<Establecimiento> findEstablecimientoByActividadId(@Param("actId") UUID actId);
 
-    @Query("SELECT a.id as actividadId, e as establecimiento FROM Establecimiento e JOIN e.actividades a WHERE a.id IN :actividadIds")
-    List<EstablecimientoPorActividad> findEstablecimientosByActividadIds(@Param("actividadIds") List<UUID> actividadIds);
-
     @Query("""
     SELECT DISTINCT e
         FROM Establecimiento e

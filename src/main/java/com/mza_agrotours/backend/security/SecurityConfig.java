@@ -59,6 +59,7 @@ public class SecurityConfig {
                         // Pais y departamento
                         .requestMatchers("/pais/**").permitAll()
                         .requestMatchers("/departamentos/**").permitAll()
+                        .requestMatchers("/clima/**").permitAll()
 
                         // Usuario
                         .requestMatchers("/usuario/create").permitAll()

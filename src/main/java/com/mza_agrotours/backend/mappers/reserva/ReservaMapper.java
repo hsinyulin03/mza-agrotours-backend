@@ -33,11 +33,11 @@ public interface ReservaMapper {
     @Mapping(target = "fechaHoraInicio", source = "reserva.actividadDia.fechaHoraInicio")
     @Mapping(target = "fechaHoraFin", source = "reserva.actividadDia.fechaHoraFin")
     @Mapping(target = "nombreActividad", source = "reserva.actividad.nombre")
-    @Mapping(target = "ubicacionEstablecimiento", source = "establecimiento.ubicacion")
-    @Mapping(target = "nombreEstablecimiento", source = "establecimiento.razonSocial")
+    @Mapping(target = "ubicacionEstablecimiento", source = "reserva.actividad.establecimiento.ubicacion")
+    @Mapping(target = "nombreEstablecimiento", source = "reserva.actividad.establecimiento.razonSocial")
     @Mapping(target = "idActividad", source = "reserva.actividad.id")
-    @Mapping(target = "idEstablecimiento", source = "establecimiento.id")
-    ConsultarReservaDTO reservaToConsultarReservaDTO(Reserva reserva, Establecimiento establecimiento);
+    @Mapping(target = "idEstablecimiento", source = "reserva.actividad.establecimiento.id")
+    ConsultarReservaDTO reservaToConsultarReservaDTO(Reserva reserva);
 
     @Mapping(target = "tipoRangoEtario", source = "reservaDetalle.actividadRangoEtario.nombre")
     ConsultarReservaDetalleDTO reservaDetalleToDTO(ReservaDetalle reservaDetalle);
@@ -48,8 +48,8 @@ public interface ReservaMapper {
     @Mapping(target = "fechaHoraInicio", source = "reserva.actividadDia.fechaHoraInicio")
     @Mapping(target = "fechaHoraFin", source = "reserva.actividadDia.fechaHoraFin")
     @Mapping(target = "nombreActividad", source = "reserva.actividad.nombre")
-    @Mapping(target = "ubicacionEstablecimiento", source = "establecimiento.ubicacion")
-    @Mapping(target = "nombreEstablecimiento", source = "establecimiento.razonSocial")
+    @Mapping(target = "ubicacionEstablecimiento", source = "reserva.actividad.establecimiento.ubicacion")
+    @Mapping(target = "nombreEstablecimiento", source = "reserva.actividad.establecimiento.razonSocial")
     @Mapping(target = "idActividad", source = "reserva.actividad.id")
-    ListarReservaDTO reservaToListarReservaDTO(Reserva reserva, Establecimiento establecimiento);
+    ListarReservaDTO reservaToListarReservaDTO(Reserva reserva);
 }
