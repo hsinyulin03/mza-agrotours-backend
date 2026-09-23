@@ -34,6 +34,43 @@ services:
     volumes:
       - mailpitdata:/data
 
+  # MinIO ya no se publica en Docker Hub: las imagenes viven en quay.io.
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      # El navegador sube directo al bucket, asi que el preflight lo responde MinIO.
+      MINIO_API_CORS_ALLOW_ORIGIN: "*"
+      TZ: America/Argentina/Buenos_Aires
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio-init:
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin &&
+      mc mb --ignore-existing local/mza-agrotours &&
+      mc anonymous set none local/mza-agrotours &&
+      mc anonymous set download local/mza-agrotours/establecimientos &&
+      mc anonymous set download local/mza-agrotours/actividades &&
+      mc anonymous set download local/mza-agrotours/cultivos &&
+      mc anonymous set download local/mza-agrotours/recetas
+      "
+
   # TODO: Añadir Redis al implementar módulo actividades
 
 volumes:
@@ -41,3 +78,4 @@ volumes:
   mailpitdata:
   redis-data:
     driver: local
+  miniodata:

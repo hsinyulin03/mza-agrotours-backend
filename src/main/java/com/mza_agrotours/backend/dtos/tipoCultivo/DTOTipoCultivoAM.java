@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.dtos.tipoCultivo;
 
+import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
 import com.mza_agrotours.backend.enums.EstacionalidadNombre;
 import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
 import jakarta.validation.Valid;
@@ -37,4 +38,7 @@ public class DTOTipoCultivoAM {
 
     @Valid
     private List<DTOTipoCultivoInfoNutriAM> informacionNutricional;
+
+    @Valid
+    private ArchivoClaimRequest foto;
 }

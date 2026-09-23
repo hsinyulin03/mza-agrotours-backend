@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.entities.establecimiento;
 
 import com.mza_agrotours.backend.entities.AdministradorSistemas;
+import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.BaseEntity;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
@@ -53,6 +54,10 @@ public class Establecimiento extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "departamento_id", nullable = false)
     private Departamento departamento;
+
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "foto_id")
+    private Archivo foto;
 
     @OneToMany(mappedBy = "establecimiento")
     private List<Actividad> actividades = new ArrayList<>();
