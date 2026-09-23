@@ -58,6 +58,13 @@ public class SolicitudEstablecimientoController {
                 .obtenerSolicitudPorId(solicitudId)));
     }
 
+    @GetMapping("/{solicitudId}/pruebas/{archivoId}/url")
+    public ResponseEntity<?> obtenerUrlDePrueba(@UUID @PathVariable String solicitudId,
+                                                @UUID @PathVariable String archivoId) {
+        return ResponseEntity.ok().body(ApiResponse.ok(solicitudEstablecimientoService
+                .obtenerUrlDePrueba(solicitudId, archivoId)));
+    }
+
     @PostMapping("/observar/{solicitudId}")
     public ResponseEntity<?> observarSolicitud(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails,
                                                @UUID @PathVariable String solicitudId,
