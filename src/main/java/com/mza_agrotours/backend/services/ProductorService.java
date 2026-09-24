@@ -54,6 +54,8 @@ public class ProductorService {
     private final NotificacionService notificacionService;
     private final ProductorService self;
 
+    private final ChatService chatService;
+
     public ProductorService(EstadoProductorRepository estadoProductorRepository,
                             RolService rolService,
                             ProductorRepository productorRepository,
@@ -63,7 +65,8 @@ public class ProductorService {
                             ProductorMapper productorMapper,
                             RolMapper rolMapper,
                             NotificacionService notificacionService,
-                            @Lazy ProductorService self) {
+                            @Lazy ProductorService self,
+                            ChatService chatService) {
         this.estadoProductorRepository = estadoProductorRepository;
         this.rolService = rolService;
         this.productorRepository = productorRepository;
@@ -74,6 +77,7 @@ public class ProductorService {
         this.rolMapper = rolMapper;
         this.notificacionService =notificacionService;
         this.self = self;
+        this.chatService = chatService;
     }
 
     // ---------------------------------------------------------------- ABM
@@ -111,6 +115,8 @@ public class ProductorService {
         productor.cambiarEstado(estadoActivo, MOTIVO_ALTA, ahora, null);
 
         productor = this.productorRepository.save(productor);
+
+        chatService.agregarMiembroAEstablecimiento(establecimientoId, UUID.fromString(productor.getUsuario().getFirebaseUID()));
 
         // TODO: entidad que diga quien hizo el cambio
         this.notificacionService.crearNotificacion(
@@ -155,6 +161,8 @@ public class ProductorService {
 
         // TODO: entidad que diga quien hizo el cambio
         this.productorRepository.save(productor);
+        chatService.quitarMiembroDelEstablecimiento(establecimientoId, UUID.fromString(productor.getUsuario().getFirebaseUID()));
+
         return true;
     }
 
@@ -197,6 +205,8 @@ public class ProductorService {
         productor.cambiarEstado(estadoSuspendido, motivo, ahora, fechaHoraFinPrevista);
 
         productor = this.productorRepository.save(productor);
+        chatService.quitarMiembroDelEstablecimiento(establecimientoId, UUID.fromString(productor.getUsuario().getFirebaseUID()));
+
         return this.productorMapper.productorToProductorGetDTO(productor);
     }
 
@@ -281,14 +291,21 @@ public class ProductorService {
         productorLider.setUsuario(usuarioProductor);
         productorLider.setRol(this.rolService.crearRolProductorLider(establecimiento));
         productorLider.cambiarEstado(estadoActivo, MOTIVO_ALTA_LIDER, ahora, null);
+        productorLider = this.productorRepository.save(productorLider);
 
-        return this.productorRepository.save(productorLider);
+        this.chatService.agregarMiembroAEstablecimiento(establecimiento.getId(), UUID.fromString(usuarioProductor.getFirebaseUID()));
+
+        return productorLider;
     }
 
     private Productor reactivar(Productor productor, String motivo, LocalDateTime ahora) {
         EstadoProductor estadoActivo = obtenerEstadoProductorByNombre(EstadoProductorNombre.ACTIVO);
         productor.cambiarEstado(estadoActivo, motivo, ahora, null);
-        return this.productorRepository.save(productor);
+        productor = this.productorRepository.save(productor);
+
+        chatService.agregarMiembroAEstablecimiento(productor.getEstablecimiento().getId(), UUID.fromString(productor.getUsuario().getFirebaseUID()));
+
+        return productor;
     }
 
     private Productor obtenerProductorEnEstablecimiento(UUID productorId, UUID establecimientoId) {
