@@ -116,4 +116,49 @@ public class ChatService {
             throw new RuntimeException("Timeout al crear el chat");
         }
     }
+
+    public void agregarMiembroAEstablecimiento(UUID establecimientoId, UUID usuarioId) {
+        DatabaseReference miembrosRef = firebaseDatabase.getReference("establecimiento_miembro/" + establecimientoId + "/" + usuarioId);
+
+        try {
+            miembrosRef.setValueAsync(true).get(5000, TimeUnit.MILLISECONDS);
+        } catch (ExecutionException ee) {
+            throw new RuntimeException("Fallo al añadir al miembro", ee.getCause());
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Fallo al añadir al miembro", ie);
+        } catch (TimeoutException e) {
+            throw new RuntimeException("Timeout al añadir al miembro expirado");
+        }
+    }
+
+    public void quitarMiembroDelEstablecimiento(UUID establecimientoId, UUID usuarioId) {
+        DatabaseReference miembrosRef = firebaseDatabase.getReference("establecimiento_miembro/" + establecimientoId + "/" + usuarioId);
+
+        try {
+            miembrosRef.removeValueAsync().get(5000, TimeUnit.MILLISECONDS);
+        } catch (ExecutionException ee) {
+            throw new RuntimeException("Fallo al quitar al miembro", ee.getCause());
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Fallo al quitar al miembro", ie);
+        } catch (TimeoutException e) {
+            throw new RuntimeException("Timeout al quitar al miembro expirado");
+        }
+    }
+
+    public void quitarTodosLosMiembrosDeEstablecimiento(UUID establecimientoId) {
+        DatabaseReference miembrosRef = firebaseDatabase.getReference("establecimiento_miembro/" + establecimientoId);
+
+        try {
+            miembrosRef.removeValueAsync().get(5000, TimeUnit.MILLISECONDS);
+        } catch (ExecutionException ee) {
+            throw new RuntimeException("Fallo al quitar a los miembros", ee.getCause());
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Fallo al quitar a los miembros", ie);
+        } catch (TimeoutException e) {
+            throw new RuntimeException("Timeout al quitar a los miembros expirado");
+        }
+    }
 }
