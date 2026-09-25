@@ -1,14 +1,17 @@
 package com.mza_agrotours.backend.services;
 
 import com.mercadopago.client.merchantorder.MerchantOrderClient;
+import com.mercadopago.client.payment.PaymentRefundClient;
 import com.mercadopago.client.preference.PreferenceClient;
 import com.mercadopago.client.preference.PreferenceRequest;
+import com.mercadopago.core.MPRequestOptions;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
 import com.mercadopago.net.MPElementsResourcesPage;
 import com.mercadopago.net.MPSearchRequest;
 import com.mercadopago.resources.merchantorder.MerchantOrder;
 import com.mercadopago.resources.merchantorder.MerchantOrderPayment;
+import com.mercadopago.resources.payment.PaymentRefund;
 import com.mza_agrotours.backend.config.RutasNotificacionesFront;
 import com.mza_agrotours.backend.dtos.reservas.*;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
@@ -19,6 +22,8 @@ import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.pago.EstadoPago;
+import com.mza_agrotours.backend.entities.pago.EstadoReembolso;
+import com.mza_agrotours.backend.entities.pago.Reembolso;
 import com.mza_agrotours.backend.enums.*;
 import com.mza_agrotours.backend.entities.pago.Pago;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
@@ -33,6 +38,9 @@ import com.mza_agrotours.backend.exceptions.actividad.ActividadDiaNotFound;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
 import com.mza_agrotours.backend.exceptions.pago.EstadoPagoNotFoundException;
+import com.mza_agrotours.backend.exceptions.pago.EstadoReembolsoNotFoundException;
+import com.mza_agrotours.backend.exceptions.pago.ReembolsoMakingException;
+import com.mza_agrotours.backend.exceptions.pago.ReembolsoStateException;
 import com.mza_agrotours.backend.exceptions.reservas.ActividadFullException;
 import com.mza_agrotours.backend.exceptions.reservas.EstadoReservaNotFoundException;
 import com.mza_agrotours.backend.exceptions.reservas.FechaNacimientoInvalidaException;
@@ -41,6 +49,8 @@ import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
 import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.repositories.pago.EstadoPagoRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
+import com.mza_agrotours.backend.repositories.pago.EstadoReembolsoRepository;
+import com.mza_agrotours.backend.repositories.pago.ReembolsoRepository;
 import com.mza_agrotours.backend.services.notificaciones.NotificacionService;
 import com.mza_agrotours.backend.services.pago.EstrategiaPago;
 import com.mza_agrotours.backend.services.pago.EstrategiaPagoFactory;
@@ -67,6 +77,7 @@ import static com.mza_agrotours.backend.enums.EstadoReservaNombre.*;
 public class ReservaService {
     private static final Logger log = LoggerFactory.getLogger(ReservaService.class);
 
+    private final ReservaService self;
     private final ReservaRepository reservaRepository;
     private final ReservaMapper reservaMapper;
     private final UsuarioRepository usuarioRepository;
@@ -76,10 +87,12 @@ public class ReservaService {
     private final TipoIdentificacionRepository tipoIdentificacionRepository;
     private final EstadoPagoRepository estadoPagoRepository;
     private final EstrategiaPagoFactory estrategiaPagoFactory;
-    private final ReservaService self;
     private final NotificacionService notificacionService;
+    private final EstadoReembolsoRepository estadoReembolsoRepository;
+    private final ReembolsoRepository reembolsoRepository;
 
-    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, ActividadRepository actividadRepository, ParametrosService parametrosService, UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstrategiaPagoFactory estrategiaPagoFactory, @Lazy ReservaService self, EstadoPagoRepository estadoPagoRepository, NotificacionService notificacionService) {
+    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, ActividadRepository actividadRepository, ParametrosService parametrosService, UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstrategiaPagoFactory estrategiaPagoFactory, @Lazy ReservaService self, EstadoPagoRepository estadoPagoRepository, NotificacionService notificacionService, EstadoReembolsoRepository estadoReembolsoRepository, ReembolsoRepository reembolsoRepository) {
+        this.self = self;
         this.reservaRepository = reservaRepository;
         this.reservaMapper = reservaMapper;
         this.usuarioRepository = usuarioRepository;
@@ -89,25 +102,21 @@ public class ReservaService {
         this.tipoIdentificacionRepository = tipoIdentificacionRepository;
         this.estadoPagoRepository = estadoPagoRepository;
         this.estrategiaPagoFactory = estrategiaPagoFactory;
-        this.self = self;
         this.notificacionService = notificacionService;
+        this.estadoReembolsoRepository = estadoReembolsoRepository;
+        this.reembolsoRepository = reembolsoRepository;
     }
 
     @Transactional
-    public ConsultarReservaDTO getConsultarReserva(UUID id, String emailUsuario){
+    public ConsultarReservaDTO getConsultarReserva(String idReserva, String emailUsuario){
 
         // Gettear al usuario y visitante
         Usuario usuario = getUsuario(emailUsuario);
 
         Visitante visitante = getVisitante(usuario);
 
-        // Obtenemos la reserva, si no existe error.
-        Reserva reserva = reservaRepository.findById(id)
-                .orElseThrow(ReservaNotFoundException::new);
-
-        // Verificar que la reserva sea del usuario. Si no lo es, NOT FOUND para evitar dar información a no autorizados
-         if (!reserva.getVisitante().getId().equals(visitante.getId()))
-             throw new ReservaNotFoundException();
+        // Obtenemos la reserva, si no existe o no es del visitante, error.
+        Reserva reserva = getReserva(idReserva, visitante);
 
         // Armamos el DTO
         return reservaMapper.reservaToConsultarReservaDTO(reserva);
@@ -377,6 +386,7 @@ public class ReservaService {
                 pagosExitosos, reservas.size(), idFallidas.size(), idFallidas);
     }
 
+    // TODO hay que ver el cancelaciones (de pagos) mediante endpoint "Crear cancelación" de mercado pago
     /**
      * Cancela el pago pendiente de una reserva a pedido del usuario: libera el cupo de la reserva
      * (pasándola a "Expirada") y expira la preference correspondiente en Mercado Pago.
@@ -428,6 +438,80 @@ public class ReservaService {
         log.info("Se cancelaron {} reservas pendientes por baja de la actividad {}", pendientes.size(), actividad.getId());
     }
 
+    @Transactional
+    public IniciarReembolsoDTO handleCancelarReserva(String reservaId, String emailUsuario){
+        LocalDateTime ahora = LocalDateTime.now();
+
+        Usuario usuario = getUsuario(emailUsuario);
+        Visitante visitante = getVisitante(usuario);
+
+        // Obtenemos la reserva, si no existe o no es del visitante, error.
+        Reserva reserva = getReserva(reservaId, visitante);
+
+        // Validamos que sea una reserva en Pagada
+        EstadoReservaNombre estadoReserva = reserva.getEstadoActual().getEstadoReserva().getNombre();
+        if (estadoReserva != PAGADA){
+            throw new ReembolsoStateException(estadoReserva.getEstado());
+        }
+
+        ActividadDia actividadDia = reserva.getActividadDia();
+        Pago pago = reserva.getPago();
+
+        Integer diasMinReembolso = parametrosService.getInstance().getDiasMinReembolso();
+
+        IniciarReembolsoDTO respuesta;
+
+        // CASOS DE REEMBOLSO
+        if (
+                // un ActividadDia que está a más de diasMinReembolso de ocurrir
+                ahora.plusDays(diasMinReembolso).isBefore(actividadDia.getFechaHoraInicio())
+                // un ActividadDia reprogramado
+                || actividadDia.getEstadoActual().getEstado().getNombre() == EstadoActividadDiaNombre.REPROGRAMADA
+        ){
+            // Traemos los estados que vamos a usar
+            EstadoReembolso estadoReembolsoPedido = getEstadoReembolso(EstadoReembolsoNombre.PEDIDO);
+            EstadoReserva estadoReservaReembolsoPendiente = getEstadoReserva(CANCELADA_REEMBOLSO_PENDIENTE);
+
+            // Crear el reembolso
+            Reembolso reembolso = new Reembolso();
+            reembolso.setMontoReembolso(pago.getMontoTotal());
+            reembolso.setFechaHoraPedido(ahora);
+            reembolso.cambiarEstado(estadoReembolsoPedido, ahora);
+            reembolso.setReserva(reserva);
+
+            // Cambiar el estado de la reserva
+            reserva.cambiarEstado(estadoReservaReembolsoPendiente, ahora);
+
+            // Hacer el reembolso (mercado pago)
+            boolean resultadoReembolsoMP = reembolsarMP(pago, reservaId);
+
+            // Resultado en respuesta
+            if (resultadoReembolsoMP){
+                // Avisar que el proceso marcha bien, avisamos cuando sepamos
+                respuesta = new IniciarReembolsoDTO("ExitoReembolso");
+            } else {
+                // Avisar que hubo un error. Se notificó al propietario
+                respuesta = new IniciarReembolsoDTO("ReembolsoPendiente");
+            }
+
+            // Guardar
+            reservaRepository.save(reserva);
+            reembolsoRepository.save(reembolso);
+
+        }
+        // CASOS DE NO REEMBOLSO
+        else{
+            // Cancelar reserva y no hacer reembolso
+            EstadoReserva estadoNoReembolsado = getEstadoReserva(CANCELADA_SIN_REEMBOLSO);
+            reserva.cambiarEstado(estadoNoReembolsado, ahora);
+
+            respuesta = new IniciarReembolsoDTO("ExitoSinReembolso");
+            // Guardar
+            reservaRepository.save(reserva);
+        }
+        // TODO: notificar al productor y al visitante
+        return respuesta;
+    }
 
     // AUXILIARES
 
@@ -505,5 +589,41 @@ public class ReservaService {
     private EstadoPago getEstadoPago(EstadoPagoNombre estadoPagoNombre){
         return estadoPagoRepository.findByNombre(estadoPagoNombre)
                 .orElseThrow(() -> new EstadoPagoNotFoundException(estadoPagoNombre));
+    }
+
+    private Reserva getReserva(String idReserva, Visitante visitante){
+        // Obtenemos la reserva, si no existe error.
+        Reserva reserva = reservaRepository.findById(UUID.fromString(idReserva))
+                .orElseThrow(ReservaNotFoundException::new);
+
+        // Verificar que la reserva sea del usuario. Si no lo es, NOT FOUND para evitar dar información a no autorizados
+        if (!reserva.getVisitante().getId().equals(visitante.getId()))
+            throw new ReservaNotFoundException();
+
+        return reserva;
+    }
+
+    private EstadoReembolso getEstadoReembolso(EstadoReembolsoNombre estadoReembolsoNombre){
+        return estadoReembolsoRepository.findByNombre(estadoReembolsoNombre)
+                .orElseThrow(() -> new EstadoReembolsoNotFoundException(estadoReembolsoNombre));
+    }
+
+    private boolean reembolsarMP(Pago pago, String reservaId){
+
+        PaymentRefundClient clientRefund = new PaymentRefundClient();
+        MPRequestOptions options = MPRequestOptions.builder()
+                .customHeaders(Map.of("X-Idempotency-Key", "reservaId-" + reservaId))
+                .build();
+        try {
+            clientRefund.refund(Long.valueOf(pago.getIdPagoExterno()),options);
+
+            return true;
+        } catch (MPApiException e) {
+            log.info("Error MP al reembolsar: {}", e.getApiResponse().getContent());
+            return false;
+        } catch (MPException e) {
+            log.info("Error de comunicación con MP {}", e.getMessage());
+            return false;
+        }
     }
 }

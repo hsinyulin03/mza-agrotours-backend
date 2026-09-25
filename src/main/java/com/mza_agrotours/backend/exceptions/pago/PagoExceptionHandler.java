@@ -13,4 +13,19 @@ public class PagoExceptionHandler {
     public ResponseEntity<?> handleEstadoPagoNotFoundException(EstadoPagoNotFoundException ex){
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("estadoNotFound", ex.getMessage()));
     }
+
+    @ExceptionHandler(EstadoReembolsoNotFoundException.class)
+    public ResponseEntity<?> handleEstadoReembolsoNotFoundException(EstadoReembolsoNotFoundException ex){
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("estadoNotFound", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ReembolsoMakingException.class)
+    public ResponseEntity<?> handleReembolsoMakingException(ReembolsoMakingException ex){
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.fail("reembolsoImpossible", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ReembolsoStateException.class)
+    public ResponseEntity<?> handleReembolsoStateException(ReembolsoStateException ex){
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("forbiddenState", ex.getMessage()));
+    }
 }

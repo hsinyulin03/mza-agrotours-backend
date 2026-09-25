@@ -14,12 +14,12 @@ public class ReservaEstadosScheduler {
         this.reservaService = reservaService;
     }
 
-    @Scheduled(fixedDelay = 60L, timeUnit = TimeUnit.SECONDS)
+    @Scheduled(initialDelay = 10L, fixedDelay = 60L, timeUnit = TimeUnit.SECONDS)
     public void checkReservasExpiradas(){
         reservaService.expirarReservas();
     }
 
-    @Scheduled(fixedDelay = 60L, timeUnit = TimeUnit.SECONDS)
+    @Scheduled(initialDelay = 10L, fixedDelay = 60L, timeUnit = TimeUnit.SECONDS)
     public void checkReservasPagadas(){
         reservaService.pagarReservas();
     }
