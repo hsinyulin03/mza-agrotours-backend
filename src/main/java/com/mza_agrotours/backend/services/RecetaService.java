@@ -1,8 +1,12 @@
 package com.mza_agrotours.backend.services;
+import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import com.mza_agrotours.backend.dtos.receta.*;
+import com.mza_agrotours.backend.enums.CarpetaArchivo;
 import com.mza_agrotours.backend.enums.Dificultad;
 import com.mza_agrotours.backend.enums.DuracionNombre;
 import com.mza_agrotours.backend.mappers.RecetaMapper;
+import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.receta.Duracion;
 import com.mza_agrotours.backend.entities.receta.Ingrediente;
@@ -38,6 +42,9 @@ public class RecetaService {
     @Autowired
     private RecetaMapper recetaMapper;
 
+    @Autowired
+    private ArchivoService archivoService;
+
 //// US-CULT-09 ALTA RECETA
     @Transactional
    public DTORecetaAMResponse altaReceta(DTORecetaAM dto) {
@@ -60,6 +67,7 @@ public class RecetaService {
        receta.setPasos(construirPasos(dto.getPasos()));
        //Construiringrediente genera para c/u instacia de ingrediente
        receta.setIngredientes(construirIngredientes(dto.getIngredientes()));
+       sincronizarFoto(dto.getFoto(), receta);
 
        Receta guardada = recetaRepository.save(receta);
        // 5. Se asocia la receta a cada uno de los cultivos ingresados
@@ -93,6 +101,7 @@ public class RecetaService {
                 // De cada Paso obtiene únicamente la descripción.
                 .map(Paso::getDescripcion)
                 .toList());
+        dto.setFoto(mapearFoto(receta.getFoto()));
         return dto;
     }
     //// US-CULT-09 MODIFICAR RECETA
@@ -122,6 +131,8 @@ public class RecetaService {
 
         receta.getIngredientes().clear();
         receta.getIngredientes().addAll(construirIngredientes(dto.getIngredientes()));
+
+        sincronizarFoto(dto.getFoto(), receta);
 
         Receta guardada = recetaRepository.save(receta);
 
@@ -305,6 +316,7 @@ public class RecetaService {
                 .map(TipoCultivo::getNombre)
                 .toList());
         dto.setCantidadPasos(receta.getPasos().size());
+        dto.setFoto(mapearFoto(receta.getFoto()));
 
         return dto;
     }
@@ -314,6 +326,7 @@ public class RecetaService {
 
         dto.setCultivos(obtenerCultivosDeRecetaVisitante(receta.getId()));
         dto.setCantidadPasos(receta.getPasos().size());
+        dto.setFoto(mapearFoto(receta.getFoto()));
 
         return dto;
     }
@@ -321,7 +334,39 @@ public class RecetaService {
     private DTODetalleVisitanteReceta mapearADetalleVisitante(Receta receta) {
         DTODetalleVisitanteReceta dto = recetaMapper.recetaToDtoDetalleVisitante(receta);
         dto.setCultivos(obtenerCultivosDeRecetaVisitante(receta.getId()));
+        dto.setFoto(mapearFoto(receta.getFoto()));
         return dto;
     }
 
+    /**
+     * La foto que llega es el estado final: en null se quita la actual, y si
+     * es la misma key no se toca nada. Reclamar una key ya asociada fallaria.
+     */
+    private void sincronizarFoto(ArchivoClaimRequest pedida, Receta receta) {
+        Archivo actual = receta.getFoto();
+
+        if (pedida == null) {
+            receta.setFoto(null);
+            return;
+        }
+
+        if (actual != null && actual.getKey().equals(pedida.getKey())) {
+            return;
+        }
+
+        receta.setFoto(this.archivoService.reclamarArchivo(pedida, CarpetaArchivo.RECETAS));
+    }
+
+    private DTOFotosResponse mapearFoto(Archivo foto) {
+        if (foto == null) {
+            return null;
+        }
+
+        DTOFotosResponse dto = new DTOFotosResponse();
+        dto.setKey(foto.getKey());
+        dto.setNombre(foto.getNombre());
+        dto.setExtension(foto.getExtension());
+        dto.setDownloadUrl(this.archivoService.getDownloadUrl(foto.getKey()));
+        return dto;
+    }
 }

@@ -1,7 +1,9 @@
 package com.mza_agrotours.backend.dtos.establecimiento;
 
+import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
 import com.mza_agrotours.backend.validation.NumeroTelefono;
 import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -29,5 +31,8 @@ public class DTOUpdEstablecimientoRequest {
     @NotBlank(message = "El CVU es obligatorio")
     @Pattern(regexp = "\\d{22}", message = "El CVU debe contener únicamente números y tener exactamente 22 dígitos")
     private String cvu;
+
+    @Valid
+    private ArchivoClaimRequest foto;
 
 }
