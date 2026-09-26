@@ -20,8 +20,11 @@ import java.util.List;
 @NoArgsConstructor
 public class Pago extends BaseEntity {
 
-    @Column(nullable = false)
-    private String idPagoExterno;
+    // ID de la sesión de cobro creada en la pasarela antes de pagar (MP: preference id). Null si el método no usa pasarela
+    private String idCheckoutExterno;
+
+    // ID de la transacción real en la pasarela, se completa al aprobarse el pago (MP: payment id). Null si el método no usa pasarela
+    private String idTransaccionExterna;
 
     @Column(nullable = false)
     private LocalDateTime fechaHoraPago;
@@ -31,6 +34,7 @@ public class Pago extends BaseEntity {
 
     // NOTE Esto no estaba en el DC ni la US, pero lo veo útil para usar estrategia y hacer pagos manuales y por mp
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private MetodoPago metodoPago;
 
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)

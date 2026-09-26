@@ -1,5 +1,7 @@
 package com.mza_agrotours.backend.services.pago;
 
+import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaPagoDTO;
+import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoDTO;
 import com.mza_agrotours.backend.dtos.reservas.PagoStrategyDTO;
 import com.mza_agrotours.backend.entities.pago.EstadoPago;
 import com.mza_agrotours.backend.enums.EstadoPagoNombre;
@@ -13,7 +15,6 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Component
 public class PagoManualStrategy implements EstrategiaPago{
@@ -37,7 +38,6 @@ public class PagoManualStrategy implements EstrategiaPago{
         Pago pago = new Pago();
 
         pago.setMetodoPago(MetodoPago.MANUAL);
-        pago.setIdPagoExterno("MANUAL-"+UUID.randomUUID());
         pago.setFechaHoraPago(ahora);
         pago.setMontoTotal(reserva.getTotalReserva());
 
@@ -61,5 +61,22 @@ public class PagoManualStrategy implements EstrategiaPago{
         reserva.setPago(pago);
 
         return new PagoStrategyDTO(pago, null);
+    }
+
+    // El pago manual se aprueba al procesarlo, no hay pasarela que consultar
+    @Override
+    public ResultadoConsultaPagoDTO consultarPago(Pago pago) {
+        return new ResultadoConsultaPagoDTO(true, null);
+    }
+
+    // No hay sesión de cobro que invalidar
+    @Override
+    public void cancelarCheckout(Pago pago, LocalDateTime ahora) {
+    }
+
+    // Igual que al pagar, se hace de cuenta que el reembolso se realizó inmediatamente
+    @Override
+    public ResultadoReembolsoDTO reembolsar(Pago pago) {
+        return new ResultadoReembolsoDTO(true, null);
     }
 }

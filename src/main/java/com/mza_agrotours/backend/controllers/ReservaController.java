@@ -62,6 +62,17 @@ public class ReservaController {
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
+    @GetMapping("/cancelarReservaCondicion/{reservaId}")
+    public ResponseEntity<ApiResponse<IniciarReembolsoDTO>> cancelarReservaCondicion(
+            @PathVariable String reservaId,
+            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
+    ) {
+        String email = usuarioAuthDetails.getEmail();
+        IniciarReembolsoDTO dtoSalida = service.handleCancelarReservaCondicion(reservaId, email);
+        ApiResponse<IniciarReembolsoDTO> response = ApiResponse.ok(dtoSalida);
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/cancelarReserva/{reservaId}")
     public ResponseEntity<ApiResponse<IniciarReembolsoDTO>> cancelarReserva(
             @PathVariable String reservaId,

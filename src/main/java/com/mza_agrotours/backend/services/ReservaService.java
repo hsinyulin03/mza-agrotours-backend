@@ -1,18 +1,8 @@
 package com.mza_agrotours.backend.services;
 
-import com.mercadopago.client.merchantorder.MerchantOrderClient;
-import com.mercadopago.client.payment.PaymentRefundClient;
-import com.mercadopago.client.preference.PreferenceClient;
-import com.mercadopago.client.preference.PreferenceRequest;
-import com.mercadopago.core.MPRequestOptions;
-import com.mercadopago.exceptions.MPApiException;
-import com.mercadopago.exceptions.MPException;
-import com.mercadopago.net.MPElementsResourcesPage;
-import com.mercadopago.net.MPSearchRequest;
-import com.mercadopago.resources.merchantorder.MerchantOrder;
-import com.mercadopago.resources.merchantorder.MerchantOrderPayment;
-import com.mercadopago.resources.payment.PaymentRefund;
 import com.mza_agrotours.backend.config.RutasNotificacionesFront;
+import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaPagoDTO;
+import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoDTO;
 import com.mza_agrotours.backend.dtos.reservas.*;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
 import com.mza_agrotours.backend.entities.TipoIdentificacionNombre;
@@ -39,6 +29,7 @@ import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveExceptio
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
 import com.mza_agrotours.backend.exceptions.pago.EstadoPagoNotFoundException;
 import com.mza_agrotours.backend.exceptions.pago.EstadoReembolsoNotFoundException;
+import com.mza_agrotours.backend.exceptions.pago.PasarelaPagoException;
 import com.mza_agrotours.backend.exceptions.pago.ReembolsoMakingException;
 import com.mza_agrotours.backend.exceptions.pago.ReembolsoStateException;
 import com.mza_agrotours.backend.exceptions.reservas.ActividadFullException;
@@ -178,11 +169,7 @@ public class ReservaService {
         // Verificar si la reserva es duplicada (ya hay "Pendiente" de este Visitante para este ActividadDia). En tal caso expirar la vieja y seguir con la nueva
         Optional<Reserva> reservaDuplicada = reservaRepository.findByVisitanteIdAndActividadDiaId(visitante.getId(), UUID.fromString(realizarReservaDTO.diaActividadId()));
 
-        log.info("Se buscó reserva duplicada sin problemas"); // NOTE borrar
-
-        reservaDuplicada.ifPresent(reserva -> liberarCupoReserva(reserva, reserva.getPago().getIdPagoExterno()));
-
-        log.info("Se encontró reserva duplicada? {}", reservaDuplicada.isPresent()); // NOTE borrar
+        reservaDuplicada.ifPresent(this::liberarCupoReserva);
 
         // Gettear la actividad, chequear que esté activa
         Actividad actividad = actividadRepository.getActividadByDiaActividadId(UUID.fromString(realizarReservaDTO.diaActividadId()))
@@ -310,21 +297,20 @@ public class ReservaService {
     }
 
     /**
-     * Workaround al todavía no tener notificaciones webhook de MercadoPago.
+     * Workaround al todavía no tener notificaciones webhook de las pasarelas.
      * <p>
-     * Tarea programada que busca todas las reservas "Pendiente" aún no expiradas y consulta a Mercado Pago,
-     * por medio de la preference de cada una, si existe una merchant order con algún pago aprobado.
+     * Tarea programada que busca todas las reservas "Pendiente" aún no expiradas y consulta, mediante la
+     * estrategia del método de pago de cada una, si su pago fue aprobado.
      * <p>
-     * Cuando encuentra un pago aprobado, marca el pago como "Aprobado", la reserva como "Pagada", le quita la
-     * fecha de expiración y expira la preference en Mercado Pago para reducir la chance de un pago
-     * duplicado. Los errores de comunicación con la API de Mercado Pago o de backend al procesar una
+     * Cuando encuentra un pago aprobado, guarda el ID de la transacción externa, marca el pago como "Aprobado",
+     * la reserva como "Pagada", le quita la fecha de expiración e invalida la sesión de cobro para reducir la
+     * chance de un pago duplicado. Los errores de comunicación con la pasarela o de backend al procesar una
      * reserva particular no interrumpen el procesamiento del resto y quedan registrados en el log.
      */
     @Transactional(readOnly = true)
     public void pagarReservas(){
         LocalDateTime ahora = LocalDateTime.now();
         List<Reserva> reservas = reservaRepository.findReservasPendientes(ahora);
-        MerchantOrderClient merchantOrderClient = new MerchantOrderClient();
 
         EstadoReserva estadoReserva = getEstadoReserva(PAGADA);
         EstadoPago estadoPago = getEstadoPago(EstadoPagoNombre.APROBADO);
@@ -334,46 +320,23 @@ public class ReservaService {
 
         for (Reserva r : reservas){
             Pago pago = r.getPago();
-            String preferenceId = pago.getIdPagoExterno();
 
             try{
-                // Creamos el tipo de búsqueda que queremos hacer: por preferenceId
-                MPSearchRequest searchRequest = MPSearchRequest.builder()
-                        .filters(Map.of("preference_id", preferenceId))
-                        .limit(10)  // Debería haber 1 MO por preference, puede haber más si paga lo mismo varias veces
-                        .offset(0)  // Buscamos el primero, sin offest
-                        .build();
+                ResultadoConsultaPagoDTO resultado = getEstrategiaPago(pago).consultarPago(pago);
+                if (!resultado.aprobado()) continue;
 
-                MPElementsResourcesPage<MerchantOrder> resultado = merchantOrderClient.search(searchRequest);
-                if (resultado.getElements() == null ) continue; // Si no se encuentra merchant order significa que no hay pagos, skip
-                for (MerchantOrder mo: resultado.getElements()){
-                    List <MerchantOrderPayment> pagos = mo.getPayments();   // Buscamos la lista de pagos de la merchant order
+                pago.setIdTransaccionExterna(resultado.idTransaccionExterna()); // Necesario para reembolsar
+                pago.cambiarEstado(estadoPago, ahora);  //Estado del pago
 
-                    boolean reservaPagada = pagos.stream().anyMatch(p ->
-                            "approved".equals(p.getStatus())    // Buscar pago aprobado TODO - Buscamos el primer pago pero nunca comparamos que sea por el total. No veo por qué NO lo sería, pero es un punto débil
-                    );
+                r.setFechaHoraExpiracion(null);         // FHExpiración de la reserva
+                self.cambiarEstadoReservaYGuardar(r, estadoReserva, ahora); // Estado de la reserva
 
-                    if (reservaPagada) {
-                        pago.cambiarEstado(estadoPago, ahora);  //Estado del pago
+                // Invalidar la sesión de cobro (para menor chance que se pague 2 veces)
+                cancelarCheckout(pago, ahora);
 
-                        r.setFechaHoraExpiracion(null);         // FHExpiración de la reserva
-                        self.cambiarEstadoReservaYGuardar(r, estadoReserva, ahora); // Estado de la reserva
-
-                        // Expírar la preference (para menor chance que se pague 2 veces)
-                        PreferenceClient client = new PreferenceClient();
-                        PreferenceRequest preferenceRequest = PreferenceRequest.builder()
-                                .expirationDateTo(ahora.atZone(ZoneId.systemDefault()).toOffsetDateTime())
-                                .build();
-                        client.update(preferenceId, preferenceRequest);
-
-                        pagosExitosos++; // Contador de reservas pagadas para el log
-                    }
-                }
-            } catch (MPApiException e) {
-                log.warn("Error de la API de MP consultando merchant orders para reserva {}: {}", r.getId(), e.getApiResponse().getContent());
-                idFallidas.add(r.getId().toString());
-            } catch (MPException e) {
-                log.warn("Error de red/SDK consultando merchant orders para reserva {}", r.getId(), e);
+                pagosExitosos++; // Contador de reservas pagadas para el log
+            } catch (PasarelaPagoException e) {
+                log.warn("Error de la pasarela consultando el pago de la reserva {}", r.getId(), e);
                 idFallidas.add(r.getId().toString());
             }
             catch (Exception e) {
@@ -403,7 +366,7 @@ public class ReservaService {
         Usuario usuario = getUsuario(emailUsuario);
         Visitante visitante = getVisitante(usuario);
 
-        Optional<Reserva> optReserva = reservaRepository.findByPagoWithIdPagoExterno(preferenceId);
+        Optional<Reserva> optReserva = reservaRepository.findByPagoWithIdCheckoutExterno(preferenceId);
         if (optReserva.isEmpty()) {
             throw new ReservaNotFoundException();
         }
@@ -413,7 +376,7 @@ public class ReservaService {
         if (reserva.getVisitante() != visitante){
             throw new ReservaNotFoundException();
         }
-        liberarCupoReserva(reserva, preferenceId);
+        liberarCupoReserva(reserva);
         reservaRepository.save(reserva);
     }
 
@@ -427,7 +390,7 @@ public class ReservaService {
         for (Reserva r : pendientes) {
             r.setFechaHoraExpiracion(null);
             r.cambiarEstado(cancelada, ahora);
-            expirarPreferenceMercadoPago(r.getPago() != null ? r.getPago().getIdPagoExterno() : null, ahora);
+            cancelarCheckout(r.getPago(), ahora);
             notificacionService.crearNotificacion(
                     r.getVisitante().getUsuario(),
                     TipoNotificacionNombre.RESERVA_CANCELADA_POR_BAJA_ACTIVIDAD,
@@ -436,6 +399,44 @@ public class ReservaService {
                     actividad.getNombre(), r.getActividadDia().getFechaHoraInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
         }
         log.info("Se cancelaron {} reservas pendientes por baja de la actividad {}", pendientes.size(), actividad.getId());
+    }
+
+    @Transactional
+    public IniciarReembolsoDTO handleCancelarReservaCondicion(String reservaId, String emailUsuario){
+        LocalDateTime ahora = LocalDateTime.now();
+
+        Usuario usuario = getUsuario(emailUsuario);
+        Visitante visitante = getVisitante(usuario);
+
+        // Obtenemos la reserva, si no existe o no es del visitante, error.
+        Reserva reserva = getReserva(reservaId, visitante);
+
+        // Validamos que sea una reserva en Pagada
+        EstadoReservaNombre estadoReserva = reserva.getEstadoActual().getEstadoReserva().getNombre();
+        if (estadoReserva != PAGADA){
+            throw new ReembolsoStateException(estadoReserva.getEstado());
+        }
+
+        ActividadDia actividadDia = reserva.getActividadDia();
+
+        Integer diasMinReembolso = parametrosService.getInstance().getDiasMinReembolso();
+
+        IniciarReembolsoDTO respuesta;
+
+        // CASOS DE REEMBOLSO
+        if (
+            // un ActividadDia que está a más de diasMinReembolso de ocurrir
+            ahora.plusDays(diasMinReembolso).isBefore(actividadDia.getFechaHoraInicio())
+            // un ActividadDia reprogramado
+            || actividadDia.getEstadoActual().getEstado().getNombre() == EstadoActividadDiaNombre.REPROGRAMADA
+        ){
+            respuesta = new IniciarReembolsoDTO("CancelacionConReembolso");
+        }
+        // CASOS DE NO REEMBOLSO
+        else{
+            respuesta = new IniciarReembolsoDTO("CancelacionSinReembolso");
+        }
+        return respuesta;
     }
 
     @Transactional
@@ -482,11 +483,12 @@ public class ReservaService {
             // Cambiar el estado de la reserva
             reserva.cambiarEstado(estadoReservaReembolsoPendiente, ahora);
 
-            // Hacer el reembolso (mercado pago)
-            boolean resultadoReembolsoMP = reembolsarMP(pago, reservaId);
+            // Hacer el reembolso mediante el método con el que se pagó
+            ResultadoReembolsoDTO resultadoReembolso = getEstrategiaPago(pago).reembolsar(pago);
+            reembolso.setIdReembolsoExterno(resultadoReembolso.idReembolsoExterno());
 
             // Resultado en respuesta
-            if (resultadoReembolsoMP){
+            if (resultadoReembolso.aceptado()){
                 // Avisar que el proceso marcha bien, avisamos cuando sepamos
                 respuesta = new IniciarReembolsoDTO("ExitoReembolso");
             } else {
@@ -521,9 +523,8 @@ public class ReservaService {
      * al momento actual y expira la preference de Mercado Pago asociada, si existe.
      *
      * @param reserva reserva cuyo cupo se libera
-     * @param preferenceId ID externo de la preference de Mercado Pago asociada, puede ser null si no tiene
      */
-    private void liberarCupoReserva(Reserva reserva, String preferenceId){
+    private void liberarCupoReserva(Reserva reserva){
         LocalDateTime ahora = LocalDateTime.now();
 
         EstadoReserva estadoReserva = getEstadoReserva(EXPIRADA);
@@ -531,31 +532,30 @@ public class ReservaService {
         // Cambiar estado reserva
         reserva.setFechaHoraExpiracion(ahora);
         self.cambiarEstadoReservaYGuardar(reserva, estadoReserva, ahora);
-        expirarPreferenceMercadoPago(preferenceId, ahora);
+        cancelarCheckout(reserva.getPago(), ahora);
 
     }
 
-    // TODO: No me gusta mucho que las preference puedan quedar no expiradas si hay error, pero por ahora queda así
+    // TODO: No me gusta mucho que las sesiones de cobro puedan quedar vigentes si hay error, pero por ahora queda así
     /**
-     * Expira en Mercado Pago la preference indicada, seteando su fecha de expiración al momento actual,
-     * para que ya no pueda pagarse. Cualquier error al comunicarse con Mercado Pago se registra
-     * en el log y la preference quedará hasta que expire por cuenta propia.
+     * Invalida la sesión de cobro del pago mediante la estrategia de su método de pago, para que ya no
+     * pueda pagarse. Cualquier error al comunicarse con la pasarela se registra en el log y la sesión
+     * quedará hasta que expire por cuenta propia.
      *
-     * @param preferenceId ID externo de la preference de Mercado Pago a expirar
-     * @param ahora fecha y hora a usar como nueva fecha de expiración de la preference
+     * @param pago pago cuya sesión de cobro se invalida, puede ser null si la reserva no tiene pago
+     * @param ahora fecha y hora a usar como momento de expiración
      */
-    private void expirarPreferenceMercadoPago(String preferenceId, LocalDateTime ahora) {
-        if (preferenceId == null) return;
+    private void cancelarCheckout(Pago pago, LocalDateTime ahora) {
+        if (pago == null) return;
         try{
-            // Expírar la preference para liberar el cupo
-            PreferenceClient client = new PreferenceClient();
-            PreferenceRequest preferenceRequest = PreferenceRequest.builder()
-                    .expirationDateTo(ahora.atZone(ZoneId.systemDefault()).toOffsetDateTime())
-                    .build();
-            client.update(preferenceId, preferenceRequest);
+            getEstrategiaPago(pago).cancelarCheckout(pago, ahora);
         } catch (Exception e) {
-            log.info("Hubo una reserva cuyo pago no pudo ser cancelado. Quedará hasta expirar sola.");
+            log.warn("No se pudo invalidar la sesión de cobro del pago {}. Quedará hasta expirar sola.", pago.getId(), e);
         }
+    }
+
+    private EstrategiaPago getEstrategiaPago(Pago pago){
+        return estrategiaPagoFactory.get(pago.getMetodoPago());
     }
 
     /**
@@ -606,24 +606,5 @@ public class ReservaService {
     private EstadoReembolso getEstadoReembolso(EstadoReembolsoNombre estadoReembolsoNombre){
         return estadoReembolsoRepository.findByNombre(estadoReembolsoNombre)
                 .orElseThrow(() -> new EstadoReembolsoNotFoundException(estadoReembolsoNombre));
-    }
-
-    private boolean reembolsarMP(Pago pago, String reservaId){
-
-        PaymentRefundClient clientRefund = new PaymentRefundClient();
-        MPRequestOptions options = MPRequestOptions.builder()
-                .customHeaders(Map.of("X-Idempotency-Key", "reservaId-" + reservaId))
-                .build();
-        try {
-            clientRefund.refund(Long.valueOf(pago.getIdPagoExterno()),options);
-
-            return true;
-        } catch (MPApiException e) {
-            log.info("Error MP al reembolsar: {}", e.getApiResponse().getContent());
-            return false;
-        } catch (MPException e) {
-            log.info("Error de comunicación con MP {}", e.getMessage());
-            return false;
-        }
     }
 }
