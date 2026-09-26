@@ -26,7 +26,7 @@ public class Incidencia extends BaseEntity {
     private String descripcion;
 
     @Column(name = "fecha_hora_incio")
-    private LocalDateTime fechaHoraIncio;
+    private LocalDateTime fechaHoraInicio;
 
     @Column(name = "fecha_hora_fin")
     private LocalDateTime fechaHoraFin;
