@@ -884,38 +884,6 @@ public class ActividadService {
                 .collect(Collectors.toMap(DTOCuposPorDia::getActividadDiaId, c -> c));
     }
 
-    private void sincronizarFotos(List<DTOActividadFotoReq> fotos, Actividad actividad) {
-        List<DTOActividadFotoReq> pedidas = fotos == null ? List.of() : fotos;
-
-        List<String> keyPedidas = pedidas.stream().map(DTOActividadFotoReq::getKey).toList();
-        if (Set.copyOf(keyPedidas).size() != keyPedidas.size()) {
-            throw new DatoInvalidoException("La actividad no puede repetir la misma foto");
-        }
-
-        actividad.getFotos().removeIf(foto -> !keyPedidas.contains(foto.getArchivo().getKey()));
-
-        Map<String, ActividadFoto> conocidas = actividad.getFotos().stream()
-                .collect(Collectors
-                        .toMap(foto -> foto.getArchivo().getKey(), foto -> foto));
-
-        for(int orden = 0; orden < pedidas.size(); orden++) {
-            DTOActividadFotoReq pedida = pedidas.get(orden);
-            ActividadFoto conocida = conocidas.get(pedida.getKey());
-
-            if (conocida != null) {
-                conocida.setOrden(orden);
-                continue;
-            }
-
-            Archivo archivo = this.archivoService.reclamarArchivo(new ArchivoClaimRequest(pedida.getKey(), pedida.getNombre()), CarpetaArchivo.ACTIVIDADES);
-
-            ActividadFoto nueva = new ActividadFoto();
-            nueva.setArchivo(archivo);
-            nueva.setOrden(orden);
-            actividad.getFotos().add(nueva);
-        }
-    }
-
     private ActividadDia obtenerDiaDeActividad(UUID idActividad, UUID idActividadDia) {
         return actividadRepository.findDiaDeActividad(idActividad, idActividadDia)
                 .orElseThrow(ActividadDiaNotFound::new);
