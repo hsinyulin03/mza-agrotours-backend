@@ -27,11 +27,7 @@ import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadDiaNotFound;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
-import com.mza_agrotours.backend.exceptions.pago.EstadoPagoNotFoundException;
-import com.mza_agrotours.backend.exceptions.pago.EstadoReembolsoNotFoundException;
-import com.mza_agrotours.backend.exceptions.pago.PasarelaPagoException;
-import com.mza_agrotours.backend.exceptions.pago.ReembolsoMakingException;
-import com.mza_agrotours.backend.exceptions.pago.ReembolsoStateException;
+import com.mza_agrotours.backend.exceptions.pago.*;
 import com.mza_agrotours.backend.exceptions.reservas.ActividadFullException;
 import com.mza_agrotours.backend.exceptions.reservas.EstadoReservaNotFoundException;
 import com.mza_agrotours.backend.exceptions.reservas.FechaNacimientoInvalidaException;
@@ -54,7 +50,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -401,7 +396,7 @@ public class ReservaService {
         log.info("Se cancelaron {} reservas pendientes por baja de la actividad {}", pendientes.size(), actividad.getId());
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public IniciarReembolsoDTO handleCancelarReservaCondicion(String reservaId, String emailUsuario){
         LocalDateTime ahora = LocalDateTime.now();
 
@@ -418,6 +413,11 @@ public class ReservaService {
         }
 
         ActividadDia actividadDia = reserva.getActividadDia();
+
+        // Validamos que la actividad no esté ya transcurrida
+        if (actividadDia.getFechaHoraFin().isBefore(ahora)){
+            throw new ReembolsoDateException(actividadDia.getFechaHoraFin().toString(), ahora.toString());
+        }
 
         Integer diasMinReembolso = parametrosService.getInstance().getDiasMinReembolso();
 
@@ -456,6 +456,12 @@ public class ReservaService {
         }
 
         ActividadDia actividadDia = reserva.getActividadDia();
+
+        // Validamos que la actividad no esté ya transcurrida
+        if (actividadDia.getFechaHoraFin().isBefore(ahora)){
+            throw new ReembolsoDateException(actividadDia.getFechaHoraFin().toString(), ahora.toString());
+        }
+
         Pago pago = reserva.getPago();
 
         Integer diasMinReembolso = parametrosService.getInstance().getDiasMinReembolso();
@@ -470,7 +476,7 @@ public class ReservaService {
                 || actividadDia.getEstadoActual().getEstado().getNombre() == EstadoActividadDiaNombre.REPROGRAMADA
         ){
             // Traemos los estados que vamos a usar
-            EstadoReembolso estadoReembolsoPedido = getEstadoReembolso(EstadoReembolsoNombre.PEDIDO);
+            EstadoReembolso estadoReembolsoPedido = getEstadoReembolso(EstadoReembolsoNombre.EN_PROCESO);
             EstadoReserva estadoReservaReembolsoPendiente = getEstadoReserva(CANCELADA_REEMBOLSO_PENDIENTE);
 
             // Crear el reembolso
