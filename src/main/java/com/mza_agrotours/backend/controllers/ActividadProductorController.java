@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.controllers;
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.actividad.*;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
+import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.services.ActividadService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -97,6 +98,44 @@ public class ActividadProductorController {
         List<DTOFiltro> estadosRes = servicio.obtenerFiltroEstadoActividad(establecimientoId);
         return ResponseEntity.ok(ApiResponse.ok(estadosRes));
     }
+
+    //US-ACT-08: Resumen del día (encabezado de la pantalla)
+    @GetMapping("/{actividadId}/dias/{actividadDiaId}/resumen")
+    @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
+    public ResponseEntity<ApiResponse<DTOListadoReservasResumenResponse>> obtenerResumenDelDia(
+            @PathVariable UUID establecimientoId,
+            @PathVariable UUID actividadId,
+            @PathVariable UUID actividadDiaId) {
+
+        DTOListadoReservasResumenResponse resumen = servicio.obtenerResumenDelDia(actividadId, actividadDiaId);
+        return ResponseEntity.ok(ApiResponse.ok(resumen));
+    }
+    //US-ACT-08: Listado paginado de reservas del día
+    @GetMapping("/{actividadId}/dias/{actividadDiaId}/reservas")
+    @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
+    public ResponseEntity<ApiResponse<Page<DTODetalleReservaCard>>> obtenerReservasDelDia(
+            @PathVariable UUID establecimientoId,
+            @PathVariable UUID actividadId,
+            @PathVariable UUID actividadDiaId,
+            @RequestParam(required = false) EstadoReservaNombre estado,
+            @PageableDefault(page = 0, size = 10, sort = {"fechaHoraInicio", "id"}, direction = Sort.Direction.ASC) Pageable pageable) {
+
+        Page<DTODetalleReservaCard> reservas = servicio.obtenerReservasDelDia(actividadId, actividadDiaId, estado, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(reservas));
+    }
+
+    //US-ACT-08: Filtro de estados de reserva
+    @GetMapping("/{actividadId}/dias/{actividadDiaId}/reservas/estados")
+    @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
+    public ResponseEntity<ApiResponse<List<DTOFiltro>>> obtenerFiltroEstadosReserva(
+            @PathVariable UUID establecimientoId,
+            @PathVariable UUID actividadId,
+            @PathVariable UUID actividadDiaId) {
+
+        List<DTOFiltro> filtros = servicio.obtenerFiltroEstadosReserva(actividadId, actividadDiaId);
+        return ResponseEntity.ok(ApiResponse.ok(filtros));
+    }
+
 
     @DeleteMapping("/{actividadId}")
     @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")

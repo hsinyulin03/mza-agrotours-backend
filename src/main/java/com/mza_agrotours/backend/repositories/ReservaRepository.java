@@ -6,10 +6,13 @@ import com.mza_agrotours.backend.dtos.administrador_sistemas.ConteoPorEstablecim
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -118,4 +121,34 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "JOIN r.reservaDetalles rd " +          // una fila por persona
             "WHERE r.actividad.id = :actividadId")
     DTOMetricasReservasGlobales obtenerMetricasDeReservas(@Param("actividadId") UUID actividadId);
+
+    @Query("SELECT r.id FROM Reserva r " +
+            "WHERE r.actividad.id = :actividadId " +
+            "AND r.actividadDia.id = :actividadDiaId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados")
+    Page<UUID> findIdsReservasDelDiaParaProductor(@Param("actividadId") UUID actividadId,
+                                                  @Param("actividadDiaId") UUID actividadDiaId,
+                                                  @Param("estados") List<EstadoReservaNombre> estados,
+                                                  Pageable pageable);
+
+    @Query("SELECT DISTINCT r FROM Reserva r " +
+            "JOIN FETCH r.estadoActual ea " +
+            "JOIN FETCH ea.estadoReserva " +
+            "JOIN FETCH r.reservaDetalles rd " +
+            "JOIN FETCH rd.actividadRangoEtario " +
+            "WHERE r.id IN :ids")
+    List<Reserva> findReservasConDetallesByIds(@Param("ids") List<UUID> ids);
+
+    @Query("SELECT COUNT(r) FROM Reserva r " +
+            "WHERE r.actividadDia.id = :actividadDiaId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados")
+    long contarReservasDelDia(@Param("actividadDiaId") UUID actividadDiaId,
+                              @Param("estados") List<EstadoReservaNombre> estados);
+
+    @Query("SELECT COALESCE(SUM(r.totalReserva), 0) FROM Reserva r " +
+            "WHERE r.actividadDia.id = :actividadDiaId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados")
+    BigDecimal sumarIngresoDelDia(@Param("actividadDiaId") UUID actividadDiaId,
+                                  @Param("estados") List<EstadoReservaNombre> estados);
+
 }
