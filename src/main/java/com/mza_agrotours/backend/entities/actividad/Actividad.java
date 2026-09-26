@@ -1,14 +1,12 @@
 package com.mza_agrotours.backend.entities.actividad;
 
-import com.mza_agrotours.backend.entities.ActividadFoto;
-import com.mza_agrotours.backend.entities.BaseEntity;
+import com.mza_agrotours.backend.entities.*;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
+import com.mza_agrotours.backend.entities.receta.Receta;
+import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -54,8 +52,8 @@ public class Actividad extends BaseEntity {
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "actividad_id")
-    @OrderBy("orden ASC")
-    private List<ActividadFoto> fotos = new ArrayList<>();
+    @OrderBy("id ASC") // TODO: No garantiza nada, evaluar si vamos a agregar un atributo para que el productor elija portada
+    private List<Archivo> fotos = new ArrayList<>();
 
     // Paso 2: Inclusiones y FAQs
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
@@ -102,7 +100,7 @@ public class Actividad extends BaseEntity {
         this.actividadesDias.add(actividadDias);
 
     }
-    public void addFoto(ActividadFoto foto) {
+    public void addFoto(Archivo foto) {
         this.fotos.add(foto);
     }
     //TODO: Falta relacion con calificacion

@@ -17,6 +17,9 @@ public class PresignedUrlRequest {
     @Size(min = 1, max = 255)
     private String filename;
 
+    @Size(max = 100)
+    private String contentType;
+
     @Positive
     private long fileSize;
 }

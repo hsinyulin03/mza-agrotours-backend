@@ -1,6 +1,5 @@
 package com.mza_agrotours.backend.entities.cultivo;
 
-import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.BaseEntity;
 import com.mza_agrotours.backend.entities.receta.Receta;
 import jakarta.persistence.*;
@@ -34,10 +33,6 @@ public class TipoCultivo extends BaseEntity {
 
     @Column(nullable = false, length = 30)
     private String porcionReferencia;
-
-    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "foto_id")
-    private Archivo foto;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "tipo_cultivo_id")

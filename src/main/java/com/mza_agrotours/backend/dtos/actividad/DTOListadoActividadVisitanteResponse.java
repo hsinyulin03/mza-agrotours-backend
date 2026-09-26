@@ -1,6 +1,5 @@
 package com.mza_agrotours.backend.dtos.actividad;
 
-import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import lombok.Data;
 
 import java.math.BigDecimal;
