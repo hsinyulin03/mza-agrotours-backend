@@ -171,7 +171,7 @@ public class ActividadService {
     @Transactional(readOnly = true)
     public DTOCalendarioActividadDiaResponse obtenerDetalleCalendario(UUID idActividad, int mes, int anio){
 
-        Actividad actividad = obtenerActividad(idActividad);
+        Actividad actividad = actividadRepository.findById(idActividad).orElseThrow(ActividadNotFoundException::new);
         int anioActual = java.time.LocalDate.now().getYear();
 
         if (anio < anioActual) {
