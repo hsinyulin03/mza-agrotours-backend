@@ -1,6 +1,5 @@
 package com.mza_agrotours.backend.dtos.tipoCultivo;
 
-import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import lombok.Data;
 
 import java.util.UUID;
@@ -11,5 +10,4 @@ public class DTOTipoCultivoVisitante {
     private String nombre;
     private String resumenCosecha; // ej: "Mar–Abr"
     private boolean enTemporada;
-    private DTOFotosResponse foto;
 }

@@ -1,11 +1,9 @@
 package com.mza_agrotours.backend.dtos.actividad;
 
+import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadRequest;
 import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.util.List;
@@ -25,8 +23,9 @@ public class DTOActividadUpdate {
     @NotEmpty(message = "El tipo de cultivo es requerido")
     private List<UUID> cultivos;
 
-    @Valid @NotNull @Size(max = 10)
-    private List<DTOActividadFotoReq> fotos;
+    @Valid @Size(max = 10)
+    private List<ArchivoUploadRequest> fotosNuevas;
+    private List<String> fotosExistentes; //para recibir las keys de las fotos
 
     @Valid
     @NotEmpty(message = "Debe configurar al menos la tarifa base")

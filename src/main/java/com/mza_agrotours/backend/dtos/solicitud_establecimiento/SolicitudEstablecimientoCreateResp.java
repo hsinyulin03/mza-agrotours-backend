@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.dtos.solicitud_establecimiento;
 
+import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,4 +15,5 @@ import java.util.List;
 public class SolicitudEstablecimientoCreateResp {
     private String solicitudId;
     private String nombreEstablecimiento;
+    private List<ArchivoUploadResponse> archivoUploadResponses;
 }
