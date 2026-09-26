@@ -20,9 +20,9 @@ public class UsuarioController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<?> create(@Valid @RequestBody UsuarioCreateReq usuarioCreateReq) throws Exception {
+    public ResponseEntity<?> create(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails, @Valid @RequestBody UsuarioCreateReq usuarioCreateReq) throws Exception {
 
-        UsuarioGetDTO usuarioGetDTO = this.usuarioService.createUsuario(usuarioCreateReq);
+        UsuarioGetDTO usuarioGetDTO = this.usuarioService.createUsuario(usuarioCreateReq, usuarioAuthDetails);
         ApiResponse<UsuarioGetDTO> response = ApiResponse.ok(usuarioGetDTO);
         return ResponseEntity.ok(response);
     }
