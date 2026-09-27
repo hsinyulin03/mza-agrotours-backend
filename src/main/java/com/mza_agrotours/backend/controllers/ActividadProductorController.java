@@ -158,6 +158,18 @@ public class ActividadProductorController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(dia));
     }
 
+    //US-ACT-11: Previsualizar un lote de días para mostrar al productor en tiempo real los días que se crearán y los días que se descartan
+    @PostMapping("/{actividadId}/dias/lote/previsualizacion")
+    @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
+    public ResponseEntity<ApiResponse<DTOPrevisualizacionLoteResponse>> previsualizarLote(
+            @PathVariable UUID establecimientoId,
+            @PathVariable UUID actividadId,
+            @Valid @RequestBody DTOActividadDiasLote dto) {
+
+        DTOPrevisualizacionLoteResponse previsualizacion = servicio.previsualizarLote(actividadId, dto);
+        return ResponseEntity.ok(ApiResponse.ok(previsualizacion));
+    }
+
 
     @DeleteMapping("/{actividadId}")
     @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
