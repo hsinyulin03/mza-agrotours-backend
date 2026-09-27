@@ -5,16 +5,15 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.UUID;
-
+/**
+ * La url vive lo que dure la firma, asi que se pide cuando el admin va a abrir
+ * la prueba y no cuando se arma el detalle de la solicitud.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class SolicitudEstablecimientoPruebaDTO {
-    private UUID id;
-
-    private String key;
+public class SolicitudEstablecimientoPruebaUrlDTO {
     private String nombre;
-    private String extension;
+    private String url;
 }

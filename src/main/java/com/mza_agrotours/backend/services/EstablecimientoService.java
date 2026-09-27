@@ -1,7 +1,10 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.CondicionDTO;
+import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import com.mza_agrotours.backend.dtos.establecimiento.*;
+import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
@@ -12,6 +15,7 @@ import com.mza_agrotours.backend.entities.establecimiento.EstablecimientoEstado;
 import com.mza_agrotours.backend.entities.establecimiento.EstadoEstablecimiento;
 import com.mza_agrotours.backend.entities.productor.Productor;
 import com.mza_agrotours.backend.entities.roles_permisos.Rol;
+import com.mza_agrotours.backend.enums.CarpetaArchivo;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
@@ -49,6 +53,9 @@ public class EstablecimientoService  {
 
     @Autowired
     private EstablecimientoMapper establecimientoMapper;
+
+    @Autowired
+    private ArchivoService archivoService;
 
     @Autowired
     private RolRepository rolRepository;
@@ -113,6 +120,7 @@ public class EstablecimientoService  {
         establecimiento.setTelefono(dto.getTelefono());
         establecimiento.setEmail(dto.getEmail());
         establecimiento.setCvu(dto.getCvu());
+        sincronizarFoto(dto.getFoto(), establecimiento);
         Establecimiento guardado = establecimientoRepository.save(establecimiento);
 
         DTOUpdEstablecimientoResponse response = new DTOUpdEstablecimientoResponse();
@@ -185,6 +193,7 @@ public class EstablecimientoService  {
             dto.setCultivos(obtenerCultivosConActividadPublicada(establecimiento));
             dto.setDptoEstablecimiento(establecimientoMapper.departamentoToDto(establecimiento.getDepartamento()));
             dto.setCantidadActividades(contarActividadesPublicadas(establecimiento));
+            dto.setFoto(mapearFoto(establecimiento.getFoto()));
             return dto;
         });
     }
@@ -257,6 +266,7 @@ public class EstablecimientoService  {
         // Se obtienen los cultivos del establecimiento
         // y se verfica si tienen actividades activas
         dto.setCultivos(obtenerCultivosDelEstablecimiento(establecimiento));
+        dto.setFoto(mapearFoto(establecimiento.getFoto()));
         return dto;
     }
     private List<DTOCultivoEstablecimientoResponse> obtenerCultivosDelEstablecimiento(Establecimiento establecimiento) {
@@ -324,6 +334,7 @@ public class EstablecimientoService  {
                 establecimientoMapper.establecimientoToDtoDetalleVisitantes(establecimiento);
         dto.setCultivos(obtenerCultivosConActividadPublicada(establecimiento));
         dto.setActividades(obtenerActividadesPublicadasDetalle(establecimiento));
+        dto.setFoto(mapearFoto(establecimiento.getFoto()));
 
         return dto;
     }
@@ -381,6 +392,38 @@ public class EstablecimientoService  {
         }
 
         return List.of();
+    }
+
+    /**
+     * La foto que llega es el estado final: en null se quita la actual, y si
+     * es la misma key no se toca nada. Reclamar una key ya asociada fallaria.
+     */
+    private void sincronizarFoto(ArchivoClaimRequest pedida, Establecimiento establecimiento) {
+        Archivo actual = establecimiento.getFoto();
+
+        if (pedida == null) {
+            establecimiento.setFoto(null);
+            return;
+        }
+
+        if (actual != null && actual.getKey().equals(pedida.getKey())) {
+            return;
+        }
+
+        establecimiento.setFoto(this.archivoService.reclamarArchivo(pedida, CarpetaArchivo.ESTABLECIMIENTOS));
+    }
+
+    private DTOFotosResponse mapearFoto(Archivo foto) {
+        if (foto == null) {
+            return null;
+        }
+
+        DTOFotosResponse dto = new DTOFotosResponse();
+        dto.setKey(foto.getKey());
+        dto.setNombre(foto.getNombre());
+        dto.setExtension(foto.getExtension());
+        dto.setDownloadUrl(this.archivoService.getDownloadUrl(foto.getKey()));
+        return dto;
     }
 }
 

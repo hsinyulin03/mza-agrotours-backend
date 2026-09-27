@@ -1,4 +1,4 @@
-package com.mza_agrotours.backend.dtos.actividad;
+package com.mza_agrotours.backend.dtos.archivo;
 
 import lombok.Data;
 
