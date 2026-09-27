@@ -170,6 +170,17 @@ public class ActividadProductorController {
         return ResponseEntity.ok(ApiResponse.ok(previsualizacion));
     }
 
+    //US-ACT-11: Datos de referencia para el formulario de agregar días
+    @GetMapping("/{actividadId}/dias/configuracion")
+    @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
+    public ResponseEntity<ApiResponse<DTOConfiguracionDiasResponse>> obtenerConfiguracionDias(
+            @PathVariable UUID establecimientoId,
+            @PathVariable UUID actividadId) {
+
+        DTOConfiguracionDiasResponse configuracion = servicio.obtenerConfiguracionDias(actividadId);
+        return ResponseEntity.ok(ApiResponse.ok(configuracion));
+    }
+
 
     @DeleteMapping("/{actividadId}")
     @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")

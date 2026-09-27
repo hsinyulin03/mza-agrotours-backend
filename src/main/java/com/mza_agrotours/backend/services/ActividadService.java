@@ -535,6 +535,24 @@ public class ActividadService {
         return planificarLote(idActividad, dto, LocalDateTime.now());
     }
 
+    //US-ACT-11: datos de referencia para el formulario de agregar días (tarifas y ventana)
+    @Transactional(readOnly = true)
+    public DTOConfiguracionDiasResponse obtenerConfiguracionDias(UUID idActividad) {
+        Actividad actividad = obtenerActividad(idActividad);
+        LocalDate hoy = LocalDate.now();
+
+        DTOConfiguracionDiasResponse dto = new DTOConfiguracionDiasResponse();
+        dto.setFechaMaxima(hoy.plusDays(VENTANA_MAXIMA_DIAS));
+        dto.setVentanaMaximaDias(VENTANA_MAXIMA_DIAS);
+        List<RangoEtarioReservaDTO> tarifas = actividad.getActividadRangoEtarios().stream()
+                .filter(are -> are.getFechaHoraBaja() == null)
+                .map(actividadMapper::actividadRangoEtarioToDTO)
+                .toList();
+
+        dto.setTarifas(tarifas);
+        return dto;
+    }
+
     //Métodos auxiliares
 
     //arma qué días se crean y cuáles no
