@@ -1,7 +1,6 @@
 package com.mza_agrotours.backend.dtos.tipoCultivo;
 
 import com.mza_agrotours.backend.enums.EstacionalidadNombre;
-import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import lombok.Data;
 
 import java.util.List;
@@ -15,5 +14,4 @@ public class DTOTipoCultivoEditarDetalle {
     private List<DTOEstacionalidadMes> estacionalidadPorMes;
     private String porcionReferencia;
     private List<DTOInformacionNutricionalDatos> informacionNutricional;
-    private DTOFotosResponse foto;
 }

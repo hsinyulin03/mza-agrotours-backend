@@ -1,6 +1,5 @@
 package com.mza_agrotours.backend.entities.receta;
 
-import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.BaseEntity;
 import com.mza_agrotours.backend.enums.Dificultad;
 import com.mza_agrotours.backend.enums.DuracionNombre;
@@ -41,10 +40,6 @@ public class Receta extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "duracion_id", nullable = false)
     private Duracion duracion;
-
-    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "foto_id")
-    private Archivo foto;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "receta_id")

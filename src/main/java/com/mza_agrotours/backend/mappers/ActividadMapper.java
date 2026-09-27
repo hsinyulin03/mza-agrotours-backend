@@ -1,10 +1,11 @@
 package com.mza_agrotours.backend.mappers;
 
-import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import com.mza_agrotours.backend.dtos.actividad.*;
-import com.mza_agrotours.backend.entities.ActividadFoto;
+import com.mza_agrotours.backend.dtos.actividad.RangoEtarioReservaDTO;
 import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
+import com.mza_agrotours.backend.entities.reservas.Reserva;
+import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -12,6 +13,7 @@ import org.mapstruct.MappingTarget;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -29,11 +31,6 @@ public interface ActividadMapper {
     @Mapping(target = "ubicacion", source = "establecimiento")
     DTOActividadDetalleResponse actividadToDTOActividadDetalle(Actividad actividad);
 
-    @Mapping(target = "key", source = "archivo.key")
-    @Mapping(target = "nombre", source = "archivo.nombre")
-    @Mapping(target = "extension", source = "archivo.extension")
-    DTOFotosResponse actividadFotoToDTOFotoResponse(ActividadFoto actividadFoto);
-
     @Mapping(target = "departamento",source = "departamento.nombre")
     @Mapping(target = "estado", source = "estadoActual.estadoEstablecimiento.nombre")
     DTOEstablecimientoCard establecimientoToDTOEstablecimientoCard(Establecimiento establecimiento);
@@ -47,6 +44,8 @@ public interface ActividadMapper {
     @Mapping(target = "diasYHorasDisponibles", ignore = true)
     @Mapping(target = "precioRegular", ignore = true)
     @Mapping(target = "cultivos", ignore = true)
+    @Mapping(target = "cantidadReservasAsociadas", ignore = true)
+    @Mapping(target = "puedeCambiarEstado", ignore = true)
     DTOActividadesResponse actividadToDTOActividades(Actividad actividad);
 
     //US-ACT-07
@@ -88,6 +87,29 @@ public interface ActividadMapper {
     @Mapping(target = "estado", source = "estado.nombre.nombre")
     @Mapping(target = "mensaje", constant = "La actividad se ha dado de baja correctamente.")
     DTOBajaActividadResponse actividadToDTOBajaActividad(Actividad actividad);
+
+    //US-ACT-08
+    @Mapping(target = "estadoDia", ignore = true)
+    @Mapping(target = "nombreEstablecimiento", source = "establecimiento.nombre")
+    @Mapping(target = "nombreDepartamento", source = "establecimiento.departamento.nombre")
+    @Mapping(target = "fecha", ignore = true)
+    @Mapping(target = "horaInicio", ignore = true)
+    @Mapping(target = "horaFin", ignore = true)
+    @Mapping(target = "ingresoEstimadoDelDia", ignore = true)
+    @Mapping(target = "cantidadTotalReservas", ignore = true)
+    DTOListadoReservasResumenResponse actividadToListadoReservasResumenResponse(Actividad actividad);
+
+    @Mapping(target = "estadoReserva", source = "estadoActual.estadoReserva.nombre")
+    @Mapping(target = "montoTotalReserva", source = "totalReserva")
+    @Mapping(target = "cantidadTotalPersona", ignore = true)
+    @Mapping(target = "resumenRangoEtario", ignore = true)
+    @Mapping(target = "visitantes", ignore = true)
+    DTODetalleReservaCard reservaToDTODetalleReservaCard(Reserva reserva);
+
+    @Mapping(target = "nombreCompleto", source = "nombre")
+    @Mapping(target = "tipo", source = "actividadRangoEtario.nombre")
+    @Mapping(target = "edad", ignore = true)
+    DTODetalleVisitantesCard reservaDetalleToDTODetalleVisitantesCard(ReservaDetalle detalle);
 
     //US-RESE-01
     RangoEtarioReservaDTO actividadRangoEtarioToDTO(ActividadRangoEtario actividadRangoEtarios);
@@ -194,6 +216,18 @@ public interface ActividadMapper {
                     // Filtramos la ventana de fin: que no esté vencida (Hasta >= hoy)
                     .filter(log -> log.getFechaValidaHasta() == null || !log.getFechaValidaHasta().isBefore(hoy))
                     .findFirst();
+
+        //Si no hay vigente, buscamos la futura más próxima
+        if (configuracionActual.isEmpty()) {
+            configuracionActual =  actividad.getLogAltas().stream()
+                    .filter(log -> log.getFechaValidaDesde() != null && log.getFechaValidaDesde().isAfter(hoy))
+                    .min(Comparator.comparing(ActividadLogAltas::getFechaValidaDesde));
+        }
+
+        //Si tampoco hay futura, tomamos la última histórica (la primera de la lista ordenada)
+        if (configuracionActual.isEmpty()) {
+            configuracionActual = actividad.getLogAltas().stream().findFirst();
+        }
 
         if (configuracionActual.isEmpty() || configuracionActual.get().getDias() == null) {
             return List.of();

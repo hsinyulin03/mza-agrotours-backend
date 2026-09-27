@@ -1,15 +1,20 @@
 package com.mza_agrotours.backend.repositories;
 
+import com.mza_agrotours.backend.dtos.actividad.DTOConteoReservasPorActividad;
+import com.mza_agrotours.backend.dtos.actividad.DTOReservasBloqueantes;
 import com.mza_agrotours.backend.dtos.actividad.DTOCuposPorDia;
 import com.mza_agrotours.backend.dtos.actividad.DTOMetricasReservasGlobales;
 import com.mza_agrotours.backend.dtos.administrador_sistemas.ConteoPorEstablecimientoDTO;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -54,7 +59,6 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "WHERE estado.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE")
     List<Reserva> findReservasPendientes(@Param("currTime") LocalDateTime currTime);
 
-    boolean existsByActividadIdAndEstadoActualEstadoReservaNombreIn(UUID actividadId, List<EstadoReservaNombre> estados);
 
     @Query("SELECT r FROM Reserva r " +
             "JOIN FETCH r.pago p " +
@@ -79,6 +83,31 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "where r.actividad.establecimiento.id in :ids " +
             "group by r.actividad.establecimiento.id")
     List<ConteoPorEstablecimientoDTO> countReservasTotalesByEstablecimientoIds(@Param("ids") Set<UUID> establecimientoIds);
+
+    @Query("SELECT new com.mza_agrotours.backend.dtos.actividad.DTOReservasBloqueantes(" +
+            "  COUNT(CASE WHEN r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE THEN r.id END), " +
+            "  COUNT(CASE WHEN r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA THEN r.id END)) " +
+            "FROM Reserva r " +
+            "WHERE r.actividad.id = :actividadId " +
+            "AND r.estadoActual.estadoReserva.nombre IN (" +
+            "  com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE, " +
+            "  com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA) " +
+            "AND r.actividadDia.fechaHoraInicio > :ahora")
+    DTOReservasBloqueantes contarReservasBloqueantes(@Param("actividadId") UUID actividadId,
+                                                     @Param("ahora") LocalDateTime ahora);
+
+    @Query("SELECT new com.mza_agrotours.backend.dtos.actividad.DTOConteoReservasPorActividad(" +
+            " r.actividad.id, COUNT(r.id)) " +
+            "FROM Reserva r " +
+            "WHERE r.actividad.id IN :actividadIds " +
+            "AND r.estadoActual.estadoReserva.nombre IN (" +
+            "  com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE, " +
+            "  com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA) " +
+            "AND r.actividadDia.fechaHoraInicio > :ahora " +
+            "GROUP BY r.actividad.id")
+    List<DTOConteoReservasPorActividad> contarReservasBloqueantesPorActividad(
+            @Param("actividadIds") List<UUID> actividadIds,
+            @Param("ahora") LocalDateTime ahora);
 
     @Query("SELECT r FROM Reserva r " +
             "LEFT JOIN FETCH r.pago " +
@@ -118,4 +147,34 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "JOIN r.reservaDetalles rd " +          // una fila por persona
             "WHERE r.actividad.id = :actividadId")
     DTOMetricasReservasGlobales obtenerMetricasDeReservas(@Param("actividadId") UUID actividadId);
+
+    @Query("SELECT r.id FROM Reserva r " +
+            "WHERE r.actividad.id = :actividadId " +
+            "AND r.actividadDia.id = :actividadDiaId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados")
+    Page<UUID> findIdsReservasDelDiaParaProductor(@Param("actividadId") UUID actividadId,
+                                                  @Param("actividadDiaId") UUID actividadDiaId,
+                                                  @Param("estados") List<EstadoReservaNombre> estados,
+                                                  Pageable pageable);
+
+    @Query("SELECT DISTINCT r FROM Reserva r " +
+            "JOIN FETCH r.estadoActual ea " +
+            "JOIN FETCH ea.estadoReserva " +
+            "JOIN FETCH r.reservaDetalles rd " +
+            "JOIN FETCH rd.actividadRangoEtario " +
+            "WHERE r.id IN :ids")
+    List<Reserva> findReservasConDetallesByIds(@Param("ids") List<UUID> ids);
+
+    @Query("SELECT COUNT(r) FROM Reserva r " +
+            "WHERE r.actividadDia.id = :actividadDiaId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados")
+    long contarReservasDelDia(@Param("actividadDiaId") UUID actividadDiaId,
+                              @Param("estados") List<EstadoReservaNombre> estados);
+
+    @Query("SELECT COALESCE(SUM(r.totalReserva), 0) FROM Reserva r " +
+            "WHERE r.actividadDia.id = :actividadDiaId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados")
+    BigDecimal sumarIngresoDelDia(@Param("actividadDiaId") UUID actividadDiaId,
+                                  @Param("estados") List<EstadoReservaNombre> estados);
+
 }
