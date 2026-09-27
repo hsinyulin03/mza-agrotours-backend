@@ -82,6 +82,7 @@ public class ActividadService {
     private ReservaService reservaService;
 
     private static final List<EstadoReservaNombre> ESTADOS_RESERVA_VISIBLES_PRODUCTOR = List.of(
+            EstadoReservaNombre.PENDIENTE,
             EstadoReservaNombre.PAGADA,
             EstadoReservaNombre.CANCELADA_CON_REEMBOLSO,
             EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO,
@@ -432,6 +433,12 @@ public class ActividadService {
 
         LocalDate fechaActividad = dia.getFechaHoraInicio().toLocalDate();
         return paginaIds.map(id -> armarDetalleReservaCard(reservasPorId.get(id), fechaActividad));
+    }
+    //US-ACT-08: Filtro de estados de reserva
+    @Transactional(readOnly = true)
+    public List<DTOFiltro> obtenerFiltroEstadosReserva(UUID idActividad, UUID idActividadDia) {
+        obtenerDiaDeActividad(idActividad, idActividadDia);
+        return actividadRepository.obtenerFiltroEstadosReserva(idActividadDia, ESTADOS_RESERVA_VISIBLES_PRODUCTOR);
     }
 
     //Métodos auxiliares
@@ -928,11 +935,6 @@ public class ActividadService {
         return List.of(estado);  // con filtro: solo el estado que selecciona el usuario
     }
 
-    @Transactional(readOnly = true)
-    public List<DTOFiltro> obtenerFiltroEstadosReserva(UUID idActividad, UUID idActividadDia) {
-        obtenerDiaDeActividad(idActividad, idActividadDia);
-        return actividadRepository.obtenerFiltroEstadosReserva(idActividadDia, ESTADOS_RESERVA_VISIBLES_PRODUCTOR);
-    }
 
 }
 
