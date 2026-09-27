@@ -12,7 +12,7 @@ import java.time.Duration;
 public class ObjectStorageProperties {
 
     /**
-     * Vacio para AWS S3; apunta a MinIO en desarrollo y en los tests. Cambiar
+     * Vacio para AWS S3; apunta a RustFS en desarrollo y en los tests. Cambiar
      * este valor y las credenciales alcanza para migrar a R2, GCS o B2.
      */
     private String endpoint;
@@ -26,14 +26,14 @@ public class ObjectStorageProperties {
     private String secretKey;
 
     /**
-     * MinIO resuelve el bucket por path; AWS S3 lo resuelve por subdominio.
+     * RustFS resuelve el bucket por path; AWS S3 lo resuelve por subdominio.
      */
     private boolean pathStyleAccess;
 
     /**
      * Raiz publica del bucket, sin barra final: lo que se antepone a la key de
      * un objeto de una carpeta publica. No se deriva del endpoint porque no es
-     * la misma forma en todos lados (path style en MinIO, subdominio en AWS S3,
+     * la misma forma en todos lados (path style en RustFS, subdominio en AWS S3,
      * un dominio propio si algun dia hay CDN adelante).
      * <p>
      * Vacio deja todo firmado, incluso lo que esta en una carpeta publica: sin

@@ -23,7 +23,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 import java.util.Optional;
 
 /**
- * Urls prefirmadas contra un storage compatible con S3: MinIO en desarrollo y
+ * Urls prefirmadas contra un storage compatible con S3: RustFS en desarrollo y
  * en los tests, AWS S3 en produccion. Los bytes nunca pasan por el backend.
  */
 @Service
