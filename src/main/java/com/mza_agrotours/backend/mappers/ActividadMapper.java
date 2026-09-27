@@ -4,6 +4,8 @@ import com.mza_agrotours.backend.dtos.actividad.*;
 import com.mza_agrotours.backend.dtos.actividad.RangoEtarioReservaDTO;
 import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
+import com.mza_agrotours.backend.entities.reservas.Reserva;
+import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -82,6 +84,29 @@ public interface ActividadMapper {
     @Mapping(target = "estado", source = "estado.nombre.nombre")
     @Mapping(target = "mensaje", constant = "La actividad se ha dado de baja correctamente.")
     DTOBajaActividadResponse actividadToDTOBajaActividad(Actividad actividad);
+
+    //US-ACT-08
+    @Mapping(target = "estadoDia", ignore = true)
+    @Mapping(target = "nombreEstablecimiento", source = "establecimiento.nombre")
+    @Mapping(target = "nombreDepartamento", source = "establecimiento.departamento.nombre")
+    @Mapping(target = "fecha", ignore = true)
+    @Mapping(target = "horaInicio", ignore = true)
+    @Mapping(target = "horaFin", ignore = true)
+    @Mapping(target = "ingresoEstimadoDelDia", ignore = true)
+    @Mapping(target = "cantidadTotalReservas", ignore = true)
+    DTOListadoReservasResumenResponse actividadToListadoReservasResumenResponse(Actividad actividad);
+
+    @Mapping(target = "estadoReserva", source = "estadoActual.estadoReserva.nombre")
+    @Mapping(target = "montoTotalReserva", source = "totalReserva")
+    @Mapping(target = "cantidadTotalPersona", ignore = true)
+    @Mapping(target = "resumenRangoEtario", ignore = true)
+    @Mapping(target = "visitantes", ignore = true)
+    DTODetalleReservaCard reservaToDTODetalleReservaCard(Reserva reserva);
+
+    @Mapping(target = "nombreCompleto", source = "nombre")
+    @Mapping(target = "tipo", source = "actividadRangoEtario.nombre")
+    @Mapping(target = "edad", ignore = true)
+    DTODetalleVisitantesCard reservaDetalleToDTODetalleVisitantesCard(ReservaDetalle detalle);
 
     //US-RESE-01
     RangoEtarioReservaDTO actividadRangoEtarioToDTO(ActividadRangoEtario actividadRangoEtarios);
