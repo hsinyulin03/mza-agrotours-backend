@@ -1,10 +1,8 @@
 package com.mza_agrotours.backend.dtos.receta;
 
 
-import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
 import com.mza_agrotours.backend.enums.Dificultad;
 import com.mza_agrotours.backend.validation.SinCaracteresEspeciales;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -42,7 +40,4 @@ public class DTORecetaAM {
 
     @NotEmpty(message = "Cargá al menos un paso")
     private List<@NotBlank @Size(max = 200) String> pasos;
-
-    @Valid
-    private ArchivoClaimRequest foto;
 }

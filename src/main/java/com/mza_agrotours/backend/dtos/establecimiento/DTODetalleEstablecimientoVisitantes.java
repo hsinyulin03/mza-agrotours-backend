@@ -1,6 +1,5 @@
 package com.mza_agrotours.backend.dtos.establecimiento;
 
-import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -34,6 +33,4 @@ public class DTODetalleEstablecimientoVisitantes {
     private List<DTOCultivoEstablecimientoResponse> cultivos;
 
     private List<DTODetalleEstablecimientoActividad> actividades;
-
-    private DTOFotosResponse foto;
 }

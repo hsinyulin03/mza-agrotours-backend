@@ -1,6 +1,5 @@
 package com.mza_agrotours.backend.dtos.establecimiento;
 
-import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import lombok.Data;
 
 import java.util.List;
@@ -23,6 +22,4 @@ public class DTODatosEstablecimiento {
     private String cvu;
     // Cultivos
     private List<DTOCultivoEstablecimientoResponse> cultivos;
-
-    private DTOFotosResponse foto;
 }

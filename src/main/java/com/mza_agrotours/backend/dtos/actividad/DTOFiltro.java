@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.dtos.actividad;
 
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
+import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -29,6 +30,11 @@ public class DTOFiltro {
     }
     public DTOFiltro(EstadoActividadNombre estadoEnum, long cantidad) {
         this.valor = estadoEnum.name(); // Transforma BORRADOR a "BORRADOR"
+        this.cantidad = cantidad;
+    }
+    public DTOFiltro( EstadoReservaNombre estadoEnum, Long cantidad) {
+        this.valor = estadoEnum.name();        // "PAGADA"
+        this.nombre = estadoEnum.getEstado();  // "Pagada"
         this.cantidad = cantidad;
     }
 }
