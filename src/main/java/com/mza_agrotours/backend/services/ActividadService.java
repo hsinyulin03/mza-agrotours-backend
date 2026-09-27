@@ -514,13 +514,13 @@ public class ActividadService {
         validarFechaEnVentana(dto.getFecha(), ahora.toLocalDate());
         validarHorario(dto.getHoraInicio(), dto.getHoraFin());
         if (!LocalDateTime.of(dto.getFecha(), dto.getHoraInicio()).isAfter(ahora)) {
-            throw new ValidacionNegocioException("El horario de inicio seleccionado ya pasó.");
+            throw new AppException(ActividadError.DIA_HORARIO_PASADO);
         }
         //Evitamos solapamiento de día, no se permite crear un día si esa fecha ya tiene un día activo
         boolean fechaOcupada = !actividadRepository.findIniciosDiasOcupadosEnRango(idActividad, ESTADOS_ACTIVIDAD_DIA_OCUPADO,
                 dto.getFecha().atStartOfDay(), dto.getFecha().plusDays(1).atStartOfDay()).isEmpty();
         if (fechaOcupada) {
-            throw new ValidacionNegocioException("La actividad ya tiene un día activo el " + dto.getFecha() + ".");
+            throw new AppException(ActividadError.DIA_FECHA_OCUPADA, "La actividad ya tiene un día activo el " + dto.getFecha() + ".", null);
         }
 
         ActividadDia dia = new ActividadDia();
@@ -550,8 +550,7 @@ public class ActividadService {
         //Se recalcula al guardar: no se confía en lo que mostró la previsualización
         DTOPrevisualizacionLoteResponse plan = planificarLote(idActividad, dto, ahora);
         if (plan.getDiasACrear().isEmpty()) {
-            throw new ValidacionNegocioException("No hay días para crear en el rango seleccionado: " +
-                    "todas las fechas ya tienen un día activo o su horario ya pasó.");
+            throw new AppException(ActividadError.LOTE_SIN_DIAS_PARA_CREAR);
         }
 
         //Log del lote: un ActividadLogAltasDia por cada día de la semana elegido
@@ -614,18 +613,18 @@ public class ActividadService {
         ActividadDia dia = obtenerDiaDeActividad(idActividad, idActividadDia);
 
         if (!ESTADOS_ACTIVIDAD_DIA_OCUPADO.contains(dia.getEstadoActual().getEstado().getNombre())) {
-            throw new ValidacionNegocioException("Solo se puede modificar el cupo de un día activo o reprogramado.");
+            throw new AppException(ActividadError.DIA_NO_MODIFICABLE);
         }
         if (!dia.getFechaHoraInicio().isAfter(LocalDateTime.now())) {
-            throw new ValidacionNegocioException("No se puede modificar el cupo de un día que ya comenzó.");
+            throw new AppException(ActividadError.DIA_YA_COMENZO);
         }
 
         //Personas con reserva vigente (pendiente + pagada): el cupo no puede quedar por debajo
         DTOCuposPorDia cupos = obtenerCuposPorDia(List.of(dia)).get(dia.getId());
         long reservados = cupos == null ? 0 : cupos.getCuposPendientes() + cupos.getCuposPagados();
         if (dto.getCuposMax() < reservados) {
-            throw new ValidacionNegocioException("El cupo no puede ser menor a las " + reservados +
-                    " personas con reserva vigente (pendiente o pagada) para este día.");
+            throw new AppException(ActividadError.CUPO_MENOR_A_RESERVADOS,
+                    "El cupo no puede ser menor a las " + reservados + " personas con reserva vigente (pendiente o pagada) para este día.", null);
         }
 
         dia.setCuposMax(dto.getCuposMax());
@@ -642,7 +641,7 @@ public class ActividadService {
         int anioActual = java.time.LocalDate.now().getYear();
 
         if (anio < anioActual) {
-            throw new ValidacionNegocioException("El año no puede ser menor al año actual (" + anioActual + ")");
+            throw new AppException(ActividadError.CALENDARIO_ANIO_INVALIDO, "El año no puede ser menor al año actual (" + anioActual + ")", null);
         }
 
         LocalDate limiteVentana = LocalDate.now().plusDays(VENTANA_MAXIMA_DIAS);
@@ -651,8 +650,9 @@ public class ActividadService {
                 .orElse(limiteVentana.getYear());
 
         if (anio > anioMaximoPermitido) {
-            throw new ValidacionNegocioException("No puedes consultar el calendario para el año " + anio +
-                    ". Solo se pueden gestionar días hasta el año " + anioMaximoPermitido);
+            throw new AppException(ActividadError.CALENDARIO_ANIO_INVALIDO,
+                    "No puedes consultar el calendario para el año " + anio +
+                            ". Solo se pueden gestionar días hasta el año " + anioMaximoPermitido, null);
         }
 
         LocalDateTime desde = LocalDate.of(anio, mes, 1).atStartOfDay();
@@ -707,7 +707,7 @@ public class ActividadService {
     //valida que el rango del lote sea coherente y esté dentro de la ventana permitida
     private void validarRangoLote(LocalDate desde, LocalDate hasta, LocalDate hoy) {
         if (hasta.isBefore(desde)) {
-            throw new ValidacionNegocioException("La fecha hasta no puede ser anterior a la fecha desde.");
+            throw new AppException(ActividadError.RANGO_FECHAS_INVALIDO);
         }
         validarFechaEnVentana(desde, hoy);
         validarFechaEnVentana(hasta, hoy);
@@ -753,18 +753,19 @@ public class ActividadService {
     }
     private void validarFechaEnVentana(LocalDate fecha, LocalDate hoy) {
         if (fecha.isBefore(hoy)) {
-            throw new ValidacionNegocioException("La fecha " + fecha + " no puede ser anterior a hoy.");
+            throw new AppException(ActividadError.FECHA_ANTERIOR_A_HOY, "La fecha " + fecha + " no puede ser anterior a hoy.", null);
         }
         LocalDate limite = hoy.plusDays(VENTANA_MAXIMA_DIAS);
         if (fecha.isAfter(limite)) {
-            throw new ValidacionNegocioException("Fuera de ventana: la fecha " + fecha + " supera los "
-                    + VENTANA_MAXIMA_DIAS + " días permitidos (máximo " + limite + ").");
+            throw new AppException(ActividadError.FECHA_FUERA_DE_VENTANA,
+                    "Fuera de ventana: la fecha " + fecha + " supera los " + VENTANA_MAXIMA_DIAS +
+                            " días permitidos (máximo " + limite + ").", null);
         }
     }
 
     private void validarHorario(LocalTime inicio, LocalTime fin) {
         if (!fin.isAfter(inicio)) {
-            throw new ValidacionNegocioException("La hora de fin debe ser posterior a la hora de inicio.");
+            throw new AppException(ActividadError.HORARIO_INVALIDO);
         }
     }
 
