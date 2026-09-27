@@ -601,6 +601,34 @@ public class ActividadService {
         return dto;
     }
 
+    //US-ACT-11: Modificar el cupo máximo de un día
+    @Transactional
+    public DTOActividadDiaResponse modificarCupoDia(UUID idEstablecimiento, UUID idActividad, UUID idActividadDia, DTOActividadDiaUpdateCupo dto) {
+        validarEstablecimientoNoSuspendido(idEstablecimiento);
+        ActividadDia dia = obtenerDiaDeActividad(idActividad, idActividadDia);
+
+        if (!ESTADOS_ACTIVIDAD_DIA_OCUPADO.contains(dia.getEstadoActual().getEstado().getNombre())) {
+            throw new ValidacionNegocioException("Solo se puede modificar el cupo de un día activo o reprogramado.");
+        }
+        if (!dia.getFechaHoraInicio().isAfter(LocalDateTime.now())) {
+            throw new ValidacionNegocioException("No se puede modificar el cupo de un día que ya comenzó.");
+        }
+
+        //Personas con reserva vigente (pendiente + pagada): el cupo no puede quedar por debajo
+        DTOCuposPorDia cupos = obtenerCuposPorDia(List.of(dia)).get(dia.getId());
+        long reservados = cupos == null ? 0 : cupos.getCuposPendientes() + cupos.getCuposPagados();
+        if (dto.getCuposMax() < reservados) {
+            throw new ValidacionNegocioException("El cupo no puede ser menor a las " + reservados +
+                    " personas con reserva vigente (pendiente o pagada) para este día.");
+        }
+
+        dia.setCuposMax(dto.getCuposMax());
+
+        DTOActividadDiaResponse response = actividadMapper.actividadDiatoDTOActividadDia(dia);
+        response.aplicarCupos(cupos);
+        return response;
+    }
+
     //Métodos auxiliares
 
     //arma qué días se crean y cuáles no

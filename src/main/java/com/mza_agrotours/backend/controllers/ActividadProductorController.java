@@ -181,6 +181,19 @@ public class ActividadProductorController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(resultado));
     }
 
+    //US-ACT-11: Modificar el cupo de un día
+    @PatchMapping("/{actividadId}/dias/{actividadDiaId}/cupo")
+    @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
+    public ResponseEntity<ApiResponse<DTOActividadDiaResponse>> modificarCupoDia(
+            @PathVariable UUID establecimientoId,
+            @PathVariable UUID actividadId,
+            @PathVariable UUID actividadDiaId,
+            @Valid @RequestBody DTOActividadDiaUpdateCupo dto) {
+
+        DTOActividadDiaResponse dia = servicio.modificarCupoDia(establecimientoId, actividadId, actividadDiaId, dto);
+        return ResponseEntity.ok(ApiResponse.ok(dia));
+    }
+
 
     //US-ACT-11: Datos de referencia para el formulario de agregar días
     @GetMapping("/{actividadId}/dias/configuracion")
