@@ -43,6 +43,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.Period;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -51,6 +52,24 @@ import java.util.stream.Collectors;
 @Service
 public class ActividadService {
     private final List<String> EXTENSIONES_VALIDAS = List.of("jpg", "jpeg", "png");
+    private static final List<EstadoReservaNombre> ESTADOS_RESERVA_VISIBLES_PRODUCTOR = List.of(
+            EstadoReservaNombre.PENDIENTE,
+            EstadoReservaNombre.PAGADA,
+            EstadoReservaNombre.CANCELADA_CON_REEMBOLSO,
+            EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO,
+            EstadoReservaNombre.FINALIZADA);
+
+    private static final List<EstadoReservaNombre> ESTADOS_RESERVA_CALCULAR_INGRESO = List.of(
+            EstadoReservaNombre.PAGADA,
+            EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO,
+            EstadoReservaNombre.FINALIZADA);
+
+    //TODO: Debería buscarlo en los parámetros globales
+    private static final int VENTANA_MAXIMA_DIAS = 120;
+
+    private static final List<EstadoActividadDiaNombre> ESTADOS_ACTIVIDAD_DIA_OCUPADO = List.of(
+            EstadoActividadDiaNombre.ACTIVA,
+            EstadoActividadDiaNombre.REPROGRAMADA);
     @Autowired
     private ActividadRepository actividadRepository;
 
@@ -89,18 +108,6 @@ public class ActividadService {
 
     @Autowired
     private ReservaService reservaService;
-
-    private static final List<EstadoReservaNombre> ESTADOS_RESERVA_VISIBLES_PRODUCTOR = List.of(
-            EstadoReservaNombre.PENDIENTE,
-            EstadoReservaNombre.PAGADA,
-            EstadoReservaNombre.CANCELADA_CON_REEMBOLSO,
-            EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO,
-            EstadoReservaNombre.FINALIZADA);
-
-    private static final List<EstadoReservaNombre> ESTADOS_RESERVA_CALCULAR_INGRESO = List.of(
-            EstadoReservaNombre.PAGADA,
-            EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO,
-            EstadoReservaNombre.FINALIZADA);
 
     @Autowired
     private ArchivoMapper archivoMapper;
@@ -226,14 +233,15 @@ public class ActividadService {
             throw new ValidacionNegocioException("El año no puede ser menor al año actual (" + anioActual + ")");
         }
 
-        LocalDateTime ultimaFechaConDisponibilidad = actividadRepository.findUltimaFechaByActividadId(idActividad)
-                .orElseThrow(() -> new ValidacionNegocioException("La actividad no tiene días programados"));
+        //TODO:Reemplazarlo después como parámetro del sistema
+        LocalDate limiteVentana = LocalDate.now().plusDays(120);
+        int anioMaximoPermitido = actividadRepository.findUltimaFechaByActividadId(idActividad)
+                .map(ultima -> Math.max(ultima.getYear(), limiteVentana.getYear()))
+                .orElse(limiteVentana.getYear());
 
-
-        int anioMaximoPermitido = ultimaFechaConDisponibilidad.getYear();
         if (anio > anioMaximoPermitido) {
             throw new ValidacionNegocioException("No puedes consultar el calendario para el año " + anio +
-                    ". La actividad tiene disponibilidad cargada solo hasta el año " + anioMaximoPermitido);
+                    ". Solo se pueden gestionar días hasta el año " + anioMaximoPermitido);
         }
 
         DTOCalendarioActividadDiaResponse dto = actividadMapper.actividadToDTOCalendarioActividadDia(actividad);
@@ -496,6 +504,35 @@ public class ActividadService {
         obtenerDiaDeActividad(idActividad, idActividadDia);
         return actividadRepository.obtenerFiltroEstadosReserva(idActividadDia, ESTADOS_RESERVA_VISIBLES_PRODUCTOR);
     }
+    //US-ACT-11: Agregar un actividadDia
+    @Transactional
+    public DTOActividadDiaResponse agregarUnActividadDia(UUID idEstablecimiento, UUID idActividad, DTOActividadDiaAlta dto) {
+        validarEstablecimientoNoSuspendido(idEstablecimiento);
+        Actividad actividad = obtenerActividad(idActividad);
+        LocalDateTime ahora = LocalDateTime.now();
+
+        validarFechaEnVentana(dto.getFecha(), ahora.toLocalDate());
+        validarHorario(dto.getHoraInicio(), dto.getHoraFin());
+        if (!LocalDateTime.of(dto.getFecha(), dto.getHoraInicio()).isAfter(ahora)) {
+            throw new ValidacionNegocioException("El horario de inicio seleccionado ya pasó.");
+        }
+        //Evitamos solapamiento de día, no se permite crear un día si esa fecha ya tiene un día activo
+        boolean fechaOcupada = !actividadRepository.findIniciosDiasOcupadosEnRango(idActividad, ESTADOS_ACTIVIDAD_DIA_OCUPADO,
+                dto.getFecha().atStartOfDay(), dto.getFecha().plusDays(1).atStartOfDay()).isEmpty();
+        if (fechaOcupada) {
+            throw new ValidacionNegocioException("La actividad ya tiene un día activo el " + dto.getFecha() + ".");
+        }
+
+        ActividadDia dia = new ActividadDia();
+        dia.setFechaHoraInicio(LocalDateTime.of(dto.getFecha(),dto.getHoraInicio()));
+        dia.setFechaHoraFin(LocalDateTime.of(dto.getFecha(),dto.getHoraFin()));
+        dia.setCuposMax(dto.getCuposMax());
+        dia.cambiarEstado(obtenerEstadoDiaActiva(), ahora,  "Alta individual de día");
+        actividad.addActividadDia(dia);
+        actividadRepository.flush(); // persiste el día por cascada y le asigna el id
+
+        return actividadMapper.actividadDiatoDTOActividadDia(dia);
+    }
 
     //Métodos auxiliares
 
@@ -528,6 +565,38 @@ public class ActividadService {
         }
         return logAltas;
     }
+    private void validarFechaEnVentana(LocalDate fecha, LocalDate hoy) {
+        if (fecha.isBefore(hoy)) {
+            throw new ValidacionNegocioException("La fecha " + fecha + " no puede ser anterior a hoy.");
+        }
+        LocalDate limite = hoy.plusDays(VENTANA_MAXIMA_DIAS);
+        if (fecha.isAfter(limite)) {
+            throw new ValidacionNegocioException("Fuera de ventana: la fecha " + fecha + " supera los "
+                    + VENTANA_MAXIMA_DIAS + " días permitidos (máximo " + limite + ").");
+        }
+    }
+
+    private void validarHorario(LocalTime inicio, LocalTime fin) {
+        if (!fin.isAfter(inicio)) {
+            throw new ValidacionNegocioException("La hora de fin debe ser posterior a la hora de inicio.");
+        }
+    }
+
+    private EstadoActividadDia obtenerEstadoDiaActiva() {
+        return estadoActividadDiaRepository.findByNombre(EstadoActividadDiaNombre.ACTIVA)
+                .orElseThrow(() -> new ResourceNotFoundException("El estado ACTIVA no está configurado en la base de datos de catálogos."));
+    }
+
+    private ActividadDia crearActividadDia(LocalDate fecha, LocalTime inicio, LocalTime fin, int cuposMax,
+                                           EstadoActividadDia estado, LocalDateTime ahora, String motivo) {
+        ActividadDia dia = new ActividadDia();
+        dia.setFechaHoraInicio(LocalDateTime.of(fecha, inicio));
+        dia.setFechaHoraFin(LocalDateTime.of(fecha, fin));
+        dia.setCuposMax(cuposMax);
+        dia.cambiarEstado(estado, ahora, motivo);
+        return dia;
+    }
+
 
     //Método para crear las ActividadDia
     private List<ActividadDia> generarDiasCalendario(DTOActividadAlta dto, ActividadLogAltas logAltas) {

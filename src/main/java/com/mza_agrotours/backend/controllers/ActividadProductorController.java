@@ -146,6 +146,18 @@ public class ActividadProductorController {
         return ResponseEntity.ok(ApiResponse.ok(filtros));
     }
 
+    //US-ACT-11: Agregar un día puntual
+    @PostMapping("/{actividadId}/dias")
+    @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
+    public ResponseEntity<ApiResponse<DTOActividadDiaResponse>> agregarDia(
+            @PathVariable UUID establecimientoId,
+            @PathVariable UUID actividadId,
+            @Valid @RequestBody DTOActividadDiaAlta dto) {
+
+        DTOActividadDiaResponse dia = servicio.agregarUnActividadDia(establecimientoId, actividadId, dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(dia));
+    }
+
 
     @DeleteMapping("/{actividadId}")
     @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
