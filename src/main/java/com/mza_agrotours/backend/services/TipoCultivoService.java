@@ -1,13 +1,17 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import com.mza_agrotours.backend.dtos.receta.DTORecetaAMResponse;
 import com.mza_agrotours.backend.dtos.tipoCultivo.*;
+import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.cultivo.Estacionalidad;
 import com.mza_agrotours.backend.entities.cultivo.EstacionalidadMes;
 import com.mza_agrotours.backend.entities.cultivo.InformacionNutricional;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
+import com.mza_agrotours.backend.enums.CarpetaArchivo;
 import com.mza_agrotours.backend.enums.EstacionalidadNombre;
 import com.mza_agrotours.backend.enums.Mes;
 import com.mza_agrotours.backend.exceptions.AppException;
@@ -43,6 +47,8 @@ public class TipoCultivoService {
     private EstacionalidadRepository estacionalidadRepository;
     @Autowired
     private TipoCultivoMapper tipoCultivoMapper;
+    @Autowired
+    private ArchivoService archivoService;
     @Autowired
     private RecetaRepository recetaRepository;
     @Autowired
@@ -107,6 +113,7 @@ public class TipoCultivoService {
         tipoCultivo.setEstacionalidadMeses(construirEstacionalidadMeses(dto.getEstacionalidadPorMes()));
         tipoCultivo.setPorcionReferencia(dto.getPorcionReferencia());
         tipoCultivo.setInformacionNutricional(construirInformacionNutricional(dto.getInformacionNutricional()));
+        sincronizarFoto(dto.getFoto(), tipoCultivo);
 
         TipoCultivo guardado = tipoCultivoRepository.save(tipoCultivo);
 
@@ -147,6 +154,7 @@ public class TipoCultivoService {
         informacionActual.clear();
         informacionActual.addAll(informacionNueva);
 
+        sincronizarFoto(dto.getFoto(), tipoCultivo);
 
         TipoCultivo guardado = tipoCultivoRepository.save(tipoCultivo);
         DTOtcAMResponse response = new DTOtcAMResponse();
@@ -361,6 +369,7 @@ public class TipoCultivoService {
         dto.setEstacionalidadPorMes(obtenerEstacionalidadPorMes(tipoCultivo));
         dto.setPorcionReferencia(tipoCultivo.getPorcionReferencia());
         dto.setInformacionNutricional(tipoCultivoMapper.informacionNutricionalToDto(tipoCultivo.getInformacionNutricional()));
+        dto.setFoto(mapearFoto(tipoCultivo.getFoto()));
 
         return dto;
     }
@@ -501,6 +510,7 @@ public class TipoCultivoService {
         dto.setNombre(tipoCultivo.getNombre());
         dto.setResumenCosecha(calcularResumenCosecha(tipoCultivo));
         dto.setEnTemporada(estaEnTemporada(tipoCultivo));
+        dto.setFoto(mapearFoto(tipoCultivo.getFoto()));
         return dto;
     }
 
@@ -528,6 +538,7 @@ public class TipoCultivoService {
         dto.setInformacionNutricional(tipoCultivoMapper.informacionNutricionalToDto(tipoCultivo.getInformacionNutricional()));
         dto.setRecetas(obtenerRecetasDelCultivo(tipoCultivo));
         dto.setActividades(obtenerActividadesDelCultivo(tipoCultivo));
+        dto.setFoto(mapearFoto(tipoCultivo.getFoto()));
         return dto;
     }
 
@@ -541,6 +552,7 @@ public class TipoCultivoService {
                     dto.setTiempo(formatearTiempo(r.getTiempoMinsAprox()));
                     dto.setPorciones(r.getPorciones());
                     dto.setDificultad(r.getDificultad());
+                    dto.setFoto(mapearFoto(r.getFoto()));
                     return dto;
                 })
                 .toList();
@@ -586,4 +598,36 @@ public class TipoCultivoService {
                 .orElse(null);
     }
 
+
+    /**
+     * La foto que llega es el estado final: en null se quita la actual, y si
+     * es la misma key no se toca nada. Reclamar una key ya asociada fallaria.
+     */
+    private void sincronizarFoto(ArchivoClaimRequest pedida, TipoCultivo tipoCultivo) {
+        Archivo actual = tipoCultivo.getFoto();
+
+        if (pedida == null) {
+            tipoCultivo.setFoto(null);
+            return;
+        }
+
+        if (actual != null && actual.getKey().equals(pedida.getKey())) {
+            return;
+        }
+
+        tipoCultivo.setFoto(this.archivoService.reclamarArchivo(pedida, CarpetaArchivo.CULTIVOS));
+    }
+
+    private DTOFotosResponse mapearFoto(Archivo foto) {
+        if (foto == null) {
+            return null;
+        }
+
+        DTOFotosResponse dto = new DTOFotosResponse();
+        dto.setKey(foto.getKey());
+        dto.setNombre(foto.getNombre());
+        dto.setExtension(foto.getExtension());
+        dto.setDownloadUrl(this.archivoService.getDownloadUrl(foto.getKey()));
+        return dto;
+    }
 }

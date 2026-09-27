@@ -34,6 +34,53 @@ services:
     volumes:
       - mailpitdata:/data
 
+  rustfs:
+    image: rustfs/rustfs:1.0.0
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      RUSTFS_ACCESS_KEY: rustfsadmin
+      RUSTFS_SECRET_KEY: rustfsadmin
+      RUSTFS_VOLUMES: /data
+      RUSTFS_CONSOLE_ENABLE: "true"
+      # El navegador sube directo al bucket, asi que el preflight lo responde RustFS.
+      RUSTFS_CORS_ALLOWED_ORIGINS: "*"
+      TZ: America/Argentina/Buenos_Aires
+    volumes:
+      - rustfsdata:/data
+
+  # Misma policy que genera ObjectStoragePolicies.lecturaPublica.
+  rustfs-init:
+    image: amazon/aws-cli:2.37.4
+    depends_on:
+      - rustfs
+    environment:
+      AWS_ACCESS_KEY_ID: rustfsadmin
+      AWS_SECRET_ACCESS_KEY: rustfsadmin
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ENDPOINT_URL: http://rustfs:9000
+    entrypoint: >
+      /bin/sh -c "
+      until aws s3api list-buckets > /dev/null 2>&1; do sleep 2; done &&
+      (aws s3api head-bucket --bucket mza-agrotours 2>/dev/null || aws s3api create-bucket --bucket mza-agrotours) &&
+      aws s3api put-bucket-policy --bucket mza-agrotours --policy '{
+        \"Version\": \"2012-10-17\",
+        \"Statement\": [{
+          \"Sid\": \"LecturaPublicaDeCarpetasPublicas\",
+          \"Effect\": \"Allow\",
+          \"Principal\": {\"AWS\": [\"*\"]},
+          \"Action\": [\"s3:GetObject\"],
+          \"Resource\": [
+            \"arn:aws:s3:::mza-agrotours/establecimientos/*\",
+            \"arn:aws:s3:::mza-agrotours/actividades/*\",
+            \"arn:aws:s3:::mza-agrotours/cultivos/*\",
+            \"arn:aws:s3:::mza-agrotours/recetas/*\"
+          ]
+        }]
+      }'
+      "
+
   # TODO: Añadir Redis al implementar módulo actividades
 
 volumes:
@@ -41,3 +88,4 @@ volumes:
   mailpitdata:
   redis-data:
     driver: local
+  rustfsdata:
