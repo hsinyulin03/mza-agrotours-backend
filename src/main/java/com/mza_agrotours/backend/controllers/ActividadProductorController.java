@@ -99,6 +99,16 @@ public class ActividadProductorController {
         return ResponseEntity.ok(ApiResponse.ok(estadosRes));
     }
 
+    @PatchMapping("/{actividadId}/estado")
+    @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
+    public ResponseEntity<ApiResponse<DTOCambioEstadoActividadResponse>> cambiarEstadoPublicacion(
+            @PathVariable UUID establecimientoId,
+            @PathVariable UUID actividadId,
+            @Valid @RequestBody DTOCambioEstadoActividad dto) {
+        DTOCambioEstadoActividadResponse response = servicio.cambiarEstadoActividad(establecimientoId, actividadId, dto);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
     //US-ACT-08: Resumen del día (encabezado de la pantalla)
     @GetMapping("/{actividadId}/dias/{actividadDiaId}/resumen")
     @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")

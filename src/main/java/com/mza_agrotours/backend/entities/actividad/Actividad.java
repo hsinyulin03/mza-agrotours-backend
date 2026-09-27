@@ -73,6 +73,7 @@ public class Actividad extends BaseEntity {
     // Paso 4: Disponibilidad
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "actividad_id")
+    @OrderBy("fechaHoraAlta DESC")
     private List<ActividadLogAltas> logAltas = new ArrayList<>();
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
