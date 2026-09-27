@@ -17,22 +17,26 @@ public interface RecetaMapper {
     @Mapping(target = "cultivos", ignore = true)
     @Mapping(target = "ingredientes", ignore = true)
     @Mapping(target = "pasos", ignore = true)
+    @Mapping(target = "foto", ignore = true)
     DTORecetaDetalleM recetaToDtoDetalle(Receta receta);
 
     @Mapping(target = "nombresCultivos", ignore = true)
     @Mapping(source = "duracion.nombre.nombre", target = "duracionNombre")
     @Mapping(target = "cantidadPasos", ignore = true)
+    @Mapping(target = "foto", ignore = true)
     DTORecetaListado recetaToDtoListado(Receta receta);
 
     @Mapping(target = "cultivos", ignore = true)
     @Mapping(target = "cantidadPasos", ignore = true)
     @Mapping(source = "duracion.nombre", target = "duracion")
     @Mapping(target = "tiempo", expression = "java(formatearTiempo(receta.getTiempoMinsAprox()))")
+    @Mapping(target = "foto", ignore = true)
     DTORecetaCatalogoVisitante recetaToDtoCatalogoVisitante(Receta receta);
 
     @Mapping(target = "cultivos", ignore = true)
     @Mapping(source = "duracion.nombre", target = "duracion")
     @Mapping(target = "tiempo", expression = "java(formatearTiempo(receta.getTiempoMinsAprox()))")
+    @Mapping(target = "foto", ignore = true)
     DTODetalleVisitanteReceta recetaToDtoDetalleVisitante(Receta receta);
 
     @Mapping(source = "numero", target = "numeroPaso")
