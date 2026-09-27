@@ -534,6 +534,54 @@ public class ActividadService {
         obtenerActividad(idActividad);
         return planificarLote(idActividad, dto, LocalDateTime.now());
     }
+    //US-ACT-11: Agregar días por lote y generar log de altas
+    @Transactional
+    public DTOPrevisualizacionLoteResponse agregarLoteActividadDias(UUID idEstablecimiento, UUID idActividad, DTOActividadDiasLote dto) {
+        validarEstablecimientoNoSuspendido(idEstablecimiento);
+        Actividad actividad = obtenerActividad(idActividad);
+        LocalDateTime ahora = LocalDateTime.now();
+
+        //Se recalcula al guardar: no se confía en lo que mostró la previsualización
+        DTOPrevisualizacionLoteResponse plan = planificarLote(idActividad, dto, ahora);
+        if (plan.getDiasACrear().isEmpty()) {
+            throw new ValidacionNegocioException("No hay días para crear en el rango seleccionado: " +
+                    "todas las fechas ya tienen un día activo o su horario ya pasó.");
+        }
+
+        //Log del lote: un ActividadLogAltasDia por cada día de la semana elegido
+        ActividadLogAltas logAltas = new ActividadLogAltas();
+        logAltas.setFechaHoraAlta(ahora);
+        logAltas.setFechaValidaDesde(dto.getFechaDesde());
+        logAltas.setFechaValidaHasta(dto.getFechaHasta());
+        for (Dia diaSemana : dto.getDias()) {
+            ActividadLogAltasDia logDia = new ActividadLogAltasDia();
+            logDia.setDia(diaSemana);
+            logDia.setHoraInicio(dto.getHoraInicio());
+            logDia.setHoraFin(dto.getHoraFin());
+            logAltas.addDia(logDia);
+        }
+        EstadoActividadDia estadoActiva = obtenerEstadoDiaActiva();
+        for (DTODiaLote diaLote : plan.getDiasACrear()) {
+
+            ActividadDia dia = new ActividadDia();
+            dia.setFechaHoraInicio(LocalDateTime.of(diaLote.getFecha(),dto.getHoraInicio()));
+            dia.setFechaHoraFin(LocalDateTime.of(diaLote.getFecha(),dto.getHoraFin()));
+            dia.setCuposMax(dto.getCuposMax());
+            dia.cambiarEstado(estadoActiva, ahora,  "Alta por lote");
+
+            //Linkeamos el día con la config de su día de semana en el log
+            logAltas.getDias().stream()
+                    .filter(logDia -> coincideDia(logDia.getDia(), diaLote.getFecha().getDayOfWeek()))
+                    .findFirst()
+                    .ifPresent(logDia -> logDia.addActividadDia(dia));
+
+            actividad.addActividadDia(dia);
+        }
+        actividad.addLogAlta(logAltas);
+        actividadRepository.save(actividad);
+
+        return plan;
+    }
 
     //US-ACT-11: datos de referencia para el formulario de agregar días (tarifas y ventana)
     @Transactional(readOnly = true)
