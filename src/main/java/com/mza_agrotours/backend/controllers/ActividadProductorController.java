@@ -146,6 +146,20 @@ public class ActividadProductorController {
         return ResponseEntity.ok(ApiResponse.ok(filtros));
     }
 
+    //US-ACT-11: Calendario para gestionar los días de una actividad
+    @GetMapping("/{actividadId}/dias/calendario")
+    @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
+    public ResponseEntity<ApiResponse<DTOCalendarioGestionDiasResponse>> obtenerCalendarioGestionDias(
+            @PathVariable UUID establecimientoId,
+            @PathVariable UUID actividadId,
+            @RequestParam @Min(value = 1, message = "El mes debe ser mayor o igual a 1")
+            @Max(value = 12, message = "El mes debe ser menor o igual a 12") int mes,
+            @RequestParam int anio) {
+
+        DTOCalendarioGestionDiasResponse calendario = servicio.obtenerCalendarioGestionDias(actividadId, mes, anio);
+        return ResponseEntity.ok(ApiResponse.ok(calendario));
+    }
+
     //US-ACT-11: Agregar un día puntual
     @PostMapping("/{actividadId}/dias")
     @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")

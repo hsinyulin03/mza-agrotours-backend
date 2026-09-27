@@ -221,40 +221,10 @@ public class ActividadService {
     public DTOCalendarioActividadDiaResponse obtenerDetalleCalendario(UUID idActividad, int mes, int anio){
 
         Actividad actividad = actividadRepository.findById(idActividad).orElseThrow(ActividadNotFoundException::new);
-        int anioActual = java.time.LocalDate.now().getYear();
-
-        if (anio < anioActual) {
-            throw new ValidacionNegocioException("El año no puede ser menor al año actual (" + anioActual + ")");
-        }
-
-        //TODO:Reemplazarlo después como parámetro del sistema
-        LocalDate limiteVentana = LocalDate.now().plusDays(120);
-        int anioMaximoPermitido = actividadRepository.findUltimaFechaByActividadId(idActividad)
-                .map(ultima -> Math.max(ultima.getYear(), limiteVentana.getYear()))
-                .orElse(limiteVentana.getYear());
-
-        if (anio > anioMaximoPermitido) {
-            throw new ValidacionNegocioException("No puedes consultar el calendario para el año " + anio +
-                    ". Solo se pueden gestionar días hasta el año " + anioMaximoPermitido);
-        }
 
         DTOCalendarioActividadDiaResponse dto = actividadMapper.actividadToDTOCalendarioActividadDia(actividad);
 
-        LocalDateTime desde = LocalDate.of(anio, mes, 1).atStartOfDay();
-        LocalDateTime hasta = desde.plusMonths(1);
-
-        List<ActividadDia> diasDelMes = actividadRepository.findDiasDelMes(idActividad, desde, hasta);
-        Map<UUID, DTOCuposPorDia> cuposPorDia = obtenerCuposPorDia(diasDelMes);
-
-        List<DTOActividadDiaResponse> diasDelMesDto = diasDelMes.stream()
-                .map(dia -> {
-                    DTOActividadDiaResponse dtoDia = actividadMapper.actividadDiatoDTOActividadDia(dia);
-                    dtoDia.aplicarCupos(cuposPorDia.get(dia.getId()));
-                    return dtoDia;
-                })
-                .toList();
-
-        dto.setDiasDelMes(diasDelMesDto);
+        dto.setDiasDelMes(obtenerCalendarioDiasDelMes(idActividad, mes, anio));
         dto.setMetricas(reservaRepository.obtenerMetricasDeReservas(idActividad));
         return dto;
     }
@@ -498,6 +468,42 @@ public class ActividadService {
         obtenerDiaDeActividad(idActividad, idActividadDia);
         return actividadRepository.obtenerFiltroEstadosReserva(idActividadDia, ESTADOS_RESERVA_VISIBLES_PRODUCTOR);
     }
+    //US-ACT-11: Calendario para gestionar días + encabezado con las vigencias de los logs de altas
+    @Transactional(readOnly = true)
+    public DTOCalendarioGestionDiasResponse obtenerCalendarioGestionDias(UUID idActividad, int mes, int anio) {
+        Actividad actividad = obtenerActividad(idActividad);
+
+        //Primero los días: acá se valida el año
+        List<DTOActividadDiaResponse> diasDelMes = obtenerCalendarioDiasDelMes(idActividad, mes, anio);
+
+        LocalDate inicioMes = LocalDate.of(anio, mes, 1);
+        LocalDate finMes = inicioMes.plusMonths(1).minusDays(1);
+
+        //Filas del encabezado: logs que se cruzan con el mes, agrupados por horario
+        Map<String, DTOConfiguracionHorario> configuracionesPorHorario = new LinkedHashMap<>();
+        for (ActividadLogAltas log : actividad.getLogAltas()) {
+            //¿El período de vigencia del log tiene al menos un día en común con el mes que estoy consultando?
+            boolean cruzaElMes = !log.getFechaValidaDesde().isAfter(finMes) && !log.getFechaValidaHasta().isBefore(inicioMes);
+            if (!cruzaElMes) {
+                continue;  //como no cruza, ignoro el log
+            }
+            for (ActividadLogAltasDia logDia : log.getDias()) {
+                String horario = logDia.getHoraInicio() + "-" + logDia.getHoraFin();
+                configuracionesPorHorario
+                        .computeIfAbsent(horario, h -> new DTOConfiguracionHorario(logDia.getHoraInicio(), logDia.getHoraFin()))
+                        .agregar(logDia.getDia(), log.getFechaValidaDesde(), log.getFechaValidaHasta());
+            }
+        }
+        List<DTOConfiguracionHorario> configuraciones = configuracionesPorHorario.values().stream()
+                .sorted(Comparator.comparing(DTOConfiguracionHorario::getHoraInicio))
+                .toList();
+
+        DTOCalendarioGestionDiasResponse dto = actividadMapper.actividadToDTOCalendarioGestionDias(actividad);
+        dto.setConfiguraciones(configuraciones);
+        dto.setDiasDelMes(diasDelMes);
+        return dto;
+    }
+
     //US-ACT-11: Agregar un actividadDia
     @Transactional
     public DTOActividadDiaResponse agregarUnActividadDia(UUID idEstablecimiento, UUID idActividad, DTOActividadDiaAlta dto) {
@@ -630,6 +636,40 @@ public class ActividadService {
     }
 
     //Métodos auxiliares
+
+    //Se usa en la US-ACT-07 y US-ACT-11: días del mes con sus cupos, para armar el calendario
+    private List<DTOActividadDiaResponse> obtenerCalendarioDiasDelMes(UUID idActividad, int mes, int anio){
+        int anioActual = java.time.LocalDate.now().getYear();
+
+        if (anio < anioActual) {
+            throw new ValidacionNegocioException("El año no puede ser menor al año actual (" + anioActual + ")");
+        }
+
+        LocalDate limiteVentana = LocalDate.now().plusDays(VENTANA_MAXIMA_DIAS);
+        int anioMaximoPermitido = actividadRepository.findUltimaFechaByActividadId(idActividad)
+                .map(ultima -> Math.max(ultima.getYear(), limiteVentana.getYear()))
+                .orElse(limiteVentana.getYear());
+
+        if (anio > anioMaximoPermitido) {
+            throw new ValidacionNegocioException("No puedes consultar el calendario para el año " + anio +
+                    ". Solo se pueden gestionar días hasta el año " + anioMaximoPermitido);
+        }
+
+        LocalDateTime desde = LocalDate.of(anio, mes, 1).atStartOfDay();
+        LocalDateTime hasta = desde.plusMonths(1);
+
+        List<ActividadDia> diasDelMes = actividadRepository.findDiasDelMes(idActividad, desde, hasta);
+        Map<UUID, DTOCuposPorDia> cuposPorDia = obtenerCuposPorDia(diasDelMes);
+
+        return diasDelMes.stream()
+                .map(dia -> {
+                    DTOActividadDiaResponse dtoDia = actividadMapper.actividadDiatoDTOActividadDia(dia);
+                    dtoDia.aplicarCupos(cuposPorDia.get(dia.getId()));
+                    return dtoDia;
+                })
+                .toList();
+
+    }
 
     //arma qué días se crean y cuáles no
     private DTOPrevisualizacionLoteResponse planificarLote(UUID idActividad, DTOActividadDiasLote dto, LocalDateTime ahora) {
