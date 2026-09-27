@@ -106,21 +106,6 @@ public class ActividadService {
     @Autowired
     private ReservaService reservaService;
 
-    private static final List<EstadoReservaNombre> ESTADOS_RESERVA_VISIBLES_PRODUCTOR = List.of(
-            EstadoReservaNombre.PENDIENTE,
-            EstadoReservaNombre.PAGADA,
-            EstadoReservaNombre.CANCELADA_CON_REEMBOLSO,
-            EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO,
-            EstadoReservaNombre.FINALIZADA);
-
-    private static final List<EstadoReservaNombre> ESTADOS_RESERVA_CALCULAR_INGRESO = List.of(
-            EstadoReservaNombre.PAGADA,
-            EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO,
-            EstadoReservaNombre.FINALIZADA);
-
-    @Autowired
-    private ArchivoMapper archivoMapper;
-
     //US-ACT-03 Alta de actividad
     @Transactional
     public DTOActividadAltaResponse altaActividad(UUID establecimientoId, DTOActividadAlta dto) {
