@@ -164,7 +164,7 @@ public class ChatService {
         }
     }
 
-    public void quitarTodosLosMiembrosDeEstablecimiento(UUID establecimientoId) {
+    public void quitarEstablecimiento(UUID establecimientoId) {
         DatabaseReference miembrosRef = firebaseDatabase.getReference("establecimiento_miembro/" + establecimientoId);
 
         try {
