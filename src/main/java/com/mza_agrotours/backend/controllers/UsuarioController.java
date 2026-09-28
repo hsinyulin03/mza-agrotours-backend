@@ -28,9 +28,8 @@ public class UsuarioController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getUsuarioMeByEmail(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) throws Exception {
-        String email = usuarioAuthDetails.getEmail();
-        UsuarioGetDTO usuarioGetDTO = this.usuarioService.getUsuarioByEmail(email);
+    public ResponseEntity<?> getUsuarioMeByFirebaseUID(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) throws Exception {
+        UsuarioGetDTO usuarioGetDTO = this.usuarioService.getUsuarioByFirebaseUID(usuarioAuthDetails.getFirebaseUID());
         ApiResponse<UsuarioGetDTO> response = ApiResponse.ok(usuarioGetDTO);
 
         return ResponseEntity.ok(response);

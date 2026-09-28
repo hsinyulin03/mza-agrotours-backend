@@ -113,10 +113,13 @@ public class UsuarioService {
     }
 
     @Transactional
-    public UsuarioGetDTO getUsuarioByEmail(String email) {
-        String normalizedEmail = email == null ? null : email.trim();
-        Usuario usuario = usuarioRepository.findActiveByEmail(normalizedEmail)
-                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+    public UsuarioGetDTO getUsuarioByFirebaseUID(String firebaseUID) {
+        Usuario usuario = usuarioRepository.findByFirebaseUID(firebaseUID)
+                .orElseThrow(() -> new AppException(UsuarioError.USUARIO_NOT_FOUND));
+
+        if (usuario.getFechaHoraBaja() != null) {
+            throw new AppException(UsuarioError.USUARIO_INACTIVO);
+        }
 
         Visitante visitante = visitanteRepository.findByUsuario(usuario)
                 .orElseThrow(() -> new IllegalStateException(
