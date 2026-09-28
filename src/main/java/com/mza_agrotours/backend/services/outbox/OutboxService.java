@@ -5,6 +5,7 @@ import com.mza_agrotours.backend.entities.Outbox;
 import com.mza_agrotours.backend.enums.outbox.EstadoOutbox;
 import com.mza_agrotours.backend.enums.outbox.TipoOperacion;
 import com.mza_agrotours.backend.repositories.OutboxRepository;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,12 +22,14 @@ public class OutboxService {
 
     private final OutboxRepository outboxRepository;
     private final OutboxStrategyFactory outboxStrategyFactory;
+    private final OutboxService self;
 
     private final Random random = new Random();
 
-    public OutboxService(OutboxRepository outboxRepository, OutboxStrategyFactory outboxStrategyFactory) {
+    public OutboxService(OutboxRepository outboxRepository, OutboxStrategyFactory outboxStrategyFactory, @Lazy OutboxService self) {
         this.outboxRepository = outboxRepository;
         this.outboxStrategyFactory = outboxStrategyFactory;
+        this.self = self;
     }
 
     public void resolverPendientes() {
@@ -37,7 +40,7 @@ public class OutboxService {
                 continue;
             }
 
-            this.resolverOutbox(outbox);
+            self.resolverOutbox(outbox);
         }
     }
 
