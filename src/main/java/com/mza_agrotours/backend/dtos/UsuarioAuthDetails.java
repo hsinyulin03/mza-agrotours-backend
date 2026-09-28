@@ -9,4 +9,5 @@ import lombok.*;
 @Builder
 public class UsuarioAuthDetails {
     private String email;
+    private String firebaseUID;
 }

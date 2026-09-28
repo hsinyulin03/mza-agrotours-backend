@@ -8,9 +8,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.containers.MinIOContainer;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.containers.wait.strategy.Wait;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -32,16 +32,19 @@ public abstract class AbstractIntegrationTest {
 
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16.14");
 
-    /**
-     * MinIO ya no se publica en Docker Hub, de ahi el nombre completo de quay.io.
-     */
-    static final MinIOContainer MINIO = new MinIOContainer(
-            DockerImageName.parse("quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z")
-                    .asCompatibleSubstituteFor("minio/minio"));
+    private static final String RUSTFS_ACCESS_KEY = "rustfsadmin";
+    private static final String RUSTFS_SECRET_KEY = "rustfsadmin";
+
+    static final GenericContainer<?> RUSTFS = new GenericContainer<>("rustfs/rustfs:1.0.0")
+            .withExposedPorts(9000)
+            .withEnv("RUSTFS_ACCESS_KEY", RUSTFS_ACCESS_KEY)
+            .withEnv("RUSTFS_SECRET_KEY", RUSTFS_SECRET_KEY)
+            .withEnv("RUSTFS_VOLUMES", "/data")
+            .waitingFor(Wait.forHttp("/health").forPort(9000));
 
     static {
         POSTGRES.start();
-        MINIO.start();
+        RUSTFS.start();
         crearBucket();
     }
 
@@ -51,10 +54,14 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
 
-        registry.add("object-storage.endpoint", MINIO::getS3URL);
-        registry.add("object-storage.access-key", MINIO::getUserName);
-        registry.add("object-storage.secret-key", MINIO::getPassword);
-        registry.add("object-storage.public-base-url", () -> MINIO.getS3URL() + "/" + BUCKET);
+        registry.add("object-storage.endpoint", AbstractIntegrationTest::rustfsUrl);
+        registry.add("object-storage.access-key", () -> RUSTFS_ACCESS_KEY);
+        registry.add("object-storage.secret-key", () -> RUSTFS_SECRET_KEY);
+        registry.add("object-storage.public-base-url", () -> rustfsUrl() + "/" + BUCKET);
+    }
+
+    private static String rustfsUrl() {
+        return "http://" + RUSTFS.getHost() + ":" + RUSTFS.getMappedPort(9000);
     }
 
     /**
@@ -63,10 +70,10 @@ public abstract class AbstractIntegrationTest {
      */
     private static void crearBucket() {
         try (S3Client client = S3Client.builder()
-                .endpointOverride(URI.create(MINIO.getS3URL()))
+                .endpointOverride(URI.create(rustfsUrl()))
                 .region(Region.US_EAST_1)
                 .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(MINIO.getUserName(), MINIO.getPassword())))
+                        AwsBasicCredentials.create(RUSTFS_ACCESS_KEY, RUSTFS_SECRET_KEY)))
                 .forcePathStyle(true)
                 .build()) {
             client.createBucket(request -> request.bucket(BUCKET));
