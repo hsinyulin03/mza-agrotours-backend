@@ -19,14 +19,17 @@ import com.mza_agrotours.backend.enums.CarpetaArchivo;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
+import com.mza_agrotours.backend.enums.outbox.TipoOperacion;
 import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.mappers.EstablecimientoMapper;
 import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
+import com.mza_agrotours.backend.services.outbox.OutboxService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -68,6 +71,12 @@ public class EstablecimientoService  {
 
     @Autowired
     private EstadoActividadRepository estadoActividadRepository;
+
+    @Autowired
+    private OutboxService outboxService;
+
+    @Autowired
+    private ApplicationEventPublisher publisher;
 
 // ALTA ESTABLECIMIENTO
     @Transactional
@@ -174,6 +183,9 @@ public class EstablecimientoService  {
         this.actividadRepository.saveAll(establecimiento.getActividades());
 
         Establecimiento eliminado = establecimientoRepository.save(establecimiento);
+
+        publisher.publishEvent(this.outboxService.crearOutboxPendiente(eliminado.getId().toString(), TipoOperacion.QUITAR_ESTABLECIMIENTO));
+
         DTOBajaEstablecimientoResponse response = new DTOBajaEstablecimientoResponse();
         response.setIdestablecimiento(eliminado.getId());
         response.setMensaje("Establecimiento dado de baja exitosamente.");
