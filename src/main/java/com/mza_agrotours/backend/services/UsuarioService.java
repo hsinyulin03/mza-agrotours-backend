@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UsuarioService {
@@ -68,8 +69,14 @@ public class UsuarioService {
 
     @Transactional
     public UsuarioGetDTO createUsuario(UsuarioCreateReq usuarioCreateReq, UsuarioAuthDetails usuarioAuthDetails) {
-        if (this.usuarioRepository.existsByFirebaseUIDAndFechaHoraBajaIsNull(usuarioAuthDetails.getFirebaseUID())) {
+        Optional<Usuario> usuario = usuarioRepository.findByFirebaseUID(usuarioAuthDetails.getFirebaseUID());
+
+        if (usuario.isPresent() && usuario.get().getFechaHoraBaja() == null) {
             throw new AppException(UsuarioError.USUARIO_ALREADY_EXISTS);
+        }
+
+        if (usuario.isPresent()) {
+            throw new AppException(UsuarioError.USUARIO_INACTIVO);
         }
 
         TipoIdentificacion tipoIdentificacion = resolveTipoIdentificacion(usuarioCreateReq.getTipoIdentificacion());
