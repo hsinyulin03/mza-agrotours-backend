@@ -6,11 +6,10 @@ import com.mza_agrotours.backend.dtos.chat.ChatSnapshotDTO;
 import com.mza_agrotours.backend.dtos.chat.ChatUsuarioDTO;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
-import com.mza_agrotours.backend.exceptions.AppException;
-import com.mza_agrotours.backend.exceptions.ChatError;
-import com.mza_agrotours.backend.exceptions.EntityNotFoundException;
-import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
+import com.mza_agrotours.backend.entities.productor.Productor;
+import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
+import com.mza_agrotours.backend.repositories.ProductorRepository;
 import com.mza_agrotours.backend.repositories.UsuarioRepository;
 import org.springframework.stereotype.Service;
 
@@ -26,12 +25,16 @@ import java.util.concurrent.TimeoutException;
 public class ChatService {
     private final EstablecimientoRepository establecimientoRepository;
     private final UsuarioRepository usuarioRepository;
-
+    private final ProductorRepository productorRepository;
     private final FirebaseDatabase firebaseDatabase;
 
-    public ChatService(EstablecimientoRepository establecimientoRepository, UsuarioRepository usuarioRepository, FirebaseDatabase firebaseDatabase) {
+    public ChatService(EstablecimientoRepository establecimientoRepository,
+                       UsuarioRepository usuarioRepository,
+                       ProductorRepository productorRepository,
+                       FirebaseDatabase firebaseDatabase) {
         this.establecimientoRepository = establecimientoRepository;
         this.usuarioRepository = usuarioRepository;
+        this.productorRepository = productorRepository;
         this.firebaseDatabase = firebaseDatabase;
     }
 
@@ -117,18 +120,23 @@ public class ChatService {
         }
     }
 
-    public void agregarMiembroAEstablecimiento(UUID establecimientoId, UUID usuarioId) {
-        DatabaseReference miembrosRef = firebaseDatabase.getReference("establecimiento_miembro/" + establecimientoId + "/" + usuarioId);
+    public void agregarMiembroAEstablecimiento(String productorId) throws FailedToAddMiembroEstablecimientoException {
+        Productor productor = productorRepository.findById(UUID.fromString(productorId))
+                .orElseThrow(() -> new AppException(ProductorError.NOT_FOUND));
+
+        UUID establecimientoId = productor.getEstablecimiento().getId();
+
+        DatabaseReference miembrosRef = firebaseDatabase.getReference("establecimiento_miembro/" + establecimientoId + "/" + productorId);
 
         try {
             miembrosRef.setValueAsync(true).get(5000, TimeUnit.MILLISECONDS);
         } catch (ExecutionException ee) {
-            throw new RuntimeException("Fallo al añadir al miembro", ee.getCause());
+            throw new FailedToAddMiembroEstablecimientoException("Fallo al añadir al miembro", ee.getCause());
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("Fallo al añadir al miembro", ie);
+            throw new FailedToAddMiembroEstablecimientoException("Fallo al añadir al miembro", ie);
         } catch (TimeoutException e) {
-            throw new RuntimeException("Timeout al añadir al miembro expirado");
+            throw new FailedToAddMiembroEstablecimientoException("Timeout al añadir al miembro expirado");
         }
     }
 
