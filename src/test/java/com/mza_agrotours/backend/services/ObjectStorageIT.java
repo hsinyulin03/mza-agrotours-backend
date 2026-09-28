@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Ejercita el presigning contra un MinIO real: es lo que el proveedor local en
+ * Ejercita el presigning contra un RustFS real: es lo que el proveedor local en
  * disco no podia verificar, porque no firmaba nada. El bucket de los tests
  * lleva la misma policy que el de produccion, asi que tambien verifica que
  * carpetas quedan abiertas a lectura anonima y cuales no.

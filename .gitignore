@@ -44,7 +44,7 @@ firebase-service-account.json
 hs_err_pid*.log
 replay_pid*.log
 
-# Sobras del object storage en disco, reemplazado por MinIO. Se puede borrar.
+# Sobras del object storage en disco, reemplazado por RustFS. Se puede borrar.
 uploads/
 
 # Redis Data

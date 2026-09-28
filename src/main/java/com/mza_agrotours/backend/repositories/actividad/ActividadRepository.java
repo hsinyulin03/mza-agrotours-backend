@@ -6,6 +6,7 @@ import com.mza_agrotours.backend.dtos.administrador_sistemas.ConteoPorEstablecim
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
+import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.repositories.BaseEntityRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -172,4 +173,22 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
             "AND ad.fechaHoraInicio > :ahora")
     List<ActividadDia> findDiasFuturosVigentes(@Param("actividadId") UUID actividadId,
                                                @Param("ahora") LocalDateTime ahora);
+
+    @Query("SELECT ad FROM Actividad a " +
+            "JOIN a.actividadesDias ad " +
+            "WHERE a.id = :actividadId " +
+            "AND ad.id = :actividadDiaId")
+    Optional<ActividadDia> findDiaDeActividad(@Param("actividadId") UUID actividadId,
+                                              @Param("actividadDiaId") UUID actividadDiaId);
+
+    //Filtro de estado de reserva
+    @Query("SELECT NEW com.mza_agrotours.backend.dtos.actividad.DTOFiltro(er.nombre, COUNT(r)) " +
+            "FROM Reserva r " +
+            "JOIN r.estadoActual ea " +
+            "JOIN ea.estadoReserva er " +
+            "WHERE r.actividadDia.id = :actividadDiaId " +
+            "AND er.nombre IN :estados " +
+            "GROUP BY er.nombre")
+    List<DTOFiltro> obtenerFiltroEstadosReserva(@Param("actividadDiaId") UUID actividadDiaId,
+                                                @Param("estados") List <EstadoReservaNombre> estados);
 }
