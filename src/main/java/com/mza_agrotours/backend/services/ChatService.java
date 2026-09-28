@@ -164,7 +164,7 @@ public class ChatService {
         }
     }
 
-    public void quitarEstablecimiento(UUID establecimientoId) throws FailedFirebaseChatOperationException {
+    public void quitarEstablecimiento(String establecimientoId) throws FailedFirebaseChatOperationException {
         DatabaseReference miembrosRef = firebaseDatabase.getReference("establecimiento_miembro/" + establecimientoId);
 
         try {
