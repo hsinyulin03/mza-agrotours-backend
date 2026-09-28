@@ -14,7 +14,9 @@ public enum UsuarioError implements ErrorCode {
             "Ya existe un usuario con ese email"),
     USUARIO_NOT_FOUND("USR.notFound",
             HttpStatus.NOT_FOUND,
-            "No se ha encontrado el usuario");
+            "No se ha encontrado el usuario"),
+    USUARIO_INACTIVO("USR.inactivo",
+            HttpStatus.FORBIDDEN, "El usuario está dado de baja");
 
     private final String code;
     private final HttpStatus httpStatus;
