@@ -38,7 +38,13 @@ class OutboxServiceTest {
         when(factory.getStrategy(any())).thenReturn(strategy);
         when(outboxRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        this.outboxService = new OutboxService(outboxRepository, factory);
+        OutboxService self = mock(OutboxService.class);
+        doAnswer(invocation -> {
+            outboxService.resolverOutbox(invocation.getArgument(0));
+            return null;
+        }).when(self).resolverOutbox(any());
+
+        this.outboxService = new OutboxService(outboxRepository, factory, self);
     }
 
     @Test
