@@ -5,6 +5,7 @@ import com.mza_agrotours.backend.dtos.productor.ProductorCreateReq;
 import com.mza_agrotours.backend.dtos.productor.ProductorGetDTO;
 import com.mza_agrotours.backend.dtos.productor.ProductorUpdateReq;
 import com.mza_agrotours.backend.dtos.roles_permisos.RolGetShortDTO;
+import com.mza_agrotours.backend.entities.Outbox;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.productor.EstadoProductor;
@@ -13,6 +14,7 @@ import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import com.mza_agrotours.backend.enums.EstadoProductorNombre;
 import com.mza_agrotours.backend.enums.TipoNotificacionNombre;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
+import com.mza_agrotours.backend.enums.outbox.TipoOperacion;
 import com.mza_agrotours.backend.exceptions.AppException;
 import com.mza_agrotours.backend.exceptions.ProductorError;
 import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
@@ -20,9 +22,11 @@ import com.mza_agrotours.backend.mappers.ProductorMapper;
 import com.mza_agrotours.backend.mappers.RolMapper;
 import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.services.notificaciones.NotificacionService;
+import com.mza_agrotours.backend.services.outbox.OutboxService;
 import com.mza_agrotours.backend.services.roles_permisos.RolService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -54,7 +58,8 @@ public class ProductorService {
     private final NotificacionService notificacionService;
     private final ProductorService self;
 
-    private final ChatService chatService;
+    private final OutboxService outboxService;
+    private final ApplicationEventPublisher publisher;
 
     public ProductorService(EstadoProductorRepository estadoProductorRepository,
                             RolService rolService,
@@ -66,7 +71,8 @@ public class ProductorService {
                             RolMapper rolMapper,
                             NotificacionService notificacionService,
                             @Lazy ProductorService self,
-                            ChatService chatService) {
+                            OutboxService outboxService,
+                            ApplicationEventPublisher publisher) {
         this.estadoProductorRepository = estadoProductorRepository;
         this.rolService = rolService;
         this.productorRepository = productorRepository;
@@ -77,7 +83,8 @@ public class ProductorService {
         this.rolMapper = rolMapper;
         this.notificacionService =notificacionService;
         this.self = self;
-        this.chatService = chatService;
+        this.outboxService = outboxService;
+        this.publisher = publisher;
     }
 
     // ---------------------------------------------------------------- ABM
@@ -116,7 +123,8 @@ public class ProductorService {
 
         productor = this.productorRepository.save(productor);
 
-        chatService.agregarMiembroAEstablecimiento(establecimientoId, UUID.fromString(productor.getUsuario().getFirebaseUID()));
+        this.crearOutboxPendienteYPublicar(productor.getId().toString(), TipoOperacion.AGREGAR_MIEMBRO_ESTABLECIMIENTO);
+
 
         // TODO: entidad que diga quien hizo el cambio
         this.notificacionService.crearNotificacion(
@@ -161,7 +169,8 @@ public class ProductorService {
 
         // TODO: entidad que diga quien hizo el cambio
         this.productorRepository.save(productor);
-        chatService.quitarMiembroDelEstablecimiento(establecimientoId, UUID.fromString(productor.getUsuario().getFirebaseUID()));
+
+        this.crearOutboxPendienteYPublicar(productor.getId().toString(), TipoOperacion.QUITAR_MIEMBRO_ESTABLECIMIENTO);
 
         return true;
     }
@@ -205,7 +214,8 @@ public class ProductorService {
         productor.cambiarEstado(estadoSuspendido, motivo, ahora, fechaHoraFinPrevista);
 
         productor = this.productorRepository.save(productor);
-        chatService.quitarMiembroDelEstablecimiento(establecimientoId, UUID.fromString(productor.getUsuario().getFirebaseUID()));
+
+        this.crearOutboxPendienteYPublicar(productor.getId().toString(), TipoOperacion.QUITAR_MIEMBRO_ESTABLECIMIENTO);
 
         return this.productorMapper.productorToProductorGetDTO(productor);
     }
@@ -293,7 +303,7 @@ public class ProductorService {
         productorLider.cambiarEstado(estadoActivo, MOTIVO_ALTA_LIDER, ahora, null);
         productorLider = this.productorRepository.save(productorLider);
 
-        this.chatService.agregarMiembroAEstablecimiento(establecimiento.getId(), UUID.fromString(usuarioProductor.getFirebaseUID()));
+        this.crearOutboxPendienteYPublicar(productorLider.getId().toString(), TipoOperacion.AGREGAR_MIEMBRO_ESTABLECIMIENTO);
 
         return productorLider;
     }
@@ -303,7 +313,7 @@ public class ProductorService {
         productor.cambiarEstado(estadoActivo, motivo, ahora, null);
         productor = this.productorRepository.save(productor);
 
-        chatService.agregarMiembroAEstablecimiento(productor.getEstablecimiento().getId(), UUID.fromString(productor.getUsuario().getFirebaseUID()));
+        this.crearOutboxPendienteYPublicar(productor.getId().toString(), TipoOperacion.AGREGAR_MIEMBRO_ESTABLECIMIENTO);
 
         return productor;
     }
@@ -348,5 +358,10 @@ public class ProductorService {
     public List<RolGetShortDTO> obtenerRolesProductor(UUID establecimientoId) {
         List<Rol> rol = this.rolRepository.findAllVigentesMutablesEnScope(TipoPermisoNombre.PRODUCTOR, establecimientoId);
         return rolMapper.rolListToRolGetShortDTOList(rol);
+    }
+
+    private void crearOutboxPendienteYPublicar(String productorId, TipoOperacion tipoOperacion) {
+        Outbox outbox = this.outboxService.crearOutboxPendiente(productorId, tipoOperacion);
+        publisher.publishEvent(outbox);
     }
 }
