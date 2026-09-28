@@ -43,6 +43,7 @@ public class FirebaseTokenFilter extends OncePerRequestFilter {
 
                 UsuarioAuthDetails usuarioAuthDetails = UsuarioAuthDetails.builder()
                         .email(decodedToken.getEmail())
+                        .firebaseUID(decodedToken.getUid())
                         .build();
 
                 var authentication = new UsernamePasswordAuthenticationToken(usuarioAuthDetails, null, authorities);
