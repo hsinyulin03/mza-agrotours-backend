@@ -120,7 +120,7 @@ public class ChatService {
         }
     }
 
-    public void agregarMiembroAEstablecimiento(String productorId) throws FailedToAddMiembroEstablecimientoException {
+    public void agregarMiembroAEstablecimiento(String productorId) throws FailedFirebaseChatOperationException {
         Productor productor = productorRepository.findById(UUID.fromString(productorId))
                 .orElseThrow(() -> new AppException(ProductorError.NOT_FOUND));
 
@@ -131,16 +131,16 @@ public class ChatService {
         try {
             miembrosRef.setValueAsync(true).get(5000, TimeUnit.MILLISECONDS);
         } catch (ExecutionException ee) {
-            throw new FailedToAddMiembroEstablecimientoException("Fallo al añadir al miembro", ee.getCause());
+            throw new FailedFirebaseChatOperationException("Fallo al añadir al miembro", ee.getCause());
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
-            throw new FailedToAddMiembroEstablecimientoException("Fallo al añadir al miembro", ie);
+            throw new FailedFirebaseChatOperationException("Fallo al añadir al miembro", ie);
         } catch (TimeoutException e) {
-            throw new FailedToAddMiembroEstablecimientoException("Timeout al añadir al miembro expirado");
+            throw new FailedFirebaseChatOperationException("Timeout al añadir al miembro expirado");
         }
     }
 
-    public void quitarMiembroDelEstablecimiento(String productorId) throws FailedToDeleteMiembroEstablecimientoException {
+    public void quitarMiembroDelEstablecimiento(String productorId) throws FailedFirebaseChatOperationException {
         Productor productor = productorRepository.findById(UUID.fromString(productorId))
                 .orElse(null);
 
@@ -155,27 +155,27 @@ public class ChatService {
         try {
             miembrosRef.removeValueAsync().get(5000, TimeUnit.MILLISECONDS);
         } catch (ExecutionException ee) {
-            throw new FailedToDeleteMiembroEstablecimientoException("Fallo al quitar al miembro", ee.getCause());
+            throw new FailedFirebaseChatOperationException("Fallo al quitar al miembro", ee.getCause());
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
-            throw new FailedToDeleteMiembroEstablecimientoException("Fallo al quitar al miembro", ie);
+            throw new FailedFirebaseChatOperationException("Fallo al quitar al miembro", ie);
         } catch (TimeoutException e) {
-            throw new FailedToDeleteMiembroEstablecimientoException("Timeout al quitar al miembro expirado");
+            throw new FailedFirebaseChatOperationException("Timeout al quitar al miembro expirado");
         }
     }
 
-    public void quitarEstablecimiento(UUID establecimientoId) {
+    public void quitarEstablecimiento(UUID establecimientoId) throws FailedFirebaseChatOperationException {
         DatabaseReference miembrosRef = firebaseDatabase.getReference("establecimiento_miembro/" + establecimientoId);
 
         try {
             miembrosRef.removeValueAsync().get(5000, TimeUnit.MILLISECONDS);
         } catch (ExecutionException ee) {
-            throw new RuntimeException("Fallo al quitar a los miembros", ee.getCause());
+            throw new FailedFirebaseChatOperationException("Fallo al quitar a los miembros", ee.getCause());
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("Fallo al quitar a los miembros", ie);
+            throw new FailedFirebaseChatOperationException("Fallo al quitar a los miembros", ie);
         } catch (TimeoutException e) {
-            throw new RuntimeException("Timeout al quitar a los miembros expirado");
+            throw new FailedFirebaseChatOperationException("Timeout al quitar a los miembros expirado");
         }
     }
 }
