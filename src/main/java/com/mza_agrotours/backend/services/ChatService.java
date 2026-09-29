@@ -121,15 +121,17 @@ public class ChatService {
     }
 
     public void agregarMiembroAEstablecimiento(String productorId) throws FailedFirebaseChatOperationException {
-        Productor productor = productorRepository.findById(UUID.fromString(productorId))
+        Productor productor = productorRepository.findByIdAndFechaHoraBajaIsNull(UUID.fromString(productorId))
                 .orElseThrow(() -> new AppException(ProductorError.NOT_FOUND));
 
         UUID establecimientoId = productor.getEstablecimiento().getId();
-
-        DatabaseReference miembrosRef = firebaseDatabase.getReference("establecimiento_miembro/" + establecimientoId + "/" + productorId);
+        String usrFirebaseId = productor.getUsuario().getFirebaseUID();
+        DatabaseReference miembrosRef = firebaseDatabase.getReference("establecimiento_miembros/" + establecimientoId + "/" + usrFirebaseId);
 
         try {
-            miembrosRef.setValueAsync(true).get(5000, TimeUnit.MILLISECONDS);
+            Map<String, Object> miembroData = new HashMap<>();
+            miembroData.put(productorId, true);
+            miembrosRef.setValueAsync(miembroData).get(5000, TimeUnit.MILLISECONDS);
         } catch (ExecutionException ee) {
             throw new FailedFirebaseChatOperationException("Fallo al añadir al miembro", ee.getCause());
         } catch (InterruptedException ie) {
@@ -149,8 +151,8 @@ public class ChatService {
         }
 
         String establecimientoId = productor.getEstablecimiento().getId().toString();
-
-        DatabaseReference miembrosRef = firebaseDatabase.getReference("establecimiento_miembro/" + establecimientoId + "/" + productorId);
+        String usrFirebaseId = productor.getUsuario().getFirebaseUID();
+        DatabaseReference miembrosRef = firebaseDatabase.getReference("establecimiento_miembros/" + establecimientoId + "/" + usrFirebaseId).child(productorId);
 
         try {
             miembrosRef.removeValueAsync().get(5000, TimeUnit.MILLISECONDS);
@@ -165,7 +167,7 @@ public class ChatService {
     }
 
     public void quitarEstablecimiento(String establecimientoId) throws FailedFirebaseChatOperationException {
-        DatabaseReference miembrosRef = firebaseDatabase.getReference("establecimiento_miembro/" + establecimientoId);
+        DatabaseReference miembrosRef = firebaseDatabase.getReference("establecimiento_miembros/" + establecimientoId);
 
         try {
             miembrosRef.removeValueAsync().get(5000, TimeUnit.MILLISECONDS);
