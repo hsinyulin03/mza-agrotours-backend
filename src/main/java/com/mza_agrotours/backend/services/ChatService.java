@@ -175,17 +175,50 @@ public class ChatService {
     }
 
     public void quitarEstablecimiento(String establecimientoId) throws FailedFirebaseChatOperationException {
-        DatabaseReference miembrosRef = firebaseDatabase.getReference("establecimiento_miembros/" + establecimientoId);
+        DatabaseReference chatsEstablecimientoRef = firebaseDatabase.getReference("chats_establecimiento").child(establecimientoId);
+        DatabaseReference rootRef = firebaseDatabase.getReference();
 
+        CompletableFuture<DataSnapshot> chatsFuture = new CompletableFuture<>();
+        chatsEstablecimientoRef.addListenerForSingleValueEvent(new ValueEventListener() {
+
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                chatsFuture.complete(snapshot);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+                chatsFuture.completeExceptionally(error.toException());
+            }
+        });
+
+        DataSnapshot chatsSnapshot;
         try {
-            miembrosRef.removeValueAsync().get(5000, TimeUnit.MILLISECONDS);
+            chatsSnapshot = chatsFuture.get(5000, TimeUnit.MILLISECONDS);
         } catch (ExecutionException ee) {
-            throw new FailedFirebaseChatOperationException("Fallo al quitar a los miembros", ee.getCause());
+            throw new FailedFirebaseChatOperationException("Fallo al obtener los chats del establecimiento", ee.getCause());
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
-            throw new FailedFirebaseChatOperationException("Fallo al quitar a los miembros", ie);
+            throw new FailedFirebaseChatOperationException("Fallo al obtener los chats del establecimiento", ie);
         } catch (TimeoutException e) {
-            throw new FailedFirebaseChatOperationException("Timeout al quitar a los miembros expirado");
+            throw new FailedFirebaseChatOperationException("Timeout al obtener los chats del establecimiento expirado");
+        }
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("/establecimiento_miembros/" + establecimientoId, null);
+        for (DataSnapshot chat : chatsSnapshot.getChildren()) {
+            updates.put("/chats/" + chat.getKey() + "/baja", true);
+        }
+
+        try {
+            rootRef.updateChildrenAsync(updates).get(5000, TimeUnit.MILLISECONDS);
+        } catch (ExecutionException ee) {
+            throw new FailedFirebaseChatOperationException("Fallo al quitar el establecimiento", ee.getCause());
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new FailedFirebaseChatOperationException("Fallo al quitar el establecimiento", ie);
+        } catch (TimeoutException e) {
+            throw new FailedFirebaseChatOperationException("Timeout al quitar el establecimiento expirado");
         }
     }
 
