@@ -20,17 +20,16 @@ public class UsuarioController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<?> create(@Valid @RequestBody UsuarioCreateReq usuarioCreateReq) throws Exception {
+    public ResponseEntity<?> create(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails, @Valid @RequestBody UsuarioCreateReq usuarioCreateReq) throws Exception {
 
-        UsuarioGetDTO usuarioGetDTO = this.usuarioService.createUsuario(usuarioCreateReq);
+        UsuarioGetDTO usuarioGetDTO = this.usuarioService.createUsuario(usuarioCreateReq, usuarioAuthDetails);
         ApiResponse<UsuarioGetDTO> response = ApiResponse.ok(usuarioGetDTO);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getUsuarioMeByEmail(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) throws Exception {
-        String email = usuarioAuthDetails.getEmail();
-        UsuarioGetDTO usuarioGetDTO = this.usuarioService.getUsuarioByEmail(email);
+    public ResponseEntity<?> getUsuarioMeByFirebaseUID(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) throws Exception {
+        UsuarioGetDTO usuarioGetDTO = this.usuarioService.getUsuarioByFirebaseUID(usuarioAuthDetails.getFirebaseUID());
         ApiResponse<UsuarioGetDTO> response = ApiResponse.ok(usuarioGetDTO);
 
         return ResponseEntity.ok(response);
