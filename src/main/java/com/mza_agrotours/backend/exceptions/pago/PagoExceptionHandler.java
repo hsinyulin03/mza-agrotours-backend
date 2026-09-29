@@ -29,7 +29,7 @@ public class PagoExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("forbiddenState", ex.getMessage()));
     }
 
-    @ExceptionHandler(ReembolsoStateException.class)
+    @ExceptionHandler(ReembolsoDateException.class)
     public ResponseEntity<?> handleReembolsoDateException(ReembolsoDateException ex){
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("forbiddenDate", ex.getMessage()));
     }
