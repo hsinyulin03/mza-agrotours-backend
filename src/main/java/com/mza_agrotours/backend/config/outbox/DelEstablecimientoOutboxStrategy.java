@@ -14,6 +14,6 @@ public class DelEstablecimientoOutboxStrategy implements OutboxStrategy {
 
     @Override
     public void resolver(Outbox outbox) throws Exception {
-        this.chatService.quitarEstablecimiento(outbox.getId().toString());
+        this.chatService.quitarEstablecimiento(outbox.getEntidadId());
     }
 }

@@ -13,6 +13,6 @@ public class DelMiembroEstablecimientoOutboxStrategy implements OutboxStrategy {
     }
 
     public void resolver(Outbox outbox) throws Exception {
-        this.chatService.quitarMiembroDelEstablecimiento(outbox.getId().toString());
+        this.chatService.quitarMiembroDelEstablecimiento(outbox.getEntidadId());
     }
 }
