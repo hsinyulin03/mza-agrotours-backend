@@ -18,10 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 
 @Service
 public class ChatService {
@@ -175,50 +172,74 @@ public class ChatService {
     }
 
     public void quitarEstablecimiento(String establecimientoId) throws FailedFirebaseChatOperationException {
-        DatabaseReference chatsEstablecimientoRef = firebaseDatabase.getReference("chats_establecimiento").child(establecimientoId);
-        DatabaseReference rootRef = firebaseDatabase.getReference();
+        DataSnapshot chats = leer(firebaseDatabase.getReference("chats_establecimiento").child(establecimientoId),
+                "obtener los chats del establecimiento");
 
-        CompletableFuture<DataSnapshot> chatsFuture = new CompletableFuture<>();
-        chatsEstablecimientoRef.addListenerForSingleValueEvent(new ValueEventListener() {
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("/establecimiento_miembros/" + establecimientoId, null);
+        for (DataSnapshot chat : chats.getChildren()) {
+            updates.put("/chats/" + chat.getKey() + "/baja", true);
+        }
+
+        escribir(updates, "quitar el establecimiento");
+    }
+
+    public void quitarVisitante(String usuarioId) throws FailedFirebaseChatOperationException {
+        Usuario usuario = usuarioRepository.findById(UUID.fromString(usuarioId))
+                .orElse(null);
+
+        if (usuario == null || usuario.getFirebaseUID() == null) {
+            return;
+        }
+
+        DataSnapshot chats = leer(firebaseDatabase.getReference("chats_usuario").child(usuario.getFirebaseUID()),
+                "obtener los chats del visitante");
+
+        if (!chats.hasChildren()) {
+            return;
+        }
+
+        Map<String, Object> updates = new HashMap<>();
+        for (DataSnapshot chat : chats.getChildren()) {
+            updates.put("/chats/" + chat.getKey() + "/baja", true);
+        }
+
+        escribir(updates, "quitar al visitante");
+    }
+
+    private DataSnapshot leer(DatabaseReference ref, String operacion) throws FailedFirebaseChatOperationException {
+        CompletableFuture<DataSnapshot> future = new CompletableFuture<>();
+        ref.addListenerForSingleValueEvent(new ValueEventListener() {
 
             @Override
             public void onDataChange(DataSnapshot snapshot) {
-                chatsFuture.complete(snapshot);
+                future.complete(snapshot);
             }
 
             @Override
             public void onCancelled(DatabaseError error) {
-                chatsFuture.completeExceptionally(error.toException());
+                future.completeExceptionally(error.toException());
             }
         });
 
-        DataSnapshot chatsSnapshot;
+        return esperar(future, operacion);
+    }
+
+
+    private void escribir(Map<String, Object> updates, String operacion) throws FailedFirebaseChatOperationException {
+        esperar(firebaseDatabase.getReference().updateChildrenAsync(updates), operacion);
+    }
+
+    private <T> T esperar(Future<T> future, String operacion) throws FailedFirebaseChatOperationException {
         try {
-            chatsSnapshot = chatsFuture.get(5000, TimeUnit.MILLISECONDS);
+            return future.get(5000, TimeUnit.MILLISECONDS);
         } catch (ExecutionException ee) {
-            throw new FailedFirebaseChatOperationException("Fallo al obtener los chats del establecimiento", ee.getCause());
+            throw new FailedFirebaseChatOperationException("Fallo al " + operacion, ee.getCause());
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
-            throw new FailedFirebaseChatOperationException("Fallo al obtener los chats del establecimiento", ie);
+            throw new FailedFirebaseChatOperationException("Fallo al " + operacion, ie);
         } catch (TimeoutException e) {
-            throw new FailedFirebaseChatOperationException("Timeout al obtener los chats del establecimiento expirado");
-        }
-
-        Map<String, Object> updates = new HashMap<>();
-        updates.put("/establecimiento_miembros/" + establecimientoId, null);
-        for (DataSnapshot chat : chatsSnapshot.getChildren()) {
-            updates.put("/chats/" + chat.getKey() + "/baja", true);
-        }
-
-        try {
-            rootRef.updateChildrenAsync(updates).get(5000, TimeUnit.MILLISECONDS);
-        } catch (ExecutionException ee) {
-            throw new FailedFirebaseChatOperationException("Fallo al quitar el establecimiento", ee.getCause());
-        } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            throw new FailedFirebaseChatOperationException("Fallo al quitar el establecimiento", ie);
-        } catch (TimeoutException e) {
-            throw new FailedFirebaseChatOperationException("Timeout al quitar el establecimiento expirado");
+            throw new FailedFirebaseChatOperationException("Timeout al " + operacion + " expirado");
         }
     }
 
