@@ -20,9 +20,9 @@ public class UsuarioChatController {
         this.chatService = chatService;
     }
 
-    @PostMapping("/iniciar/{establecimientoId}")
-    public ResponseEntity<?> iniciarChat(@PathVariable UUID establecimientoId, @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) {
-        this.chatService.iniciarChat(establecimientoId, usuarioAuthDetails.getEmail());
+    @PostMapping("/iniciar/{actividadId}")
+    public ResponseEntity<?> iniciarChat(@PathVariable UUID actividadId, @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) {
+        this.chatService.iniciarChat(actividadId, usuarioAuthDetails.getEmail());
         return ResponseEntity.ok().build();
     }
 }

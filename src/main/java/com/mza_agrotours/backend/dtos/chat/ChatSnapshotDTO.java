@@ -14,4 +14,5 @@ public class ChatSnapshotDTO {
     private String visitanteId;
     private String establecimientoId;
     private Long creadoEl;
+    private boolean baja;
 }
