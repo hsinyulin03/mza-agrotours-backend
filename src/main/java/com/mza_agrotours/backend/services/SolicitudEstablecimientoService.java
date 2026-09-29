@@ -1,8 +1,8 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.enums.CarpetaArchivo;
 import com.mza_agrotours.backend.config.RutasNotificacionesFront;
 import com.mza_agrotours.backend.dtos.ObservacionSolicitudDTO;
-import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.*;
 import com.mza_agrotours.backend.entities.AdministradorSistemas;
 import com.mza_agrotours.backend.entities.Archivo;
@@ -16,7 +16,6 @@ import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEst
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimientoEstado;
 import com.mza_agrotours.backend.enums.TipoNotificacionNombre;
 import com.mza_agrotours.backend.exceptions.*;
-import com.mza_agrotours.backend.mappers.ArchivoMapper;
 import com.mza_agrotours.backend.mappers.SolicitudEstablecimientoMapper;
 import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.services.notificaciones.NotificacionService;
@@ -24,12 +23,12 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 public class SolicitudEstablecimientoService {
-    private final List<String> EXTENSIONES_VALIDAS = List.of("pdf", "jpg", "jpeg", "png");
 
     private final SolicitudEstablecimientoRepository solicitudEstablecimientoRepository;
     private final SolicitudEstablecimientoMapper solicitudEstablecimientoMapper;
@@ -38,7 +37,6 @@ public class SolicitudEstablecimientoService {
     private final UsuarioRepository usuarioRepository;
     private final EstablecimientoRepository establecimientoRepository;
     private final ArchivoService archivoService;
-    private final ArchivoMapper archivoMapper;
     private final AdministradorSistemasRepository administradorSistemasRepository;
     private final ProductorService productorService;
     private final EstablecimientoService establecimientoService;
@@ -51,7 +49,6 @@ public class SolicitudEstablecimientoService {
                                            UsuarioRepository usuarioRepository,
                                            EstablecimientoRepository establecimientoRepository,
                                            ArchivoService archivoService,
-                                           ArchivoMapper archivoMapper,
                                            AdministradorSistemasRepository administradorSistemasRepository,
                                            ProductorService productorService,
                                            EstablecimientoService establecimientoService,
@@ -63,7 +60,6 @@ public class SolicitudEstablecimientoService {
         this.usuarioRepository = usuarioRepository;
         this.establecimientoRepository = establecimientoRepository;
         this.archivoService = archivoService;
-        this.archivoMapper = archivoMapper;
         this.administradorSistemasRepository = administradorSistemasRepository;
         this.productorService = productorService;
         this.establecimientoService = establecimientoService;
@@ -118,13 +114,9 @@ public class SolicitudEstablecimientoService {
         nuevaSolicitudEstablecimiento.setUsuario(usuarioSolicitante);
 
         // 5. Obtener los archivos
-        List<ArchivoUploadResponse> archivoUploadResponses = this.archivoService
-                .getSignedArchivos(
-                        solicitudEstablecimientoCreateReq.getArchivos(),
-                        this.EXTENSIONES_VALIDAS);
-
-        List<Archivo> archivos = this.archivoMapper.archivoUploadResponseListToArchivoList(archivoUploadResponses);
-        nuevaSolicitudEstablecimiento.setPruebas(archivos);
+        nuevaSolicitudEstablecimiento.setPruebas(new ArrayList<>(this.archivoService.reclamarArchivos(
+                solicitudEstablecimientoCreateReq.getArchivos(),
+                CarpetaArchivo.SOLICITUDES_ESTABLECIMIENTO)));
 
         // 6. Guardar la solicitud en estado pendiente asociado al usuario
         nuevaSolicitudEstablecimiento.setFechaHoraAlta(LocalDateTime.now());
@@ -134,7 +126,6 @@ public class SolicitudEstablecimientoService {
         SolicitudEstablecimientoCreateResp solicitudEstablecimientoCreateResp = new SolicitudEstablecimientoCreateResp();
         solicitudEstablecimientoCreateResp.setSolicitudId(nuevaSolicitudEstablecimiento.getId().toString());
         solicitudEstablecimientoCreateResp.setNombreEstablecimiento(nuevaSolicitudEstablecimiento.getRazonSocial());
-        solicitudEstablecimientoCreateResp.setArchivoUploadResponses(archivoUploadResponses);
 
         notificacionService.crearNotificacion(
                 nuevaSolicitudEstablecimiento.getUsuario(),
@@ -181,6 +172,27 @@ public class SolicitudEstablecimientoService {
                 .findById(UUID.fromString(id))
                 .orElseThrow(() -> new AppException(SolicitudEstablecimientoError.NOT_FOUND));
         return this.solicitudEstablecimientoMapper.solicitudEstablecimientoToDTOAdmin(solicitudEstablecimiento);
+    }
+
+    /**
+     * Firma la prueba recien cuando el admin la abre. Se resuelve contra las
+     * pruebas de la solicitud y no contra el archivo suelto, asi un id de otra
+     * solicitud no alcanza para descargar nada.
+     */
+    @Transactional
+    public SolicitudEstablecimientoPruebaUrlDTO obtenerUrlDePrueba(String solicitudId, String archivoId) {
+        SolicitudEstablecimiento solicitudEstablecimiento = this.solicitudEstablecimientoRepository
+                .findById(UUID.fromString(solicitudId))
+                .orElseThrow(() -> new AppException(SolicitudEstablecimientoError.NOT_FOUND));
+
+        UUID idBuscado = UUID.fromString(archivoId);
+        Archivo prueba = solicitudEstablecimiento.getPruebas().stream()
+                .filter(archivo -> archivo.getId().equals(idBuscado))
+                .findFirst()
+                .orElseThrow(() -> new AppException(SolicitudEstablecimientoError.PRUEBA_NOT_FOUND));
+
+        return new SolicitudEstablecimientoPruebaUrlDTO(prueba.getNombre(),
+                this.archivoService.getDownloadUrl(prueba.getKey()));
     }
 
     @Transactional

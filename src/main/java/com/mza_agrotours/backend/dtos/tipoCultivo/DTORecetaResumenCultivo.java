@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.dtos.tipoCultivo;
 
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import com.mza_agrotours.backend.enums.Dificultad;
 import lombok.Data;
 
@@ -12,4 +13,5 @@ public class DTORecetaResumenCultivo {
     private String tiempo; // formateado, ej: "1 h 15 min"
     private Integer porciones;
     private Dificultad dificultad;
+    private DTOFotosResponse foto;
 }

@@ -1,24 +1,22 @@
 package com.mza_agrotours.backend.services;
 
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseAuthException;
-import com.google.firebase.auth.UserRecord;
 import com.mza_agrotours.backend.dtos.*;
 import com.mza_agrotours.backend.entities.*;
-import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
-import com.mza_agrotours.backend.enums.EstadoReservaNombre;
-import com.mza_agrotours.backend.entities.reservas.Reserva;
+import com.mza_agrotours.backend.enums.outbox.TipoOperacion;
 import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.mappers.UsuarioMapper;
 import com.mza_agrotours.backend.repositories.*;
+import com.mza_agrotours.backend.services.outbox.OutboxService;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UsuarioService {
@@ -27,6 +25,8 @@ public class UsuarioService {
     private final UsuarioPersistenceService usuarioPersistenceService;
     private final UsuarioAccesoService usuarioAccesoService;
     private final VisitanteService visitanteService;
+    private final FirebaseService firebaseService;
+
 
     private final UsuarioRepository usuarioRepository;
     private final TipoIdentificacionRepository tipoIdentificacionRepository;
@@ -35,6 +35,9 @@ public class UsuarioService {
     private final AdministradorSistemasRepository administradorSistemasRepository;
     private final ProductorRepository productorRepository;
     private final UsuarioMapper usuarioMapper;
+    private final OutboxService outboxService;
+
+    private final ApplicationEventPublisher publisher;
 
     public UsuarioService( UsuarioPersistenceService usuarioPersistenceService,
                         UsuarioRepository usuarioRepository,
@@ -45,7 +48,10 @@ public class UsuarioService {
                         ProductorRepository productorRepository,
                         AdministradorSistemasRepository administradorSistemasRepository,
                         UsuarioAccesoService usuarioAccesoService,
-                        VisitanteService visitanteService) {
+                        VisitanteService visitanteService,
+                        OutboxService outboxService,
+                           FirebaseService firebaseService,
+                           ApplicationEventPublisher publisher) {
         this.usuarioPersistenceService = usuarioPersistenceService;
         this.usuarioRepository = usuarioRepository;
         this.tipoIdentificacionRepository = tipoIdentificacionRepository;
@@ -56,51 +62,40 @@ public class UsuarioService {
         this.administradorSistemasRepository = administradorSistemasRepository;
         this.usuarioAccesoService = usuarioAccesoService;
         this.visitanteService = visitanteService;
+        this.outboxService = outboxService;
+        this.firebaseService = firebaseService;
+        this.publisher = publisher;
     }
 
-    public UsuarioGetDTO createUsuario(UsuarioCreateReq usuarioCreateReq) throws Exception {
-        UserRecord record = null;
-        try {
-            usuarioCreateReq.setEmail(usuarioCreateReq.getEmail().trim());
+    @Transactional
+    public UsuarioGetDTO createUsuario(UsuarioCreateReq usuarioCreateReq, UsuarioAuthDetails usuarioAuthDetails) {
+        Optional<Usuario> usuario = usuarioRepository.findByFirebaseUID(usuarioAuthDetails.getFirebaseUID());
 
-            if (usuarioRepository.findActiveByEmail(usuarioCreateReq.getEmail()).isPresent()) {
-                throw new UsuarioAlreadyExistsException("Ya existe un usuario con ese email");
-            }
-
-            TipoIdentificacion tipoIdentificacion = resolveTipoIdentificacion(usuarioCreateReq.getTipoIdentificacion());
-            Pais pais = this.paisRepository.findByIso2(usuarioCreateReq.getPaisIso2()).orElseThrow(PaisNotFoundException::new);
-
-            record = FirebaseAuth.getInstance().createUser(usuarioMapper.usuarioCreateReqToFirebaseCreateRequest(usuarioCreateReq));
-
-            Usuario nuevoUsuario = usuarioMapper.usuarioCreateReqToUsuario(usuarioCreateReq);
-            nuevoUsuario.setFirebaseUID(record.getUid());
-            nuevoUsuario.setTipoIdentificacion(tipoIdentificacion);
-            nuevoUsuario.setFechaHoraAlta(LocalDateTime.now());
-
-            Visitante visitante = getNewVisitante(nuevoUsuario, pais);
-
-            Usuario usuario = usuarioPersistenceService.saveUsuarioConVisitante(nuevoUsuario, visitante);
-
-            return this.usuarioMapper.usuarioToUsuarioGetDTO(usuario, visitante, List.of());
-        } catch (Exception e) {
-            if (record != null) {
-                try {
-                    FirebaseAuth.getInstance().deleteUser(record.getUid());
-                } catch (FirebaseAuthException firebaseAuthException) {
-                    // TODO: hacer un script que elimine los usuarios que no se han podido crear
-                    log.error(
-                            "USUARIO HUERFANO: se creo el usuario en Firebase con UID={} y email={} " +
-                                    "pero fallo el guardado en la base de datos Y ADEMAS fallo el borrado " +
-                                    "compensatorio en Firebase. Requiere limpieza manual/reconciliacion.",
-                            record.getUid(),
-                            usuarioCreateReq.getEmail(),
-                            firebaseAuthException
-                    );
-                }
-            }
-
-            throw e;
+        if (usuario.isPresent() && usuario.get().getFechaHoraBaja() == null) {
+            throw new AppException(UsuarioError.USUARIO_ALREADY_EXISTS);
         }
+
+        if (usuario.isPresent()) {
+            throw new AppException(UsuarioError.USUARIO_INACTIVO);
+        }
+
+        TipoIdentificacion tipoIdentificacion = resolveTipoIdentificacion(usuarioCreateReq.getTipoIdentificacion());
+        Pais pais = this.paisRepository.findByIso2(usuarioCreateReq.getPaisIso2()).orElseThrow(PaisNotFoundException::new);
+
+        Usuario nuevoUsuario = usuarioMapper.usuarioCreateReqToUsuario(usuarioCreateReq);
+        nuevoUsuario.setEmail(usuarioAuthDetails.getEmail());
+        nuevoUsuario.setFirebaseUID(usuarioAuthDetails.getFirebaseUID());
+        nuevoUsuario.setTipoIdentificacion(tipoIdentificacion);
+        nuevoUsuario.setFechaHoraAlta(LocalDateTime.now());
+
+        Visitante visitante = getNewVisitante(nuevoUsuario, pais);
+
+        nuevoUsuario = usuarioRepository.save(nuevoUsuario);
+        this.visitanteRepository.save(visitante);
+
+        return this.usuarioMapper.usuarioToUsuarioGetDTO(nuevoUsuario,
+                visitante,
+                usuarioAccesoService.obtenerAccesosUsuario(nuevoUsuario));
     }
 
 
@@ -118,10 +113,13 @@ public class UsuarioService {
     }
 
     @Transactional
-    public UsuarioGetDTO getUsuarioByEmail(String email) {
-        String normalizedEmail = email == null ? null : email.trim();
-        Usuario usuario = usuarioRepository.findActiveByEmail(normalizedEmail)
-                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+    public UsuarioGetDTO getUsuarioByFirebaseUID(String firebaseUID) {
+        Usuario usuario = usuarioRepository.findByFirebaseUID(firebaseUID)
+                .orElseThrow(() -> new AppException(UsuarioError.USUARIO_NOT_FOUND));
+
+        if (usuario.getFechaHoraBaja() != null) {
+            throw new AppException(UsuarioError.USUARIO_INACTIVO);
+        }
 
         Visitante visitante = visitanteRepository.findByUsuario(usuario)
                 .orElseThrow(() -> new IllegalStateException(
@@ -132,15 +130,16 @@ public class UsuarioService {
                 usuarioAccesoService.obtenerAccesosUsuario(usuario));
     }
 
-    public UsuarioGetDTO updateUsuarioByEmail(String email, UsuarioUpdateReq usuarioUpdateReq) throws Exception {
+    @Transactional
+    public UsuarioGetDTO updateUsuarioByEmail(String email, UsuarioUpdateReq usuarioUpdateReq) {
         Usuario usuario = usuarioRepository.findActiveByEmail(email)
-                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+                .orElseThrow(() -> new AppException(UsuarioError.USUARIO_NOT_FOUND));
 
         if (!usuarioUpdateReq.getEmail().equals(usuario.getEmail()) && usuarioRepository.findActiveByEmail(usuarioUpdateReq.getEmail()).isPresent()) {
             throw new UsuarioAlreadyExistsException("Ya existe un usuario con ese email");
         }
 
-        Visitante visitante = this.visitanteRepository.findByUsuario(usuario).orElseThrow(IllegalStateException::new);
+        Visitante visitante = this.visitanteRepository.findByUsuario(usuario).orElseThrow(() -> new EntityNotFoundException("No se encontro el visitante del usuario"));
         Pais pais = this.paisRepository.findByIso2(usuarioUpdateReq.getPaisIso2()).orElseThrow(PaisNotFoundException::new);
         TipoIdentificacion tipoIdentificacion = resolveTipoIdentificacion(usuarioUpdateReq.getTipoIdentificacion());
 
@@ -148,37 +147,19 @@ public class UsuarioService {
         usuario.setTipoIdentificacion(tipoIdentificacion);
         visitante.setPais(pais);
 
-        // Firebase primero: si falla, se lanza la excepcion y no se persiste nada en la base de datos.
-        UserRecord.UpdateRequest updateRequest = new UserRecord.UpdateRequest(usuario.getFirebaseUID());
-        updateRequest.setEmail(usuarioUpdateReq.getEmail());
-        updateRequest.setDisplayName(usuarioUpdateReq.getNombre());
-        updateRequest.setPhoneNumber(usuarioUpdateReq.getTelefono());
-
-        FirebaseAuth.getInstance().updateUser(updateRequest);
-
-        // Firebase ya se actualizo. Si la persistencia en la base de datos falla, Firebase y la base
-        // de datos quedan desincronizados: por ahora solo lo registramos para reconciliacion manual.
-        try {
-            usuario = usuarioPersistenceService.saveUsuarioConVisitante(usuario, visitante);
-        } catch (Exception e) {
-            log.error(
-                    "USUARIO INCONSISTENTE: se actualizo el usuario en Firebase con UID={} (email nuevo={}) " +
-                            "pero fallo la actualizacion en la base de datos. Firebase y la base de datos " +
-                            "quedaron desincronizados. Requiere limpieza manual/reconciliacion.",
-                    usuario.getFirebaseUID(),
-                    usuarioUpdateReq.getEmail(),
-                    e
-            );
-        }
+        usuario = this.usuarioRepository.save(usuario);
+        visitante = this.visitanteRepository.save(visitante);
 
         return this.usuarioMapper.usuarioToUsuarioGetDTO(usuario,
                 visitante,
                 usuarioAccesoService.obtenerAccesosUsuario(usuario));
     }
 
+
+    @Transactional
     public boolean deleteUsuarioByEmail(String email) throws Exception {
         Usuario usuario = usuarioRepository.findActiveByEmail(email)
-                .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
+                .orElseThrow(() -> new AppException(UsuarioError.USUARIO_NOT_FOUND));
 
         List<CondicionDTO> condicionesEliminacion = getCondicionesDeleteUsuarioHelper(usuario);
 
@@ -186,25 +167,16 @@ public class UsuarioService {
             throw new UserDeleteConditionNotMetException("No se puede eliminar el usuario", condicionesEliminacion);
         }
 
-        // Firebase primero: si falla, se lanza la excepcion y no se toca la base de datos.
-        FirebaseAuth.getInstance().deleteUser(usuario.getFirebaseUID());
-
-        // Firebase ya elimino el usuario (ya no puede autenticarse). Si la baja en la base de datos
-        // falla, el usuario sigue activo en la base pero sin acceso: por ahora solo lo registramos.
-        try {
-            usuarioPersistenceService.softDeleteUsuario(usuario);
-        } catch (Exception e) {
-            log.error(
-                    "USUARIO INCONSISTENTE: se elimino el usuario en Firebase con UID={} y email={} " +
-                            "pero fallo la baja en la base de datos. El usuario ya no puede autenticarse " +
-                            "pero sigue activo en la base de datos. Requiere limpieza manual/reconciliacion.",
-                    usuario.getFirebaseUID(),
-                    email,
-                    e
-            );
-        }
+        Outbox opEliminar = eliminarUsuarioDeRepositorio(usuario);
+        publisher.publishEvent(opEliminar);
 
         return true;
+    }
+
+    private Outbox eliminarUsuarioDeRepositorio(Usuario usuario) {
+        usuario.setFechaHoraBaja(LocalDateTime.now());
+        usuarioRepository.save(usuario);
+        return this.outboxService.crearOutboxPendiente(usuario.getId().toString(), TipoOperacion.ELIMINAR_USUARIO);
     }
 
     public UsuarioCardDTO getUsuarioCardByEmail(String email) {

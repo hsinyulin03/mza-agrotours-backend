@@ -59,6 +59,7 @@ public class SecurityConfig {
                         // Pais y departamento
                         .requestMatchers("/pais/**").permitAll()
                         .requestMatchers("/departamentos/**").permitAll()
+                        .requestMatchers("/clima/**").permitAll()
 
                         // Usuario
                         .requestMatchers("/usuario/create").permitAll()
@@ -68,6 +69,9 @@ public class SecurityConfig {
                         .requestMatchers("/solicitudes-establecimiento/me/**").authenticated()
                         .requestMatchers("/solicitudes-establecimiento/").hasAuthority(PermisoCodigo.LEER_SOLICITUD_ESTABLECIMIENTO.name())
                         .requestMatchers("/solicitudes-establecimiento/observar/**").hasAuthority(PermisoCodigo.GESTIONAR_SOLICITUD_ESTABLECIMIENTO.name())
+                        // Las pruebas viven en una carpeta privada: la url firmada la pide
+                        // quien puede leer la solicitud, no cualquier autenticado.
+                        .requestMatchers(HttpMethod.GET, "/solicitudes-establecimiento/*/pruebas/*/url").hasAuthority(PermisoCodigo.LEER_SOLICITUD_ESTABLECIMIENTO.name())
 
                         .requestMatchers(HttpMethod.GET,"/establecimientos/catalogo").permitAll()
                         .requestMatchers(HttpMethod.GET,"/establecimientos/filtros/cultivos").permitAll()
@@ -86,9 +90,6 @@ public class SecurityConfig {
 
                         .requestMatchers("/recetas").permitAll()
                         .requestMatchers("/recetas/**").permitAll()
-
-                        // Archivos
-                        .requestMatchers("/object-storage/**").permitAll()
 
                         //Permisos
                         .requestMatchers( "/permisos/grupos-permisos/admin").hasAuthority(PermisoCodigo.LEER_ADMIN.name())

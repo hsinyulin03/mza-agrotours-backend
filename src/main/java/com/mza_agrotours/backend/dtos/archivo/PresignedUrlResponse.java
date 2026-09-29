@@ -10,4 +10,5 @@ import lombok.NoArgsConstructor;
 public class PresignedUrlResponse {
     private String uploadUrl;
     private String key;
+    private String contentType;
 }

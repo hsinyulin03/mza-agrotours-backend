@@ -1,6 +1,5 @@
 package com.mza_agrotours.backend.mappers;
 
-import com.google.firebase.auth.UserRecord.CreateRequest;
 import com.mza_agrotours.backend.dtos.UsuarioCardDTO;
 import com.mza_agrotours.backend.dtos.UsuarioCreateReq;
 import com.mza_agrotours.backend.dtos.UsuarioGetDTO;
@@ -43,22 +42,4 @@ public interface UsuarioMapper {
      * @return UsuarioCardDTO con todos los campos mapeados
      */
     UsuarioCardDTO usuarioToUsuarioCardDTO(Usuario usuario);
-
-    /**
-     * Mapea un DTO de usuario a un objeto de firebase CreateRequest.
-     * @param usuarioCreateReq
-     * @return CreateRequest con todos los campos mapeados
-     */
-    default CreateRequest usuarioCreateReqToFirebaseCreateRequest(UsuarioCreateReq usuarioCreateReq) {
-        CreateRequest request = new CreateRequest()
-                .setEmail(usuarioCreateReq.getEmail())
-                .setPassword(usuarioCreateReq.getPassword())
-                .setDisplayName(usuarioCreateReq.getNombre());
-
-        String telefono = usuarioCreateReq.getTelefono();
-        if (telefono != null && !telefono.isBlank()) {
-            request.setPhoneNumber(telefono);
-        }
-        return request;
-    }
 }

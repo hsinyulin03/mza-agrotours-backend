@@ -1,25 +1,24 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import com.mza_agrotours.backend.dtos.actividad.*;
+import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
+import com.mza_agrotours.backend.entities.ActividadFoto;
+import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.actividad.*;
-import com.mza_agrotours.backend.dtos.actividad.DiaActividadReservaDTO;
-import com.mza_agrotours.backend.dtos.actividad.InfoParaReservarDTO;
-import com.mza_agrotours.backend.dtos.actividad.RangoEtarioReservaDTO;
-import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
-import com.mza_agrotours.backend.entities.Archivo;
-import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
+import com.mza_agrotours.backend.entities.reservas.Reserva;
+import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
+import com.mza_agrotours.backend.enums.Dia;
+import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
+import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.enums.*;
 import com.mza_agrotours.backend.exceptions.*;
-import com.mza_agrotours.backend.exceptions.actividad.ActividadError;
-import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
-import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
-import com.mza_agrotours.backend.exceptions.actividad.ValidacionMultipleException;
+import com.mza_agrotours.backend.exceptions.actividad.*;
 import com.mza_agrotours.backend.mappers.ActividadMapper;
-import com.mza_agrotours.backend.mappers.ArchivoMapper;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.ReservaRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
@@ -33,16 +32,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
 import java.util.*;
 import java.util.stream.Collectors;
 
 
 @Service
 public class ActividadService {
-    private final List<String> EXTENSIONES_VALIDAS = List.of("jpg", "jpeg", "png");
     @Autowired
     private ActividadRepository actividadRepository;
 
@@ -82,8 +80,17 @@ public class ActividadService {
     @Autowired
     private ReservaService reservaService;
 
-    @Autowired
-    private ArchivoMapper archivoMapper;
+    private static final List<EstadoReservaNombre> ESTADOS_RESERVA_VISIBLES_PRODUCTOR = List.of(
+            EstadoReservaNombre.PENDIENTE,
+            EstadoReservaNombre.PAGADA,
+            EstadoReservaNombre.CANCELADA_CON_REEMBOLSO,
+            EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO,
+            EstadoReservaNombre.FINALIZADA);
+
+    private static final List<EstadoReservaNombre> ESTADOS_RESERVA_CALCULAR_INGRESO = List.of(
+            EstadoReservaNombre.PAGADA,
+            EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO,
+            EstadoReservaNombre.FINALIZADA);
 
     //US-ACT-03 Alta de actividad
     @Transactional
@@ -131,16 +138,7 @@ public class ActividadService {
 
         actividad.setEstablecimiento(establecimiento);
 
-        List<ArchivoUploadResponse> urlsGeneradas = new ArrayList<>();
-
-        if (dto.getFotos() != null && !dto.getFotos().isEmpty()) {
-            // Pedimos las URLs firmadas
-            urlsGeneradas = archivoService.getSignedArchivos(dto.getFotos(), EXTENSIONES_VALIDAS);
-
-            List<Archivo> entidadesArchivo = this.archivoMapper.archivoUploadResponseListToArchivoList(urlsGeneradas);
-
-            entidadesArchivo.forEach(actividad::addFoto);
-        }
+        sincronizarFotos(dto.getFotos().stream().map(archivoReq -> new DTOActividadFotoReq(archivoReq.getKey(), archivoReq.getNombre())).toList(), actividad);
 
         // Persistir en la base de datos
         Actividad actividadGuardada = actividadRepository.save(actividad);
@@ -151,7 +149,6 @@ public class ActividadService {
         response.setIdActividad(actividadGuardada.getId());
         response.setMensaje("La actividad fue creada exitosamente.");
         response.setAdvertencias(advertencias);
-        response.setArchivoUploadResponses(urlsGeneradas);
 
         return response;
     }
@@ -171,15 +168,35 @@ public class ActividadService {
     public Page<DTOActividadesResponse> obtenerListadoActividades(UUID establecimientoId, String busqueda, EstadoActividadNombre estado, Pageable pageable) {
         String texto = (busqueda == null || busqueda.isBlank()) ? null : busqueda.trim();
         Page<Actividad> actividades = actividadRepository.findByFiltrosDinamicos(establecimientoId, texto, estado, pageable);
+        LocalDateTime ahora = LocalDateTime.now();
 
-        return actividades.map(actividadMapper::actividadToDTOActividades);
+        List<UUID> ids = actividades.getContent().stream().map(Actividad::getId).toList();
+
+        Map<UUID, Long> reservasPorActividad = ids.isEmpty()
+                ? Map.of()
+                : reservaRepository.contarReservasBloqueantesPorActividad(ids, ahora).stream()
+                  .collect(Collectors.toMap(DTOConteoReservasPorActividad::getActividadId,
+                          DTOConteoReservasPorActividad::getCantidad));
+
+        return actividades.map(actividad -> {
+            DTOActividadesResponse dto = actividadMapper.actividadToDTOActividades(actividad);
+
+            long cantidad = reservasPorActividad.getOrDefault(actividad.getId(), 0L);
+            EstadoActividadNombre estadoActual = actividad.getEstado().getNombre();
+
+            dto.setCantidadReservasAsociadas(cantidad);
+            dto.setPuedeCambiarEstado(
+                    estadoActual != EstadoActividadNombre.DADO_DE_BAJA
+                            && (estadoActual == EstadoActividadNombre.BORRADOR || cantidad == 0));
+            return dto;
+        });
     }
 
     //US-ACT-07: Consultar todos los días disponibles para una actividad
     @Transactional(readOnly = true)
     public DTOCalendarioActividadDiaResponse obtenerDetalleCalendario(UUID idActividad, int mes, int anio){
 
-        Actividad actividad = obtenerActividad(idActividad);
+        Actividad actividad = actividadRepository.findById(idActividad).orElseThrow(ActividadNotFoundException::new);
         int anioActual = java.time.LocalDate.now().getYear();
 
         if (anio < anioActual) {
@@ -230,7 +247,7 @@ public class ActividadService {
             DTOListadoActividadVisitanteResponse dto = actividadMapper.actividadToDTOListadoActividadVisitante(actividad);
 
             if (actividad.getFotos() != null && !actividad.getFotos().isEmpty()) {
-                Archivo primeraFoto = actividad.getFotos().get(0);
+                Archivo primeraFoto = actividad.getFotos().get(0).getArchivo();
                 DTOFotosResponse fotoDto = new DTOFotosResponse();
                 fotoDto.setKey(primeraFoto.getKey());
                 fotoDto.setNombre(primeraFoto.getNombre());
@@ -257,10 +274,8 @@ public class ActividadService {
         }
 
         EstadoActividad nuevoEstado = obtenerEstado(dto.getEstado());
-        if (EstadoActividadNombre.BORRADOR.name().equalsIgnoreCase(dto.getEstado()) &&
-                tieneReservasPendientesOPagadas(idActividad)) {
-
-            throw new ValidacionNegocioException("No se permite cambiar a estado borrador: la actividad posee reservas en estado pendiente o pagada.");
+        if (EstadoActividadNombre.BORRADOR.name().equalsIgnoreCase(dto.getEstado())){
+            validarSinReservasBloqueantes(idActividad);
         }
 
         actividad.setEstado(nuevoEstado);
@@ -301,18 +316,7 @@ public class ActividadService {
         List<ActividadFAQ> nuevasFaqs = obtenerFaqs(dto.getFaqs());
         actividad.getFaqs().addAll(nuevasFaqs);
 
-        if (dto.getFotosExistentes() != null) {
-            actividad.getFotos().removeIf(foto -> !dto.getFotosExistentes().contains(foto.getKey()));
-        }
-
-        List<ArchivoUploadResponse> urlsGeneradas = new ArrayList<>();
-
-        if (dto.getFotosNuevas() != null && !dto.getFotosNuevas().isEmpty()) {
-            // Pasamos la lista de ArchivoUploadRequest al servicio para que nos dé las URLs de subida
-            urlsGeneradas = archivoService.getSignedArchivos(dto.getFotosNuevas(), EXTENSIONES_VALIDAS);
-            List<Archivo> entidadesArchivoNuevas = archivoMapper.archivoUploadResponseListToArchivoList(urlsGeneradas);
-            entidadesArchivoNuevas.forEach(actividad::addFoto);
-        }
+        sincronizarFotos(dto.getFotos(), actividad);
 
         Actividad actividadGuardada = actividadRepository.save(actividad);
         DTOActividadGetResponse response = actividadMapper.actividadToDTOActividadGetResponse(actividadGuardada);
@@ -320,8 +324,6 @@ public class ActividadService {
         // Inyectamos la URL de DESCARGA (GET) a TODAS las fotos de la respuesta
         response.setFotosGuardadas(obtenerUrlsDeDescarga(response.getFotosGuardadas()));
 
-        // Adjuntamos las URLs de SUBIDA (PUT) para que el front cargue las fotos nuevas
-        response.setFotosParaSubir(urlsGeneradas);
         List<String> advertencias = calcularHuecos(dto.getTarifas());
         response.setAdvertencias(advertencias);
 
@@ -369,6 +371,35 @@ public class ActividadService {
         return actividadRepository.obtenerFiltroCultivos();
     }
 
+    @Transactional
+    public DTOCambioEstadoActividadResponse cambiarEstadoActividad(UUID idEstablecimiento, UUID idActividad, DTOCambioEstadoActividad dto) {
+        validarEstablecimientoNoSuspendido(idEstablecimiento);
+
+        Actividad actividad = obtenerActividad(idActividad);
+        EstadoActividad nuevoEstado = obtenerEstado(dto.getEstado());
+
+        EstadoActividadNombre estadoAnterior = actividad.getEstado().getNombre();
+        EstadoActividadNombre estadoDestino = nuevoEstado.getNombre();
+
+        if (estadoDestino != EstadoActividadNombre.BORRADOR && estadoDestino != EstadoActividadNombre.PUBLICADO) {
+            throw new ValidacionNegocioException("Solo se permite cambiar entre los estados Borrador y Publicado.");
+        }
+
+        if (estadoAnterior == EstadoActividadNombre.DADO_DE_BAJA) {
+            throw new ValidacionNegocioException("La actividad está dada de baja, no se puede cambiar su estado de publicación.");
+        }
+        if (estadoAnterior == estadoDestino) {
+            throw new ValidacionNegocioException("La actividad ya se encuentra en estado " + estadoDestino.getNombre());
+        }
+
+        if (estadoDestino == EstadoActividadNombre.BORRADOR) {
+            validarSinReservasBloqueantes(idActividad);
+        }
+
+        actividad.setEstado(nuevoEstado);
+        actividadRepository.save(actividad);
+        return new DTOCambioEstadoActividadResponse(actividad.getId(), estadoAnterior, estadoDestino);
+    }
 
     @Transactional
     public DTOBajaActividadResponse darBajaActividad(UUID idEstablecimiento, UUID idActividad){
@@ -388,6 +419,48 @@ public class ActividadService {
         reservaService.cancelarReservasPorBajaDeActividad(actividad, ahora);
         return actividadMapper.actividadToDTOBajaActividad(actividad);
     }
+
+    //US-ACT-08: Resumen del día (encabezado)
+    @Transactional(readOnly = true)
+    public DTOListadoReservasResumenResponse obtenerResumenDelDia(UUID idActividad, UUID idActividadDia) {
+        Actividad actividad = actividadRepository.findById(idActividad).orElseThrow(ActividadNotFoundException::new);
+        ActividadDia dia = obtenerDiaDeActividad(idActividad, idActividadDia);
+
+        DTOListadoReservasResumenResponse dto = actividadMapper.actividadToListadoReservasResumenResponse(actividad);
+        dto.setEstadoDia(dia.getEstadoActual().getEstado().getNombre().toString());
+        dto.setFecha(dia.getFechaHoraInicio().toLocalDate().toString());
+        dto.setHoraInicio(dia.getFechaHoraInicio().toLocalTime().toString());
+        dto.setHoraFin(dia.getFechaHoraFin().toLocalTime().toString());
+        dto.setCantidadTotalReservas(reservaRepository.contarReservasDelDia(idActividadDia, ESTADOS_RESERVA_VISIBLES_PRODUCTOR));
+        dto.setIngresoEstimadoDelDia(reservaRepository.sumarIngresoDelDia(idActividadDia, ESTADOS_RESERVA_CALCULAR_INGRESO));
+        return dto;
+    }
+
+    //US-ACT-08: Listado paginado de reservas del día, filtrable por estado
+    @Transactional(readOnly = true)
+    public Page<DTODetalleReservaCard> obtenerReservasDelDia(UUID idActividad, UUID idActividadDia,
+                                                             EstadoReservaNombre estado, Pageable pageable) {
+        ActividadDia dia = obtenerDiaDeActividad(idActividad, idActividadDia);
+        List<EstadoReservaNombre> estados = obtenerEstadosReservaAFiltrar(estado);
+
+        Page<UUID> paginaIds = reservaRepository.findIdsReservasDelDiaParaProductor(
+                idActividad, idActividadDia, estados, pageable);
+
+        Map<UUID, Reserva> reservasPorId = paginaIds.isEmpty()
+                ? Map.of()
+                : reservaRepository.findReservasConDetallesByIds(paginaIds.getContent()).stream()
+                  .collect(Collectors.toMap(Reserva::getId, reserva -> reserva));
+
+        LocalDate fechaActividad = dia.getFechaHoraInicio().toLocalDate();
+        return paginaIds.map(id -> armarDetalleReservaCard(reservasPorId.get(id), fechaActividad));
+    }
+    //US-ACT-08: Filtro de estados de reserva
+    @Transactional(readOnly = true)
+    public List<DTOFiltro> obtenerFiltroEstadosReserva(UUID idActividad, UUID idActividadDia) {
+        obtenerDiaDeActividad(idActividad, idActividadDia);
+        return actividadRepository.obtenerFiltroEstadosReserva(idActividadDia, ESTADOS_RESERVA_VISIBLES_PRODUCTOR);
+    }
+
     //Métodos auxiliares
 
     private EstadoActividad obtenerEstado(String nombreEstadoDto) {
@@ -719,16 +792,18 @@ public class ActividadService {
         return cultivosDefinitivos;
     }
 
-    private boolean tieneReservasPendientesOPagadas(UUID idActividad) {
-        List<EstadoReservaNombre> estadosQueBloquean = List.of(
-                EstadoReservaNombre.PENDIENTE,
-                EstadoReservaNombre.PAGADA
-        );
+    private void validarSinReservasBloqueantes(UUID idActividad) {
+        LocalDateTime ahora = LocalDateTime.now();
+        DTOReservasBloqueantes reservas = reservaRepository.contarReservasBloqueantes(idActividad, ahora);
 
-        return reservaRepository.existsByActividadIdAndEstadoActualEstadoReservaNombreIn(
-                idActividad,
-                estadosQueBloquean
-        );
+        if (reservas.getTotal() > 0) {
+            String mensaje = "No se puede pasar la actividad a borrador: posee "
+                    + reservas.getTotal() + (reservas.getTotal() == 1 ? " reserva" : " reservas")
+                    + " en estado pendiente o pagada (pendientes: " + reservas.getPendientes()
+                    + ", pagadas: " + reservas.getPagadas() + ").";
+
+            throw new AppException(ActividadError.ACTIVIDAD_CON_RESERVAS_ACTIVAS, mensaje, reservas);
+        }
     }
     private List<DTOFotosResponse> obtenerUrlsDeDescarga(List<DTOFotosResponse> fotos) {
         if (fotos != null && !fotos.isEmpty()) {
@@ -837,6 +912,84 @@ public class ActividadService {
         return reservaRepository.contarCuposPorDia(ids).stream()
                 .collect(Collectors.toMap(DTOCuposPorDia::getActividadDiaId, c -> c));
     }
+
+    private void sincronizarFotos(List<DTOActividadFotoReq> fotos, Actividad actividad) {
+        List<DTOActividadFotoReq> pedidas = fotos == null ? List.of() : fotos;
+
+        List<String> keyPedidas = pedidas.stream().map(DTOActividadFotoReq::getKey).toList();
+        if (Set.copyOf(keyPedidas).size() != keyPedidas.size()) {
+            throw new DatoInvalidoException("La actividad no puede repetir la misma foto");
+        }
+
+        actividad.getFotos().removeIf(foto -> !keyPedidas.contains(foto.getArchivo().getKey()));
+
+        Map<String, ActividadFoto> conocidas = actividad.getFotos().stream()
+                .collect(Collectors
+                        .toMap(foto -> foto.getArchivo().getKey(), foto -> foto));
+
+        for(int orden = 0; orden < pedidas.size(); orden++) {
+            DTOActividadFotoReq pedida = pedidas.get(orden);
+            ActividadFoto conocida = conocidas.get(pedida.getKey());
+
+            if (conocida != null) {
+                conocida.setOrden(orden);
+                continue;
+            }
+
+            Archivo archivo = this.archivoService.reclamarArchivo(new ArchivoClaimRequest(pedida.getKey(), pedida.getNombre()), CarpetaArchivo.ACTIVIDADES);
+
+            ActividadFoto nueva = new ActividadFoto();
+            nueva.setArchivo(archivo);
+            nueva.setOrden(orden);
+            actividad.getFotos().add(nueva);
+        }
+    }
+
+    private ActividadDia obtenerDiaDeActividad(UUID idActividad, UUID idActividadDia) {
+        return actividadRepository.findDiaDeActividad(idActividad, idActividadDia)
+                .orElseThrow(ActividadDiaNotFound::new);
+    }
+
+    private DTODetalleReservaCard armarDetalleReservaCard(Reserva reserva, LocalDate fechaActividad) {
+        List<ReservaDetalle> detalles = reserva.getReservaDetalles();
+
+        DTODetalleReservaCard card = actividadMapper.reservaToDTODetalleReservaCard(reserva);
+        card.setCantidadTotalPersona(detalles.size());
+        card.setResumenRangoEtario(obtenerResumenPorRangoEtario(detalles));
+        card.setVisitantes(detalles.stream()
+                .map(rd -> {
+                    DTODetalleVisitantesCard visitante = actividadMapper.reservaDetalleToDTODetalleVisitantesCard(rd);
+                    visitante.setEdad(Period.between(rd.getFechaNacimiento(), fechaActividad).getYears());
+                    return visitante;
+                })
+                .toList());
+        return card;
+    }
+
+    private List <DTOResumenRangoEtario> obtenerResumenPorRangoEtario(List<ReservaDetalle>  detalles) {
+        return detalles.stream()
+                // Agrupa y cuenta
+                .collect(Collectors.groupingBy(
+                        rd -> rd.getActividadRangoEtario().getNombre(),
+                        Collectors.counting()
+                ))
+                // Convierte el resultado en una nueva lista de objetos
+                .entrySet().stream()
+                .map(entry -> new DTOResumenRangoEtario(entry.getKey(), entry.getValue()))
+                .toList();
+    }
+
+    private List<EstadoReservaNombre> obtenerEstadosReservaAFiltrar(EstadoReservaNombre estado) {
+        if (estado == null) {
+            return ESTADOS_RESERVA_VISIBLES_PRODUCTOR;   // sin filtro: todos los visibles
+        }
+        if (!ESTADOS_RESERVA_VISIBLES_PRODUCTOR.contains(estado)) {
+            throw new DatoInvalidoException("El estado de reserva no es válido para este listado: " + estado);
+        }
+        return List.of(estado);  // con filtro: solo el estado que selecciona el usuario
+    }
+
+
 }
 
 
