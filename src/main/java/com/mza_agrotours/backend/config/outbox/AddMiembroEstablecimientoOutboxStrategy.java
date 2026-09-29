@@ -13,6 +13,6 @@ public class AddMiembroEstablecimientoOutboxStrategy implements OutboxStrategy {
     }
 
     public void resolver(Outbox outbox) throws Exception {
-        this.chatService.agregarMiembroAEstablecimiento(outbox.getId().toString());
+        this.chatService.agregarMiembroAEstablecimiento(outbox.getEntidadId());
     }
 }
