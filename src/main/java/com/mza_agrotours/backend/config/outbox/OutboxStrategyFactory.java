@@ -9,15 +9,18 @@ public class OutboxStrategyFactory {
     private final AddMiembroEstablecimientoOutboxStrategy addMiembroEstablecimientoOutboxStrategy;
     private final DelMiembroEstablecimientoOutboxStrategy delMiembroEstablecimientoOutboxStrategy;
     private final DelEstablecimientoOutboxStrategy delEstablecimientoOutboxStrategy;
+    private final DelUsuarioChatFirebaseOutboxStrategy delUsuarioChatFirebaseOutboxStrategy;
 
     public OutboxStrategyFactory(EliminarUsuarioFirebaseOutboxStrategy eliminarUsuarioFirebaseOutboxStrategy,
                                  AddMiembroEstablecimientoOutboxStrategy addMiembroEstablecimientoOutboxStrategy,
                                  DelMiembroEstablecimientoOutboxStrategy delMiembroEstablecimientoOutboxStrategy,
-                                 DelEstablecimientoOutboxStrategy delEstablecimientoOutboxStrategy) {
+                                 DelEstablecimientoOutboxStrategy delEstablecimientoOutboxStrategy,
+                                 DelUsuarioChatFirebaseOutboxStrategy delUsuarioChatFirebaseOutboxStrategy) {
         this.eliminarUsuarioFirebaseOutboxStrategy = eliminarUsuarioFirebaseOutboxStrategy;
         this.addMiembroEstablecimientoOutboxStrategy = addMiembroEstablecimientoOutboxStrategy;
         this.delMiembroEstablecimientoOutboxStrategy = delMiembroEstablecimientoOutboxStrategy;
         this.delEstablecimientoOutboxStrategy = delEstablecimientoOutboxStrategy;
+        this.delUsuarioChatFirebaseOutboxStrategy = delUsuarioChatFirebaseOutboxStrategy;
     }
 
     public OutboxStrategy getStrategy(Outbox outbox) {
@@ -26,6 +29,7 @@ public class OutboxStrategyFactory {
             case AGREGAR_MIEMBRO_ESTABLECIMIENTO -> addMiembroEstablecimientoOutboxStrategy;
             case QUITAR_MIEMBRO_ESTABLECIMIENTO -> delMiembroEstablecimientoOutboxStrategy;
             case QUITAR_ESTABLECIMIENTO -> delEstablecimientoOutboxStrategy;
+            case QUITAR_USUARIO_CHAT -> delUsuarioChatFirebaseOutboxStrategy;
         };
     }
 }
