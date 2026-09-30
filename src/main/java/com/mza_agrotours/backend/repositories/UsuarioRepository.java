@@ -16,4 +16,6 @@ public interface UsuarioRepository extends BaseEntityRepository<Usuario, UUID>{
     Optional<Usuario> findByIdAndFechaHoraBajaIsNull(UUID id);
 
     Optional<Usuario> findByFirebaseUID(String firebaseUID);
+
+    Optional<Usuario> findByFirebaseUIDAndFechaHoraBajaIsNull(String firebaseUID);
 }

@@ -8,6 +8,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/usuario")
@@ -62,5 +64,10 @@ public class UsuarioController {
     public ResponseEntity<?> getCardUsuarioByEmail(@PathVariable String email) {
         UsuarioCardDTO usuarioCardDTO = this.usuarioService.getUsuarioCardByEmail(email);
         return ResponseEntity.ok(ApiResponse.ok(usuarioCardDTO));
+    }
+
+    @GetMapping("/chats")
+    public ResponseEntity<ApiResponse<Map<String, String>>> getChatsInfo(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails, @RequestBody List<UUID> actividadIds) {
+        return ResponseEntity.ok(ApiResponse.ok(this.usuarioService.getNombresChatByActividadIds(actividadIds, usuarioAuthDetails)));
     }
 }
