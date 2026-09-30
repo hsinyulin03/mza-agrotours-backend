@@ -31,7 +31,7 @@ public interface IncidenciaRepository extends BaseEntityRepository<Incidencia, U
             JOIN ea.estado e
             WHERE (:estado IS NULL OR e.nombre = :estado)
             AND (
-                :busqueda IS NULL OR
+                :busqueda= '' OR
                 LOWER(i.titulo) LIKE LOWER(CONCAT('%', :busqueda, '%')) OR
                 LOWER(i.descripcion) LIKE LOWER(CONCAT('%', :busqueda, '%')) OR
                 LOWER(u.nombre) LIKE LOWER(CONCAT('%', :busqueda, '%')) OR
@@ -46,7 +46,7 @@ public interface IncidenciaRepository extends BaseEntityRepository<Incidencia, U
             JOIN ea.estado e
             WHERE (:estado IS NULL OR e.nombre = :estado)
             AND (
-                :busqueda IS NULL OR
+                :busqueda= '' OR
                 LOWER(i.titulo) LIKE LOWER(CONCAT('%', :busqueda, '%')) OR
                 LOWER(i.descripcion) LIKE LOWER(CONCAT('%', :busqueda, '%')) OR
                 LOWER(u.nombre) LIKE LOWER(CONCAT('%', :busqueda, '%')) OR
@@ -66,4 +66,5 @@ public interface IncidenciaRepository extends BaseEntityRepository<Incidencia, U
 
     @Query("SELECT i FROM Incidencia i WHERE i.usuario.email = :email ORDER BY i.fechaHoraInicio ASC")
     List<Incidencia> findByUsuarioEmailOrderByFechaHoraInicioAsc(@Param("email") String email);
+
 }

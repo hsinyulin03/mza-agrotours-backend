@@ -27,9 +27,9 @@ public interface IncidenciaMapper {
         }
 
         Integer diasTranscurridos = null;
-        if (incidencia.getFechaHoraIncio() != null) {
+        if (incidencia.getFechaHoraInicio() != null) {
             diasTranscurridos = (int) ChronoUnit.DAYS.between(
-                    incidencia.getFechaHoraIncio().toLocalDate(),
+                    incidencia.getFechaHoraInicio().toLocalDate(),
                     LocalDate.now()
             );
         }
@@ -39,7 +39,7 @@ public interface IncidenciaMapper {
                 .titulo(incidencia.getTitulo())
                 .descripcion(incidencia.getDescripcion())
                 .estado(estadoNombre)
-                .fechaHoraIncio(incidencia.getFechaHoraIncio())
+                .fechaHoraIncio(incidencia.getFechaHoraInicio())
                 .diasTranscurridos(diasTranscurridos)
                 .motivo(motivo)
                 .build();
