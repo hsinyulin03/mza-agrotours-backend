@@ -1,6 +1,5 @@
 package com.mza_agrotours.backend.services.pago;
 
-import com.google.api.client.util.Value;
 import com.mercadopago.client.common.IdentificationRequest;
 import com.mercadopago.client.merchantorder.MerchantOrderClient;
 import com.mercadopago.client.payment.PaymentRefundClient;
@@ -14,6 +13,7 @@ import com.mercadopago.resources.merchantorder.MerchantOrder;
 import com.mercadopago.resources.payment.PaymentRefund;
 import com.mercadopago.resources.preference.Preference;
 import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaPagoDTO;
+import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaReembolso;
 import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoDTO;
 import com.mza_agrotours.backend.dtos.reservas.PagoStrategyDTO;
 import com.mza_agrotours.backend.entities.Usuario;
@@ -40,7 +40,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
+import java.util.Optional;
 
 @Component
 public class PagoMPStrategy implements EstrategiaPago{
@@ -209,7 +209,8 @@ public class PagoMPStrategy implements EstrategiaPago{
 
     /**
      * Pide el reembolso total del payment aprobado. Usa una idempotency key por pago para que un doble
-     * pedido no genere dos reembolsos.
+     * pedido no genere dos reembolsos. Un error 4xx de MP es un rechazo; un 5xx o un error de red no
+     * garantizan que el reembolso no se haya hecho, así que se lanzan.
      */
     @Override
     public ResultadoReembolsoDTO reembolsar(Pago pago) {
@@ -226,11 +227,52 @@ public class PagoMPStrategy implements EstrategiaPago{
                     .refund(Long.valueOf(pago.getIdTransaccionExterna()), options);
             return new ResultadoReembolsoDTO(true, String.valueOf(refund.getId()));
         } catch (MPApiException e) {
-            log.warn("Error MP al reembolsar el pago {}: {}", pago.getId(), e.getApiResponse().getContent());
+            if (e.getStatusCode() >= 500)
+                throw new PasarelaPagoException("Error interno de MP al reembolsar, no se sabe si se realizó: " + e.getApiResponse().getContent(), e);
+            log.warn("MP rechazó el reembolso del pago {}: {}", pago.getId(), e.getApiResponse().getContent());
             return ResultadoReembolsoDTO.rechazado();
         } catch (MPException e) {
-            log.warn("Error de comunicación con MP al reembolsar el pago {}", pago.getId(), e);
-            return ResultadoReembolsoDTO.rechazado();
+            throw new PasarelaPagoException("Error de red/SDK al reembolsar, no se sabe si se realizó", e);
+        }
+    }
+
+    /**
+     * Lista los refunds del payment. Como solo se hacen reembolsos totales, hay a lo sumo uno.
+     */
+    @Override
+    public Optional<String> buscarReembolso(Pago pago) {
+        try {
+            List<PaymentRefund> refunds = new PaymentRefundClient()
+                    .list(Long.valueOf(pago.getIdTransaccionExterna()))
+                    .getResults();
+            if (refunds == null || refunds.isEmpty()) return Optional.empty();
+            return Optional.of(String.valueOf(refunds.get(0).getId()));
+        } catch (MPApiException e) {
+            throw new PasarelaPagoException("Error de la API de MP listando los refunds: " + e.getApiResponse().getContent(), e);
+        } catch (MPException e) {
+            throw new PasarelaPagoException("Error de red/SDK listando los refunds", e);
+        }
+    }
+
+    /**
+     * Workaround al todavía no tener notificaciones webhook de Mercado Pago: consulta el refund por su ID.
+     * "approved" es aprobado, "rejected" y "cancelled" son rechazados, y cualquier otro ("in_process",
+     * "authorized") sigue en proceso.
+     */
+    @Override
+    public ResultadoConsultaReembolso consultarReembolso(Pago pago, String idReembolsoExterno) {
+        try {
+            PaymentRefund refund = new PaymentRefundClient()
+                    .get(Long.valueOf(pago.getIdTransaccionExterna()), Long.valueOf(idReembolsoExterno));
+
+            String status = refund.getStatus();
+            if ("approved".equals(status)) return ResultadoConsultaReembolso.APROBADO;
+            if ("rejected".equals(status) || "cancelled".equals(status)) return ResultadoConsultaReembolso.RECHAZADO;
+            return ResultadoConsultaReembolso.EN_PROCESO;
+        } catch (MPApiException e) {
+            throw new PasarelaPagoException("Error de la API de MP consultando el refund: " + e.getApiResponse().getContent(), e);
+        } catch (MPException e) {
+            throw new PasarelaPagoException("Error de red/SDK consultando el refund", e);
         }
     }
 }

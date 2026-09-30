@@ -16,7 +16,7 @@ public record ConsultarReservaDTO(
         List<ConsultarReservaDetalleDTO> detalleDTOs,
 
         // ActividadDia - fechaHoraInicio, fechaHoraFin
-        LocalDateTime fechaHoraInicio, LocalDateTime fechaHoraFin,
+        LocalDateTime actividadFechaHoraInicio, LocalDateTime actividadFechaHoraFin,
 
         // Actividad - nombre, ubicación, id
         String nombreActividad, String idActividad,

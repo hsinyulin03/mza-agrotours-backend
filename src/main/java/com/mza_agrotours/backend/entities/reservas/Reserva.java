@@ -38,7 +38,7 @@ public class Reserva extends BaseEntity {
     @Column (nullable = false)
     private BigDecimal totalReserva;                     // Monto total de la reserva
 
-    //TODO relaciones - Calificacion, Reembolso
+    //TODO relaciones - Calificacion
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private ReservaEstado estadoActual;
 

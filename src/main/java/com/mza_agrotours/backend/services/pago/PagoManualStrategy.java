@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.services.pago;
 
 import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaPagoDTO;
+import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaReembolso;
 import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoDTO;
 import com.mza_agrotours.backend.dtos.reservas.PagoStrategyDTO;
 import com.mza_agrotours.backend.entities.pago.EstadoPago;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Component
 public class PagoManualStrategy implements EstrategiaPago{
@@ -78,5 +80,17 @@ public class PagoManualStrategy implements EstrategiaPago{
     @Override
     public ResultadoReembolsoDTO reembolsar(Pago pago) {
         return new ResultadoReembolsoDTO(true, null);
+    }
+
+    // El reembolso manual se completa al pedirlo, nunca queda sin confirmar
+    @Override
+    public Optional<String> buscarReembolso(Pago pago) {
+        return Optional.empty();
+    }
+
+    // El reembolso manual se da por realizado al pedirlo, no hay pasarela que consultar
+    @Override
+    public ResultadoConsultaReembolso consultarReembolso(Pago pago, String idReembolsoExterno) {
+        return ResultadoConsultaReembolso.APROBADO;
     }
 }

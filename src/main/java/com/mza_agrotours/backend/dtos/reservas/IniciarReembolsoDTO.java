@@ -1,5 +1,7 @@
 package com.mza_agrotours.backend.dtos.reservas;
 
-public record IniciarReembolsoDTO(String resultado) {
+import com.mza_agrotours.backend.enums.ResultadoCancelacion;
+
+public record IniciarReembolsoDTO(ResultadoCancelacion resultado) {
 
 }

@@ -23,4 +23,9 @@ public class ReservaEstadosScheduler {
     public void checkReservasPagadas(){
         reservaService.pagarReservas();
     }
+
+    @Scheduled(initialDelay = 10L, fixedDelay = 60L, timeUnit = TimeUnit.SECONDS)
+    public void checkReembolsosConfirmados(){
+        reservaService.confirmarReembolsos();
+    }
 }
