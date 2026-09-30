@@ -12,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -58,6 +59,12 @@ public class EstablecimientoProductorController {
     @PreAuthorize("@estAuth.esTitular(authentication, #establecimientoId)")
     public ResponseEntity<ApiResponse<List<CondicionDTO>>> getCondicionesBajaEstablecimiento(@PathVariable UUID establecimientoId) {
         return ResponseEntity.ok(ApiResponse.ok(establecimientoService.getCondicionesDeleteEstablecimiento(establecimientoId)));
+    }
+
+    @GetMapping("/chats")
+    @PreAuthorize("@estAuth.esTitular(authentication, #establecimientoId)")
+    public ResponseEntity<ApiResponse<Map<String, String>>> getChatsInfo(@PathVariable UUID establecimientoId, @RequestBody List<UUID> usuarioFirebaseIds) {
+        return ResponseEntity.ok(ApiResponse.ok(establecimientoService.getNombresChatByUsuarioFirebaseIds(usuarioFirebaseIds, establecimientoId)));
     }
 
 }

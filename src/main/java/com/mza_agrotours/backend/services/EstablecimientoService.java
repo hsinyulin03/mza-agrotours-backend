@@ -39,7 +39,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 
-
 @Service
 public class EstablecimientoService  {
     @Autowired
@@ -77,6 +76,9 @@ public class EstablecimientoService  {
 
     @Autowired
     private ApplicationEventPublisher publisher;
+
+    @Autowired
+    private ChatService chatService;
 
 // ALTA ESTABLECIMIENTO
     @Transactional
@@ -223,6 +225,13 @@ public class EstablecimientoService  {
         Establecimiento establecimiento = this.establecimientoRepository.obtenerEstablecimientoActivoById(id)
                 .orElseThrow(() -> new EntityNotFoundException("No se encuentra el establecimiento indicado"));
         return mapearADetalleVisitante(establecimiento);
+    }
+
+    public Map<String, String> getNombresChatByUsuarioFirebaseIds(List<UUID> usuarioFirebaseIds, UUID establecimientoId) {
+       Establecimiento establecimiento = this.establecimientoRepository.findByIdAndFechaHoraBajaIsNull(establecimientoId)
+               .orElseThrow(() -> new EstablecimientoNotFoundException("No se encuentra el establecimiento indicado"));
+
+       return this.chatService.getNombresChatsByEstablecimientoAndUsuarioFirebaseIds(establecimiento, usuarioFirebaseIds);
     }
 
 
