@@ -30,10 +30,10 @@ public class IncidenciaService {
     private final UsuarioRepository usuarioRepository;
     private final EstadoIncidenciaRepository estadoIncidenciaRepository;
 
-    public List<DTOListadoIncidenciaVisitanteResponse> listarIncidenciasDeVisitante(String emailUsuario) {
-        return incidenciaMapper.toDTOList(
-                incidenciaRepository.findByUsuarioEmailOrderByFechaHoraInicioAsc(emailUsuario)
-        );
+    public Page<DTOListadoIncidenciaVisitante> listarIncidenciasDeVisitante(String emailUsuario, Pageable pageable) {
+        return incidenciaRepository
+                .findByUsuarioEmail(emailUsuario, pageable)
+                .map(incidenciaMapper::toDTO);
     }
     public IncidenciasMetricaResponse obtenerFiltroEstados() {
         List<Object[]> resultados = incidenciaRepository.contarPorEstado();

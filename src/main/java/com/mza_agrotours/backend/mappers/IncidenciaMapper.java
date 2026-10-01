@@ -1,6 +1,6 @@
 package com.mza_agrotours.backend.mappers;
 
-import com.mza_agrotours.backend.dtos.incidencia.DTOListadoIncidenciaVisitanteResponse;
+import com.mza_agrotours.backend.dtos.incidencia.DTOListadoIncidenciaVisitante;
 import com.mza_agrotours.backend.entities.incidencia.Incidencia;
 import com.mza_agrotours.backend.enums.EstadoIncidenciaNombre;
 import org.mapstruct.Mapper;
@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 @Mapper(componentModel = "spring")
 public interface IncidenciaMapper {
 
-    default DTOListadoIncidenciaVisitanteResponse toDTO(Incidencia incidencia) {
+    default DTOListadoIncidenciaVisitante toDTO(Incidencia incidencia) {
         if (incidencia == null) return null;
 
         EstadoIncidenciaNombre estadoNombre = incidencia.getEstadoActual() != null
@@ -34,18 +34,18 @@ public interface IncidenciaMapper {
             );
         }
 
-        return DTOListadoIncidenciaVisitanteResponse.builder()
+        return DTOListadoIncidenciaVisitante.builder()
                 .id(incidencia.getId())
                 .titulo(incidencia.getTitulo())
                 .descripcion(incidencia.getDescripcion())
                 .estado(estadoNombre)
-                .fechaHoraIncio(incidencia.getFechaHoraInicio())
+                .fechaHoraInicio(incidencia.getFechaHoraInicio())
                 .diasTranscurridos(diasTranscurridos)
-                .motivo(motivo)
+                .respuestaAdmin(motivo)
                 .build();
     }
 
-    default List<DTOListadoIncidenciaVisitanteResponse> toDTOList(List<Incidencia> incidencias) {
+    default List<DTOListadoIncidenciaVisitante> toDTOList(List<Incidencia> incidencias) {
         if (incidencias == null) return Collections.emptyList();
         return incidencias.stream().map(this::toDTO).collect(Collectors.toList());
     }

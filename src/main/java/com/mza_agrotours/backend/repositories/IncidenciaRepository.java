@@ -64,7 +64,6 @@ public interface IncidenciaRepository extends BaseEntityRepository<Incidencia, U
         """)
     List<Object[]> contarPorEstado();
 
-    @Query("SELECT i FROM Incidencia i WHERE i.usuario.email = :email ORDER BY i.fechaHoraInicio ASC")
-    List<Incidencia> findByUsuarioEmailOrderByFechaHoraInicioAsc(@Param("email") String email);
-
+    @Query("SELECT i FROM Incidencia i WHERE i.usuario.email = :email")
+    Page<Incidencia> findByUsuarioEmail(@Param("email") String email, Pageable pageable);
 }

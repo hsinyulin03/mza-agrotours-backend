@@ -11,12 +11,12 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class DTOListadoIncidenciaVisitanteResponse {
+public class DTOListadoIncidenciaVisitante {
     private UUID id;
     private String titulo;
     private String descripcion;
     private EstadoIncidenciaNombre estado;
-    private LocalDateTime fechaHoraIncio;
+    private LocalDateTime fechaHoraInicio;
     private Integer diasTranscurridos; //dias transcurridos desde la fechaHoraIncio hasta la fecha actual
-    private String motivo; //solo si es desestimada o resuelta
+    private String respuestaAdmin; // motivo incdencia solo si es desestimada o resuelta
 }
