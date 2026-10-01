@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.*;
 import com.mza_agrotours.backend.dtos.chat.ChatInfoRequest;
+import com.mza_agrotours.backend.dtos.chat.ChatInfoUsuarioDTO;
 import com.mza_agrotours.backend.entities.*;
 import com.mza_agrotours.backend.enums.outbox.TipoOperacion;
 import com.mza_agrotours.backend.exceptions.*;
@@ -199,7 +200,7 @@ public class UsuarioService {
         return getCondicionesDeleteUsuarioHelper(usuario);
     }
 
-    public Map<String, String> getNombresChatByActividadIds(List<ChatInfoRequest> chatInfoRequests, UsuarioAuthDetails usuarioAuthDetails) {
+    public Map<String, ChatInfoUsuarioDTO> getNombresChatByActividadIds(List<ChatInfoRequest> chatInfoRequests, UsuarioAuthDetails usuarioAuthDetails) {
         Usuario usuario = this.usuarioRepository.findByFirebaseUIDAndFechaHoraBajaIsNull(usuarioAuthDetails.getFirebaseUID())
                 .orElseThrow(() -> new AppException(UsuarioError.USUARIO_NOT_FOUND));
 

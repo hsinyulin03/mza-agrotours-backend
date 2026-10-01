@@ -242,7 +242,7 @@ public class ChatService {
         }
     }
 
-    public Map<String, String> getNombresChatsByUsuarioAndActividadIds(Usuario usuario, List<ChatInfoRequest> chatInfoRequests) {
+    public Map<String, ChatInfoUsuarioDTO> getNombresChatsByUsuarioAndActividadIds(Usuario usuario, List<ChatInfoRequest> chatInfoRequests) {
         List<UUID> actividadIds = chatInfoRequests.stream().map(ChatInfoRequest::getActividadId).toList();
 
         String usuarioId = usuario.getFirebaseUID();
@@ -282,11 +282,11 @@ public class ChatService {
             throw new RuntimeException("Timeout al obtener los chats del usuario");
         }
 
-        Map<String, String> chatsPorActividad = new HashMap<>();
+        Map<String, ChatInfoUsuarioDTO> chatsPorActividad = new HashMap<>();
         for (Actividad actividad : actividadRepository.findAllById(actividadIds)) {
             String chatId = usuarioId + "_" + actividad.getId();
             if (chatIds.contains(chatId)) {
-                chatsPorActividad.put(chatId, actividad.getNombre());
+                chatsPorActividad.put(chatId, new ChatInfoUsuarioDTO(actividad.getNombre(), actividad.getEstablecimiento().getNombre()));
             }
         }
 

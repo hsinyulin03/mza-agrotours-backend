@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.*;
 import com.mza_agrotours.backend.dtos.chat.ChatInfoRequest;
+import com.mza_agrotours.backend.dtos.chat.ChatInfoUsuarioDTO;
 import com.mza_agrotours.backend.services.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -69,7 +70,7 @@ public class UsuarioController {
     }
 
     @PostMapping("/chats")
-    public ResponseEntity<ApiResponse<Map<String, String>>> getChatsInfo(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails, @Valid @RequestBody List<ChatInfoRequest> chatInfoRequests) {
+    public ResponseEntity<ApiResponse<Map<String, ChatInfoUsuarioDTO>>> getChatsInfo(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails, @Valid @RequestBody List<ChatInfoRequest> chatInfoRequests) {
         return ResponseEntity.ok(ApiResponse.ok(this.usuarioService.getNombresChatByActividadIds(chatInfoRequests, usuarioAuthDetails)));
     }
 }
