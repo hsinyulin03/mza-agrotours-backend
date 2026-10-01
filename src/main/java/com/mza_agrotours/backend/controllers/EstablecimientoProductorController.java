@@ -2,6 +2,8 @@ package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.CondicionDTO;
+import com.mza_agrotours.backend.dtos.chat.ChatInfoEstablecimientoDTO;
+import com.mza_agrotours.backend.dtos.chat.ChatInfoRequest;
 import com.mza_agrotours.backend.dtos.establecimiento.*;
 import com.mza_agrotours.backend.services.EstablecimientoService;
 import jakarta.validation.Valid;
@@ -9,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,6 +20,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/establecimientos/{establecimientoId}")
+@Validated
 public class EstablecimientoProductorController {
 
     @Autowired
@@ -62,9 +66,9 @@ public class EstablecimientoProductorController {
     }
 
     @PostMapping("/chats")
-    @PreAuthorize("@estAuth.esTitular(authentication, #establecimientoId)")
-    public ResponseEntity<ApiResponse<Map<String, String>>> getChatsInfo(@PathVariable UUID establecimientoId, @RequestBody List<UUID> usuarioFirebaseIds) {
-        return ResponseEntity.ok(ApiResponse.ok(establecimientoService.getNombresChatByUsuarioFirebaseIds(usuarioFirebaseIds, establecimientoId)));
+    @PreAuthorize("@estAuth.esProductorVigente(authentication, #establecimientoId)")
+    public ResponseEntity<ApiResponse<Map<String, ChatInfoEstablecimientoDTO>>> getChatsInfo(@PathVariable UUID establecimientoId, @Valid @RequestBody List<ChatInfoRequest> chatInfoRequests) {
+        return ResponseEntity.ok(ApiResponse.ok(establecimientoService.getNombresChatByUsuarioFirebaseIds(chatInfoRequests, establecimientoId)));
     }
 
 }

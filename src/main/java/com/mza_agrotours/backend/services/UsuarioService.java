@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.*;
+import com.mza_agrotours.backend.dtos.chat.ChatInfoRequest;
 import com.mza_agrotours.backend.entities.*;
 import com.mza_agrotours.backend.enums.outbox.TipoOperacion;
 import com.mza_agrotours.backend.exceptions.*;
@@ -14,7 +15,10 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class UsuarioService {
@@ -195,11 +199,11 @@ public class UsuarioService {
         return getCondicionesDeleteUsuarioHelper(usuario);
     }
 
-    public Map<String, String> getNombresChatByActividadIds(List<UUID> actividadIds, UsuarioAuthDetails usuarioAuthDetails) {
+    public Map<String, String> getNombresChatByActividadIds(List<ChatInfoRequest> chatInfoRequests, UsuarioAuthDetails usuarioAuthDetails) {
         Usuario usuario = this.usuarioRepository.findByFirebaseUIDAndFechaHoraBajaIsNull(usuarioAuthDetails.getFirebaseUID())
                 .orElseThrow(() -> new AppException(UsuarioError.USUARIO_NOT_FOUND));
 
-        return this.chatService.getNombresChatsByUsuarioAndActividadIds(usuario, actividadIds);
+        return this.chatService.getNombresChatsByUsuarioAndActividadIds(usuario, chatInfoRequests);
     }
 
     private List<CondicionDTO> getCondicionesDeleteUsuarioHelper(Usuario usuario) throws Exception {

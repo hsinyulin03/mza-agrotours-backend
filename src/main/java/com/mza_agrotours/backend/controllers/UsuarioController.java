@@ -1,18 +1,20 @@
 package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.*;
+import com.mza_agrotours.backend.dtos.chat.ChatInfoRequest;
 import com.mza_agrotours.backend.services.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/usuario")
+@Validated
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
@@ -67,7 +69,7 @@ public class UsuarioController {
     }
 
     @PostMapping("/chats")
-    public ResponseEntity<ApiResponse<Map<String, String>>> getChatsInfo(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails, @RequestBody List<UUID> actividadIds) {
-        return ResponseEntity.ok(ApiResponse.ok(this.usuarioService.getNombresChatByActividadIds(actividadIds, usuarioAuthDetails)));
+    public ResponseEntity<ApiResponse<Map<String, String>>> getChatsInfo(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails, @Valid @RequestBody List<ChatInfoRequest> chatInfoRequests) {
+        return ResponseEntity.ok(ApiResponse.ok(this.usuarioService.getNombresChatByActividadIds(chatInfoRequests, usuarioAuthDetails)));
     }
 }

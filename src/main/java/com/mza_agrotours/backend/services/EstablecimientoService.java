@@ -3,6 +3,8 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.dtos.CondicionDTO;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
 import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
+import com.mza_agrotours.backend.dtos.chat.ChatInfoEstablecimientoDTO;
+import com.mza_agrotours.backend.dtos.chat.ChatInfoRequest;
 import com.mza_agrotours.backend.dtos.establecimiento.*;
 import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.Departamento;
@@ -227,11 +229,11 @@ public class EstablecimientoService  {
         return mapearADetalleVisitante(establecimiento);
     }
 
-    public Map<String, String> getNombresChatByUsuarioFirebaseIds(List<UUID> usuarioFirebaseIds, UUID establecimientoId) {
+    public Map<String, ChatInfoEstablecimientoDTO> getNombresChatByUsuarioFirebaseIds(List<ChatInfoRequest> chatInfoRequests, UUID establecimientoId) {
        Establecimiento establecimiento = this.establecimientoRepository.findByIdAndFechaHoraBajaIsNull(establecimientoId)
                .orElseThrow(() -> new EstablecimientoNotFoundException("No se encuentra el establecimiento indicado"));
 
-       return this.chatService.getNombresChatsByEstablecimientoAndUsuarioFirebaseIds(establecimiento, usuarioFirebaseIds);
+       return this.chatService.getNombresChatsByEstablecimientoAndUsuarioFirebaseIds(establecimiento, chatInfoRequests);
     }
 
 

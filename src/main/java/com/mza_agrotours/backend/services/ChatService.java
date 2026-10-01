@@ -1,9 +1,7 @@
 package com.mza_agrotours.backend.services;
 
 import com.google.firebase.database.*;
-import com.mza_agrotours.backend.dtos.chat.ChatEstablecimientoDTO;
-import com.mza_agrotours.backend.dtos.chat.ChatSnapshotDTO;
-import com.mza_agrotours.backend.dtos.chat.ChatUsuarioDTO;
+import com.mza_agrotours.backend.dtos.chat.*;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
@@ -19,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ChatService {
@@ -243,7 +242,9 @@ public class ChatService {
         }
     }
 
-    public Map<String, String> getNombresChatsByUsuarioAndActividadIds(Usuario usuario, List<UUID> actividadIds) {
+    public Map<String, String> getNombresChatsByUsuarioAndActividadIds(Usuario usuario, List<ChatInfoRequest> chatInfoRequests) {
+        List<UUID> actividadIds = chatInfoRequests.stream().map(ChatInfoRequest::getActividadId).toList();
+
         String usuarioId = usuario.getFirebaseUID();
         if (usuarioId == null || usuarioId.isBlank()) {
             throw new ValidacionNegocioException("El usuario no tiene una cuenta de Firebase asociada");
@@ -283,7 +284,7 @@ public class ChatService {
 
         Map<String, String> chatsPorActividad = new HashMap<>();
         for (Actividad actividad : actividadRepository.findAllById(actividadIds)) {
-            String chatId = usuarioId + "_" + actividad.getEstablecimiento().getId();
+            String chatId = usuarioId + "_" + actividad.getId();
             if (chatIds.contains(chatId)) {
                 chatsPorActividad.put(chatId, actividad.getNombre());
             }
@@ -292,7 +293,7 @@ public class ChatService {
         return chatsPorActividad;
     }
 
-    public Map<String, String> getNombresChatsByEstablecimientoAndUsuarioFirebaseIds(Establecimiento establecimiento, List<UUID> usuariosIds) {
+    public Map<String, ChatInfoEstablecimientoDTO> getNombresChatsByEstablecimientoAndUsuarioFirebaseIds(Establecimiento establecimiento, List<ChatInfoRequest> chatInfoRequests) {
         DatabaseReference chatsUsuarioRef = firebaseDatabase.getReference("chats_establecimiento").child(establecimiento.getId().toString());
 
         CompletableFuture<Set<String>> chatIdsFuture = new CompletableFuture<>();
@@ -325,11 +326,26 @@ public class ChatService {
             throw new RuntimeException("Timeout al obtener los chats del usuario");
         }
 
-        Map<String, String> chatsPorActividad = new HashMap<>();
-        for (Usuario usuario : usuarioRepository.findAllById(usuariosIds)) {
-            String chatId = establecimiento.getId() + "_" + usuario.getFirebaseUID();
+        Set<UUID> actividadIds = chatInfoRequests.stream().map(ChatInfoRequest::getActividadId).collect(Collectors.toSet());
+        Set<String> usrFirebaseIds = chatInfoRequests.stream()
+                .filter(chatInfoRequest -> chatInfoRequest.getUsuarioFirebaseId() != null && !chatInfoRequest.getUsuarioFirebaseId().isBlank())
+                .map(ChatInfoRequest::getUsuarioFirebaseId).collect(Collectors.toSet());
+        Map<UUID, Actividad> actividadesMap = actividadRepository.findAllById(actividadIds).stream().collect(Collectors.toMap(Actividad::getId, a -> a));
+        Map<String, Usuario> usuariosMap = usuarioRepository.findByFirebaseUIDIn(usrFirebaseIds).stream().collect(Collectors.toMap(Usuario::getFirebaseUID, u -> u));
+
+        Map<String, ChatInfoEstablecimientoDTO> chatsPorActividad = new HashMap<>();
+        for (ChatInfoRequest chatInfoRequest : chatInfoRequests) {
+            Actividad actividad = actividadesMap.get(chatInfoRequest.getActividadId());
+            Usuario usuario = usuariosMap.get(chatInfoRequest.getUsuarioFirebaseId());
+            if (actividad == null || usuario == null) {
+                continue;
+            }
+            String chatId = usuario.getFirebaseUID() + "_" + actividad.getId();
             if (chatIds.contains(chatId)) {
-                chatsPorActividad.put(chatId, usuario.getNombre());
+                ChatInfoEstablecimientoDTO infoEstablecimientoDTO = new ChatInfoEstablecimientoDTO();
+                infoEstablecimientoDTO.setChatNombre(usuario.getNombre());
+                infoEstablecimientoDTO.setActividadNombre(actividad.getNombre());
+                chatsPorActividad.put(chatId, infoEstablecimientoDTO);
             }
         }
 
