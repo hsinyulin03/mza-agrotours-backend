@@ -12,4 +12,5 @@ import lombok.Setter;
 public class ChatInfoUsuarioDTO {
     private String chatNombre;
     private String establecimientoNombre;
+    private String urlChatFoto;
 }

@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.services;
 
 import com.google.firebase.database.*;
 import com.mza_agrotours.backend.dtos.chat.*;
+import com.mza_agrotours.backend.entities.ActividadFoto;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
@@ -26,17 +27,20 @@ public class ChatService {
     private final ProductorRepository productorRepository;
     private final ActividadRepository actividadRepository;
     private final FirebaseDatabase firebaseDatabase;
+    private final ArchivoService archivoService;
 
     public ChatService(EstablecimientoRepository establecimientoRepository,
                        UsuarioRepository usuarioRepository,
                        ProductorRepository productorRepository,
                        ActividadRepository actividadRepository,
-                       FirebaseDatabase firebaseDatabase) {
+                       FirebaseDatabase firebaseDatabase,
+                       ArchivoService archivoService) {
         this.establecimientoRepository = establecimientoRepository;
         this.usuarioRepository = usuarioRepository;
         this.productorRepository = productorRepository;
         this.actividadRepository = actividadRepository;
         this.firebaseDatabase = firebaseDatabase;
+        this.archivoService = archivoService;
     }
 
     @Transactional(readOnly = true)
@@ -242,6 +246,7 @@ public class ChatService {
         }
     }
 
+    @Transactional(readOnly = true)
     public Map<String, ChatInfoUsuarioDTO> getNombresChatsByUsuarioAndActividadIds(Usuario usuario, List<ChatInfoRequest> chatInfoRequests) {
         List<UUID> actividadIds = chatInfoRequests.stream().map(ChatInfoRequest::getActividadId).toList();
 
@@ -284,9 +289,11 @@ public class ChatService {
 
         Map<String, ChatInfoUsuarioDTO> chatsPorActividad = new HashMap<>();
         for (Actividad actividad : actividadRepository.findAllById(actividadIds)) {
+            List<ActividadFoto> fotos = actividad.getFotos();
+            String fotoUrl = fotos.isEmpty() ? null : this.archivoService.getDownloadUrl(actividad.getFotos().get(0).getArchivo().getKey()) ;
             String chatId = usuarioId + "_" + actividad.getId();
             if (chatIds.contains(chatId)) {
-                chatsPorActividad.put(chatId, new ChatInfoUsuarioDTO(actividad.getNombre(), actividad.getEstablecimiento().getNombre()));
+                chatsPorActividad.put(chatId, new ChatInfoUsuarioDTO(actividad.getNombre(), actividad.getEstablecimiento().getNombre(), fotoUrl));
             }
         }
 
