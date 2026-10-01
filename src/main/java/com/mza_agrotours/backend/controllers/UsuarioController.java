@@ -66,7 +66,7 @@ public class UsuarioController {
         return ResponseEntity.ok(ApiResponse.ok(usuarioCardDTO));
     }
 
-    @GetMapping("/chats")
+    @PostMapping("/chats")
     public ResponseEntity<ApiResponse<Map<String, String>>> getChatsInfo(@AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails, @RequestBody List<UUID> actividadIds) {
         return ResponseEntity.ok(ApiResponse.ok(this.usuarioService.getNombresChatByActividadIds(actividadIds, usuarioAuthDetails)));
     }

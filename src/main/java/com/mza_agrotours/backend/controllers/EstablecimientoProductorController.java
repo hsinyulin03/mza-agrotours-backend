@@ -61,7 +61,7 @@ public class EstablecimientoProductorController {
         return ResponseEntity.ok(ApiResponse.ok(establecimientoService.getCondicionesDeleteEstablecimiento(establecimientoId)));
     }
 
-    @GetMapping("/chats")
+    @PostMapping("/chats")
     @PreAuthorize("@estAuth.esTitular(authentication, #establecimientoId)")
     public ResponseEntity<ApiResponse<Map<String, String>>> getChatsInfo(@PathVariable UUID establecimientoId, @RequestBody List<UUID> usuarioFirebaseIds) {
         return ResponseEntity.ok(ApiResponse.ok(establecimientoService.getNombresChatByUsuarioFirebaseIds(usuarioFirebaseIds, establecimientoId)));
