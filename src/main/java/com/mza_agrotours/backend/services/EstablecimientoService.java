@@ -236,6 +236,11 @@ public class EstablecimientoService  {
        return this.chatService.getNombresChatsByEstablecimientoAndUsuarioFirebaseIds(establecimiento, chatInfoRequests);
     }
 
+    public String obtenerAutorMensaje(UUID establecimientoId, String prodFirebaseId) {
+        return this.productorRepository.findNombreByEstablecimientoIdAndUsuarioFirebaseId(establecimientoId, prodFirebaseId)
+                .orElseThrow(() -> new AppException(ProductorError.NOT_FOUND));
+    }
+
 
 
     /**

@@ -71,4 +71,11 @@ public class EstablecimientoProductorController {
         return ResponseEntity.ok(ApiResponse.ok(establecimientoService.getNombresChatByUsuarioFirebaseIds(chatInfoRequests, establecimientoId)));
     }
 
+    @GetMapping("/chats/mensaje/autor/{userProdFirebaseId}")
+    @PreAuthorize("@estAuth.esProductorVigente(authentication, #establecimientoId)")
+    public ResponseEntity<ApiResponse<String>> getMensajeAutorNombre(@PathVariable UUID establecimientoId, @PathVariable String userProdFirebaseId) {
+        return ResponseEntity.ok(ApiResponse.ok(this.establecimientoService.obtenerAutorMensaje(establecimientoId, userProdFirebaseId)));
+    }
+
+
 }
