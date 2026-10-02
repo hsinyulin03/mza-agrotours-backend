@@ -538,10 +538,7 @@ public class ActividadService {
         //Log del lote: un ActividadLogAltasDia por cada día de la semana elegido
         ActividadLogAltas logAltas = crearLogAltas(dto.getFechaDesde(), dto.getFechaHasta(), ahora);
         for (Dia diaSemana : dto.getDias()) {
-            ActividadLogAltasDia logDia = new ActividadLogAltasDia();
-            logDia.setDia(diaSemana);
-            logDia.setHoraInicio(dto.getHoraInicio());
-            logDia.setHoraFin(dto.getHoraFin());
+            ActividadLogAltasDia logDia = crearLogAltasDia(diaSemana, dto.getHoraInicio(), dto.getHoraFin());
             logAltas.addDia(logDia);
         }
         EstadoActividadDia estadoActiva = obtenerEstadoDiaActiva();
@@ -633,6 +630,14 @@ public class ActividadService {
         return logAltas;
     }
 
+    //Crea la configuración de un día de semana del log (lo usan el alta de la actividad y el lote)
+    private ActividadLogAltasDia crearLogAltasDia(Dia dia, LocalTime horaInicio, LocalTime horaFin) {
+        ActividadLogAltasDia logDia = new ActividadLogAltasDia();
+        logDia.setDia(dia);
+        logDia.setHoraInicio(horaInicio);
+        logDia.setHoraFin(horaFin);
+        return logDia;
+    }
 
     //Se usa en la US-ACT-07 y US-ACT-11: días del mes con sus cupos, para armar el calendario
     private List<DTOActividadDiaResponse> obtenerCalendarioDiasDelMes(UUID idActividad, int mes, int anio){
@@ -737,11 +742,8 @@ public class ActividadService {
         if (dto.getDiasDisponibles() != null) {
             // Recorremos los días que el usuario seleccionó en la pantalla
             for (DTODiaDisponibilidad diaDto : dto.getDiasDisponibles()) {
-                ActividadLogAltasDia dia = new ActividadLogAltasDia();
-                dia.setDia(diaDto.getDia());
-                dia.setHoraInicio(diaDto.getHoraInicio());
-                dia.setHoraFin(diaDto.getHoraFin());
-                logAltas.addDia(dia);
+                ActividadLogAltasDia logDia = crearLogAltasDia(diaDto.getDia(), diaDto.getHoraInicio(), diaDto.getHoraFin());
+                logAltas.addDia(logDia);
             }
         }
         return logAltas;
