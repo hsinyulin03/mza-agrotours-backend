@@ -6,7 +6,13 @@ import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
 import com.mza_agrotours.backend.entities.ActividadFoto;
 import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.Usuario;
-import com.mza_agrotours.backend.entities.Visitante;
+import com.mza_agrotours.backend.entities.actividad.*;
+import com.mza_agrotours.backend.dtos.actividad.DiaActividadReservaDTO;
+import com.mza_agrotours.backend.dtos.actividad.InfoParaReservarDTO;
+import com.mza_agrotours.backend.dtos.actividad.RangoEtarioReservaDTO;
+import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
+import com.mza_agrotours.backend.entities.Archivo;
+import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
@@ -34,6 +40,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.Period;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -41,6 +48,25 @@ import java.util.stream.Collectors;
 
 @Service
 public class ActividadService {
+    private final List<String> EXTENSIONES_VALIDAS = List.of("jpg", "jpeg", "png");
+    private static final List<EstadoReservaNombre> ESTADOS_RESERVA_VISIBLES_PRODUCTOR = List.of(
+            EstadoReservaNombre.PENDIENTE,
+            EstadoReservaNombre.PAGADA,
+            EstadoReservaNombre.CANCELADA_CON_REEMBOLSO,
+            EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO,
+            EstadoReservaNombre.FINALIZADA);
+
+    private static final List<EstadoReservaNombre> ESTADOS_RESERVA_CALCULAR_INGRESO = List.of(
+            EstadoReservaNombre.PAGADA,
+            EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO,
+            EstadoReservaNombre.FINALIZADA);
+
+    //TODO: Debería buscarlo en los parámetros globales
+    private static final int VENTANA_MAXIMA_DIAS = 120;
+
+    private static final List<EstadoActividadDiaNombre> ESTADOS_ACTIVIDAD_DIA_OCUPADO = List.of(
+            EstadoActividadDiaNombre.ACTIVA,
+            EstadoActividadDiaNombre.REPROGRAMADA);
     @Autowired
     private ActividadRepository actividadRepository;
 
@@ -80,18 +106,6 @@ public class ActividadService {
     @Autowired
     private ReservaService reservaService;
 
-    private static final List<EstadoReservaNombre> ESTADOS_RESERVA_VISIBLES_PRODUCTOR = List.of(
-            EstadoReservaNombre.PENDIENTE,
-            EstadoReservaNombre.PAGADA,
-            EstadoReservaNombre.CANCELADA_CON_REEMBOLSO,
-            EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO,
-            EstadoReservaNombre.FINALIZADA);
-
-    private static final List<EstadoReservaNombre> ESTADOS_RESERVA_CALCULAR_INGRESO = List.of(
-            EstadoReservaNombre.PAGADA,
-            EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO,
-            EstadoReservaNombre.FINALIZADA);
-
     //US-ACT-03 Alta de actividad
     @Transactional
     public DTOActividadAltaResponse altaActividad(UUID establecimientoId, DTOActividadAlta dto) {
@@ -120,8 +134,9 @@ public class ActividadService {
         List<ActividadInclusiones> inclusiones = obtenerInclusiones(dto.getIncluye(), dto.getNoIncluye());
         List<ActividadFAQ> faqs = obtenerFaqs(dto.getFaqs());
         List<ActividadRangoEtario> tarifas = obtenerTarifas(dto.getTarifas());
-        ActividadLogAltas logAltas = obtenerLogAltas(dto);
-        List<ActividadDia> calendario = generarDiasCalendario(dto, logAltas);
+        LocalDateTime ahora = LocalDateTime.now();
+        ActividadLogAltas logAltas = obtenerLogAltas(dto, ahora);
+        List<ActividadDia> calendario = generarDiasCalendario(dto, logAltas, ahora);
 
         //setear los valores obtenidos a actividad
         inclusiones.forEach(actividad::addInclusion);
@@ -197,39 +212,10 @@ public class ActividadService {
     public DTOCalendarioActividadDiaResponse obtenerDetalleCalendario(UUID idActividad, int mes, int anio){
 
         Actividad actividad = actividadRepository.findById(idActividad).orElseThrow(ActividadNotFoundException::new);
-        int anioActual = java.time.LocalDate.now().getYear();
-
-        if (anio < anioActual) {
-            throw new ValidacionNegocioException("El año no puede ser menor al año actual (" + anioActual + ")");
-        }
-
-        LocalDateTime ultimaFechaConDisponibilidad = actividadRepository.findUltimaFechaByActividadId(idActividad)
-                .orElseThrow(() -> new ValidacionNegocioException("La actividad no tiene días programados"));
-
-
-        int anioMaximoPermitido = ultimaFechaConDisponibilidad.getYear();
-        if (anio > anioMaximoPermitido) {
-            throw new ValidacionNegocioException("No puedes consultar el calendario para el año " + anio +
-                    ". La actividad tiene disponibilidad cargada solo hasta el año " + anioMaximoPermitido);
-        }
 
         DTOCalendarioActividadDiaResponse dto = actividadMapper.actividadToDTOCalendarioActividadDia(actividad);
 
-        LocalDateTime desde = LocalDate.of(anio, mes, 1).atStartOfDay();
-        LocalDateTime hasta = desde.plusMonths(1);
-
-        List<ActividadDia> diasDelMes = actividadRepository.findDiasDelMes(idActividad, desde, hasta);
-        Map<UUID, DTOCuposPorDia> cuposPorDia = obtenerCuposPorDia(diasDelMes);
-
-        List<DTOActividadDiaResponse> diasDelMesDto = diasDelMes.stream()
-                .map(dia -> {
-                    DTOActividadDiaResponse dtoDia = actividadMapper.actividadDiatoDTOActividadDia(dia);
-                    dtoDia.aplicarCupos(cuposPorDia.get(dia.getId()));
-                    return dtoDia;
-                })
-                .toList();
-
-        dto.setDiasDelMes(diasDelMesDto);
+        dto.setDiasDelMes(obtenerCalendarioDiasDelMes(idActividad, mes, anio));
         dto.setMetricas(reservaRepository.obtenerMetricasDeReservas(idActividad));
         return dto;
     }
@@ -460,8 +446,286 @@ public class ActividadService {
         obtenerDiaDeActividad(idActividad, idActividadDia);
         return actividadRepository.obtenerFiltroEstadosReserva(idActividadDia, ESTADOS_RESERVA_VISIBLES_PRODUCTOR);
     }
+    //US-ACT-11: Calendario para gestionar días + encabezado con las vigencias de los logs de altas
+    @Transactional(readOnly = true)
+    public DTOCalendarioGestionDiasResponse obtenerCalendarioGestionDias(UUID idActividad, int mes, int anio) {
+        Actividad actividad = obtenerActividad(idActividad);
+
+        //Primero los días: acá se valida el año
+        List<DTOActividadDiaResponse> diasDelMes = obtenerCalendarioDiasDelMes(idActividad, mes, anio);
+
+        LocalDate inicioMes = LocalDate.of(anio, mes, 1);
+        LocalDate finMes = inicioMes.plusMonths(1).minusDays(1);
+
+        //Encabezado: una fila por vigencia (logs con la misma vigencia se unen) y sus días agrupados por horario
+        LocalDate vigenciaDesde = null;
+        LocalDate vigenciaHasta = null;
+        Map<String, DTOConfiguracionVigencia> configuracionesPorVigencia = new LinkedHashMap<>();
+        for (ActividadLogAltas log : actividad.getLogAltas()) {
+            //Vigencia general: se calcula con todos los logs, crucen o no el mes
+            if (vigenciaDesde == null || log.getFechaValidaDesde().isBefore(vigenciaDesde)) vigenciaDesde = log.getFechaValidaDesde();
+            if (vigenciaHasta == null || log.getFechaValidaHasta().isAfter(vigenciaHasta)) vigenciaHasta = log.getFechaValidaHasta();
+
+            //¿El período de vigencia del log tiene al menos un día en común con el mes que estoy consultando?
+            boolean cruzaElMes = !log.getFechaValidaDesde().isAfter(finMes) && !log.getFechaValidaHasta().isBefore(inicioMes);
+            if (!cruzaElMes) {
+                continue;  //como no cruza, ignoro el log
+            }
+            String vigencia = log.getFechaValidaDesde() + "|" + log.getFechaValidaHasta();
+            DTOConfiguracionVigencia configuracion = configuracionesPorVigencia
+                    .computeIfAbsent(vigencia, v -> new DTOConfiguracionVigencia(log.getFechaValidaDesde(), log.getFechaValidaHasta()));
+            for (ActividadLogAltasDia logDia : log.getDias()) {
+                configuracion.agregar(logDia.getDia(), logDia.getHoraInicio(), logDia.getHoraFin());
+            }
+        }
+        List<DTOConfiguracionVigencia> configuraciones = configuracionesPorVigencia.values().stream()
+                .sorted(Comparator.comparing(DTOConfiguracionVigencia::getFechaDesde))
+                .toList();
+
+        DTOCalendarioGestionDiasResponse dto = actividadMapper.actividadToDTOCalendarioGestionDias(actividad);
+        dto.setVigenciaDesde(vigenciaDesde);
+        dto.setVigenciaHasta(vigenciaHasta);
+        dto.setConfiguraciones(configuraciones);
+        dto.setDiasDelMes(diasDelMes);
+        return dto;
+    }
+
+    //US-ACT-11: Agregar un actividadDia
+    @Transactional
+    public DTOActividadDiaResponse agregarUnActividadDia(UUID idEstablecimiento, UUID idActividad, DTOActividadDiaAlta dto) {
+        validarEstablecimientoNoSuspendido(idEstablecimiento);
+        Actividad actividad = obtenerActividad(idActividad);
+        LocalDateTime ahora = LocalDateTime.now();
+
+        validarFechaEnVentana(dto.getFecha(), ahora.toLocalDate());
+        validarHorario(dto.getHoraInicio(), dto.getHoraFin());
+        if (!LocalDateTime.of(dto.getFecha(), dto.getHoraInicio()).isAfter(ahora)) {
+            throw new AppException(ActividadError.DIA_HORARIO_PASADO);
+        }
+        //Evitamos solapamiento de día, no se permite crear un día si esa fecha ya tiene un día activo
+        boolean fechaOcupada = !actividadRepository.findIniciosDiasOcupadosEnRango(idActividad, ESTADOS_ACTIVIDAD_DIA_OCUPADO,
+                dto.getFecha().atStartOfDay(), dto.getFecha().plusDays(1).atStartOfDay()).isEmpty();
+        if (fechaOcupada) {
+            throw new AppException(ActividadError.DIA_FECHA_OCUPADA, "La actividad ya tiene un día activo el " + dto.getFecha() + ".", null);
+        }
+
+        ActividadDia dia = crearActividadDia(dto.getFecha(), dto.getHoraInicio(), dto.getHoraFin(), dto.getCuposMax(),
+                                            obtenerEstadoDia(EstadoActividadDiaNombre.ACTIVA), ahora, "Alta individual de día");
+        actividad.addActividadDia(dia);
+        actividadRepository.flush(); // persiste el día por cascada y le asigna el id
+
+        return actividadMapper.actividadDiatoDTOActividadDia(dia);
+    }
+
+    //US-ACT-11: Previsualizar un lote de días para mostrar al productor en tiempo real los días que se crearán y los días que se descartan
+    @Transactional(readOnly = true)
+    public DTOPrevisualizacionLoteResponse previsualizarLote(UUID idActividad, DTOActividadDiasLote dto) {
+        obtenerActividad(idActividad);
+        return planificarLote(idActividad, dto, LocalDateTime.now());
+    }
+    //US-ACT-11: Agregar días por lote y generar log de altas
+    @Transactional
+    public DTOPrevisualizacionLoteResponse agregarLoteActividadDias(UUID idEstablecimiento, UUID idActividad, DTOActividadDiasLote dto) {
+        validarEstablecimientoNoSuspendido(idEstablecimiento);
+        Actividad actividad = obtenerActividad(idActividad);
+        LocalDateTime ahora = LocalDateTime.now();
+
+        //Se recalcula al guardar: no se confía en lo que mostró la previsualización
+        DTOPrevisualizacionLoteResponse plan = planificarLote(idActividad, dto, ahora);
+        if (plan.getDiasACrear().isEmpty()) {
+            throw new AppException(ActividadError.LOTE_SIN_DIAS_PARA_CREAR);
+        }
+
+        //Log del lote: un ActividadLogAltasDia por cada día de la semana elegido
+        ActividadLogAltas logAltas = crearLogAltas(dto.getFechaDesde(), dto.getFechaHasta(), ahora);
+        for (Dia diaSemana : dto.getDias()) {
+            ActividadLogAltasDia logDia = crearLogAltasDia(diaSemana, dto.getHoraInicio(), dto.getHoraFin());
+            logAltas.addDia(logDia);
+        }
+        EstadoActividadDia estadoActiva = obtenerEstadoDia(EstadoActividadDiaNombre.ACTIVA);
+        for (DTODiaLote diaLote : plan.getDiasACrear()) {
+
+            ActividadDia dia = crearActividadDia(diaLote.getFecha(), dto.getHoraInicio(), dto.getHoraFin(),
+                                                 dto.getCuposMax(), estadoActiva, ahora, "Alta por lote");
+
+            //Linkeamos el día con la config de su día de semana en el log
+            logAltas.getDias().stream()
+                    .filter(logDia -> coincideDia(logDia.getDia(), diaLote.getFecha().getDayOfWeek()))
+                    .findFirst()
+                    .ifPresent(logDia -> logDia.addActividadDia(dia));
+
+            actividad.addActividadDia(dia);
+        }
+        //El log solo registra los días de semana que generaron al menos un ActividadDia
+        logAltas.getDias().removeIf(logDia -> logDia.getActividadesDias().isEmpty());
+        actividad.addLogAlta(logAltas);
+        actividadRepository.save(actividad);
+
+        return plan;
+    }
+
+    //US-ACT-11: datos de referencia para el formulario de agregar días (tarifas y ventana)
+    @Transactional(readOnly = true)
+    public DTOConfiguracionDiasResponse obtenerConfiguracionDias(UUID idActividad) {
+        Actividad actividad = obtenerActividad(idActividad);
+        LocalDate hoy = LocalDate.now();
+
+        DTOConfiguracionDiasResponse dto = new DTOConfiguracionDiasResponse();
+        dto.setFechaMaxima(hoy.plusDays(VENTANA_MAXIMA_DIAS));
+        dto.setVentanaMaximaDias(VENTANA_MAXIMA_DIAS);
+        List<RangoEtarioReservaDTO> tarifas = actividad.getActividadRangoEtarios().stream()
+                .filter(are -> are.getFechaHoraBaja() == null)
+                .map(actividadMapper::actividadRangoEtarioToDTO)
+                .toList();
+
+        dto.setTarifas(tarifas);
+        return dto;
+    }
+
+    //US-ACT-11: Modificar el cupo máximo de un día
+    @Transactional
+    public DTOActividadDiaResponse modificarCupoDia(UUID idEstablecimiento, UUID idActividad, UUID idActividadDia, DTOActividadDiaUpdateCupo dto) {
+        validarEstablecimientoNoSuspendido(idEstablecimiento);
+        ActividadDia dia = obtenerDiaDeActividad(idActividad, idActividadDia);
+
+        if (!ESTADOS_ACTIVIDAD_DIA_OCUPADO.contains(dia.getEstadoActual().getEstado().getNombre())) {
+            throw new AppException(ActividadError.DIA_NO_MODIFICABLE);
+        }
+        if (!dia.getFechaHoraInicio().isAfter(LocalDateTime.now())) {
+            throw new AppException(ActividadError.DIA_YA_COMENZO);
+        }
+
+        //Personas con reserva vigente (pendiente + pagada): el cupo no puede quedar por debajo
+        DTOCuposPorDia cupos = obtenerCuposPorDia(List.of(dia)).get(dia.getId());
+        long reservados = cupos == null ? 0 : cupos.getCuposPendientes() + cupos.getCuposPagados();
+        if (dto.getCuposMax() < reservados) {
+            throw new AppException(ActividadError.CUPO_MENOR_A_RESERVADOS,
+                    "El cupo no puede ser menor a las " + reservados + " personas con reserva vigente (pendiente o pagada) para este día.", null);
+        }
+
+        dia.setCuposMax(dto.getCuposMax());
+
+        DTOActividadDiaResponse response = actividadMapper.actividadDiatoDTOActividadDia(dia);
+        response.aplicarCupos(cupos);
+        return response;
+    }
 
     //Métodos auxiliares
+
+    //Crea un ActividadDia con su estado inicial (lo usan el alta de la actividad, el lote y el alta individual)
+    private ActividadDia crearActividadDia(LocalDate fecha, LocalTime horaInicio, LocalTime horaFin, int cuposMax,
+                                           EstadoActividadDia estado, LocalDateTime ahora, String motivo) {
+        ActividadDia dia = new ActividadDia();
+        dia.setFechaHoraInicio(LocalDateTime.of(fecha, horaInicio));
+        dia.setFechaHoraFin(LocalDateTime.of(fecha, horaFin));
+        dia.setCuposMax(cuposMax);
+        dia.cambiarEstado(estado, ahora, motivo);
+        return dia;
+    }
+
+    //Crea la cabecera del log de altas (lo usan el alta de la actividad y el lote)
+    private ActividadLogAltas crearLogAltas(LocalDate fechaDesde, LocalDate fechaHasta, LocalDateTime ahora) {
+        ActividadLogAltas logAltas = new ActividadLogAltas();
+        logAltas.setFechaHoraAlta(ahora);
+        logAltas.setFechaValidaDesde(fechaDesde);
+        logAltas.setFechaValidaHasta(fechaHasta);
+        return logAltas;
+    }
+
+    //Crea la configuración de un día de semana del log (lo usan el alta de la actividad y el lote)
+    private ActividadLogAltasDia crearLogAltasDia(Dia dia, LocalTime horaInicio, LocalTime horaFin) {
+        ActividadLogAltasDia logDia = new ActividadLogAltasDia();
+        logDia.setDia(dia);
+        logDia.setHoraInicio(horaInicio);
+        logDia.setHoraFin(horaFin);
+        return logDia;
+    }
+
+    //Se usa en la US-ACT-07 y US-ACT-11: días del mes con sus cupos, para armar el calendario
+    private List<DTOActividadDiaResponse> obtenerCalendarioDiasDelMes(UUID idActividad, int mes, int anio){
+        int anioActual = java.time.LocalDate.now().getYear();
+
+        if (anio < anioActual) {
+            throw new AppException(ActividadError.CALENDARIO_ANIO_INVALIDO, "El año no puede ser menor al año actual (" + anioActual + ")", null);
+        }
+
+        LocalDate limiteVentana = LocalDate.now().plusDays(VENTANA_MAXIMA_DIAS);
+        int anioMaximoPermitido = actividadRepository.findUltimaFechaByActividadId(idActividad)
+                .map(ultima -> Math.max(ultima.getYear(), limiteVentana.getYear()))
+                .orElse(limiteVentana.getYear());
+
+        if (anio > anioMaximoPermitido) {
+            throw new AppException(ActividadError.CALENDARIO_ANIO_INVALIDO,
+                    "No puedes consultar el calendario para el año " + anio +
+                            ". Solo se pueden gestionar días hasta el año " + anioMaximoPermitido, null);
+        }
+
+        LocalDateTime desde = LocalDate.of(anio, mes, 1).atStartOfDay();
+        LocalDateTime hasta = desde.plusMonths(1);
+
+        List<ActividadDia> diasDelMes = actividadRepository.findDiasDelMes(idActividad, desde, hasta);
+        Map<UUID, DTOCuposPorDia> cuposPorDia = obtenerCuposPorDia(diasDelMes);
+
+        return diasDelMes.stream()
+                .map(dia -> {
+                    DTOActividadDiaResponse dtoDia = actividadMapper.actividadDiatoDTOActividadDia(dia);
+                    dtoDia.aplicarCupos(cuposPorDia.get(dia.getId()));
+                    return dtoDia;
+                })
+                .toList();
+
+    }
+
+    //arma qué días se crean y cuáles no
+    private DTOPrevisualizacionLoteResponse planificarLote(UUID idActividad, DTOActividadDiasLote dto, LocalDateTime ahora) {
+        validarRangoLote(dto.getFechaDesde(), dto.getFechaHasta(), ahora.toLocalDate());
+        validarHorario(dto.getHoraInicio(), dto.getHoraFin());
+
+        //Una sola consulta para todo el rango
+        Set<LocalDate> fechasOcupadasEnRango = actividadRepository.findIniciosDiasOcupadosEnRango(idActividad,
+                        ESTADOS_ACTIVIDAD_DIA_OCUPADO,
+                        dto.getFechaDesde().atStartOfDay(),
+                        dto.getFechaHasta().plusDays(1).atStartOfDay())
+                .stream()
+                .map(LocalDateTime::toLocalDate)
+                .collect(Collectors.toSet());
+
+        List<DTODiaLote> diasACrear = new ArrayList<>();
+        List<DTODiaLote> diasOcupados = new ArrayList<>();
+
+        for (LocalDate fecha = dto.getFechaDesde(); !fecha.isAfter(dto.getFechaHasta()); fecha = fecha.plusDays(1)) {
+            java.time.DayOfWeek diaSemana = fecha.getDayOfWeek();
+            if (dto.getDias().stream().noneMatch(d -> coincideDia(d, diaSemana))) {
+                continue;
+            }
+            //No se crea si el horario ya pasó o si la fecha ya tiene un día activo
+            boolean yaPaso = !LocalDateTime.of(fecha, dto.getHoraInicio()).isAfter(ahora);
+            if (yaPaso || fechasOcupadasEnRango.contains(fecha)) {
+                diasOcupados.add(toDTODiaLote(fecha));
+            } else {
+                diasACrear.add(toDTODiaLote(fecha));
+            }
+        }
+        return new DTOPrevisualizacionLoteResponse(diasACrear.size(), diasOcupados.size(), diasACrear, diasOcupados);
+    }
+
+    //valida que el rango del lote sea coherente y esté dentro de la ventana permitida
+    private void validarRangoLote(LocalDate desde, LocalDate hasta, LocalDate hoy) {
+        if (hasta.isBefore(desde)) {
+            throw new AppException(ActividadError.RANGO_FECHAS_INVALIDO);
+        }
+        validarFechaEnVentana(desde, hoy);
+        validarFechaEnVentana(hasta, hoy);
+    }
+
+    //arma el ítem fecha + día de semana abreviado ("Lun", "Mié", "Sáb"...)
+    private DTODiaLote toDTODiaLote(LocalDate fecha) {
+        Dia dia = Arrays.stream(Dia.values())
+                .filter(d -> coincideDia(d, fecha.getDayOfWeek()))
+                .findFirst()
+                .orElseThrow();
+        return new DTODiaLote(fecha, dia.getNombre().substring(0, 3));
+    }
 
     private EstadoActividad obtenerEstado(String nombreEstadoDto) {
         EstadoActividadNombre estadoActividadNombre;
@@ -474,34 +738,48 @@ public class ActividadService {
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el registro del estado " + estadoActividadNombre + " en la base de datos."));
     }
 
-    private ActividadLogAltas obtenerLogAltas(DTOActividadAlta dto) {
-        ActividadLogAltas logAltas = new ActividadLogAltas();
-        logAltas.setFechaHoraAlta(LocalDateTime.now());
-        logAltas.setFechaValidaDesde(dto.getFechaDesde());
-        logAltas.setFechaValidaHasta(dto.getFechaHasta());
+    private ActividadLogAltas obtenerLogAltas(DTOActividadAlta dto, LocalDateTime ahora) {
+        ActividadLogAltas logAltas = crearLogAltas(dto.getFechaDesde(), dto.getFechaHasta(), ahora);
 
         if (dto.getDiasDisponibles() != null) {
             // Recorremos los días que el usuario seleccionó en la pantalla
             for (DTODiaDisponibilidad diaDto : dto.getDiasDisponibles()) {
-                ActividadLogAltasDia dia = new ActividadLogAltasDia();
-                dia.setDia(diaDto.getDia());
-                dia.setHoraInicio(diaDto.getHoraInicio());
-                dia.setHoraFin(diaDto.getHoraFin());
-                logAltas.addDia(dia);
+                ActividadLogAltasDia logDia = crearLogAltasDia(diaDto.getDia(), diaDto.getHoraInicio(), diaDto.getHoraFin());
+                logAltas.addDia(logDia);
             }
         }
         return logAltas;
     }
+    private void validarFechaEnVentana(LocalDate fecha, LocalDate hoy) {
+        if (fecha.isBefore(hoy)) {
+            throw new AppException(ActividadError.FECHA_ANTERIOR_A_HOY, "La fecha " + fecha + " no puede ser anterior a hoy.", null);
+        }
+        LocalDate limite = hoy.plusDays(VENTANA_MAXIMA_DIAS);
+        if (fecha.isAfter(limite)) {
+            throw new AppException(ActividadError.FECHA_FUERA_DE_VENTANA,
+                    "Fuera de ventana: la fecha " + fecha + " supera los " + VENTANA_MAXIMA_DIAS +
+                            " días permitidos (máximo " + limite + ").", null);
+        }
+    }
+
+    private void validarHorario(LocalTime inicio, LocalTime fin) {
+        if (!fin.isAfter(inicio)) {
+            throw new AppException(ActividadError.HORARIO_INVALIDO);
+        }
+    }
+
+    //Busca un estado de ActividadDia en el catálogo (ACTIVA, CANCELADA, etc.)
+    private EstadoActividadDia obtenerEstadoDia(EstadoActividadDiaNombre nombre) {
+        return estadoActividadDiaRepository.findByNombre(nombre)
+                .orElseThrow(() -> new ResourceNotFoundException("El estado " + nombre + " de ActividadDia no está configurado en la base de datos de catálogos."));
+    }
 
     //Método para crear las ActividadDia
-    private List<ActividadDia> generarDiasCalendario(DTOActividadAlta dto, ActividadLogAltas logAltas) {
+    private List<ActividadDia> generarDiasCalendario(DTOActividadAlta dto, ActividadLogAltas logAltas, LocalDateTime ahora) {
         List<ActividadDia> diasGenerados = new ArrayList<>();
         LocalDate fechaActual = dto.getFechaDesde();
         LocalDate limite = dto.getFechaHasta();
-        LocalDateTime ahora = LocalDateTime.now();
-
-        EstadoActividadDia estadoActivaEntidad = estadoActividadDiaRepository.findByNombre(EstadoActividadDiaNombre.ACTIVA)
-                .orElseThrow(() -> new ResourceNotFoundException("El estado ACTIVA no está configurado en la base de datos de catálogos."));
+        EstadoActividadDia estadoActivaEntidad = obtenerEstadoDia(EstadoActividadDiaNombre.ACTIVA);
 
         while (!fechaActual.isAfter(limite)) {
             java.time.DayOfWeek diaSemanaActual = fechaActual.getDayOfWeek();
@@ -517,12 +795,8 @@ public class ActividadService {
                         continue; // Salta este horario y sigue buscando
                     }
 
-                    ActividadDia actividadDia = new ActividadDia();
-                    actividadDia.setFechaHoraInicio(LocalDateTime.of(fechaActual, configDia.getHoraInicio()));
-                    actividadDia.setFechaHoraFin(LocalDateTime.of(fechaActual, configDia.getHoraFin()));
-                    actividadDia.setCuposMax(dto.getCuposMax());
-
-                    actividadDia.cambiarEstado(estadoActivaEntidad, ahora, "Alta de la actividad");
+                    ActividadDia actividadDia = crearActividadDia(fechaActual, configDia.getHoraInicio(), configDia.getHoraFin(),
+                                                dto.getCuposMax(), estadoActivaEntidad, ahora, "Alta de la actividad");
 
                     configDia.addActividadDia(actividadDia);
                     diasGenerados.add(actividadDia);
@@ -537,6 +811,8 @@ public class ActividadService {
                     + dto.getFechaDesde() + " al " + dto.getFechaHasta() +
                     ") no contiene ninguno de los días de la semana configurados.");
         }
+        //El log solo registra los días de semana que generaron al menos un ActividadDia
+        logAltas.getDias().removeIf(logDia -> logDia.getActividadesDias().isEmpty());
         return diasGenerados;
     }
 
@@ -894,10 +1170,7 @@ public class ActividadService {
 
     }
     private void cancelarDiasFuturos(UUID idActividad, LocalDateTime ahora) {
-        EstadoActividadDia cancelada = estadoActividadDiaRepository
-                .findByNombre(EstadoActividadDiaNombre.CANCELADA)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "No se encontró el registro del estado CANCELADA de ActividadDia en la base de datos."));
+        EstadoActividadDia cancelada = obtenerEstadoDia(EstadoActividadDiaNombre.CANCELADA);
 
         for (ActividadDia dia : actividadRepository.findDiasFuturosVigentes(idActividad, ahora)) {
             dia.cambiarEstado(cancelada, ahora, "Baja de la actividad");
