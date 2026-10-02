@@ -210,6 +210,34 @@ public class ChatService {
         escribir(updates, "quitar al visitante");
     }
 
+    public void quitarActividad(String actividadId) throws FailedFirebaseChatOperationException {
+        Actividad actividad = actividadRepository.findById(UUID.fromString(actividadId))
+                .orElse(null);
+
+        if (actividad == null) {
+            return;
+        }
+
+        // Una actividad pertenece a un solo establecimiento, y el chatId termina en su id
+        String establecimientoId = actividad.getEstablecimiento().getId().toString();
+        DataSnapshot chats = leer(firebaseDatabase.getReference("chats_establecimiento").child(establecimientoId),
+                "obtener los chats de la actividad");
+
+        String sufijo = "_" + actividadId;
+        Map<String, Object> updates = new HashMap<>();
+        for (DataSnapshot chat : chats.getChildren()) {
+            if (chat.getKey().endsWith(sufijo)) {
+                updates.put("/chats/" + chat.getKey() + "/baja", true);
+            }
+        }
+
+        if (updates.isEmpty()) {
+            return;
+        }
+
+        escribir(updates, "quitar la actividad");
+    }
+
     private DataSnapshot leer(DatabaseReference ref, String operacion) throws FailedFirebaseChatOperationException {
         CompletableFuture<DataSnapshot> future = new CompletableFuture<>();
         ref.addListenerForSingleValueEvent(new ValueEventListener() {
