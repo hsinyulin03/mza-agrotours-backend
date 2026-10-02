@@ -134,8 +134,9 @@ public class ActividadService {
         List<ActividadInclusiones> inclusiones = obtenerInclusiones(dto.getIncluye(), dto.getNoIncluye());
         List<ActividadFAQ> faqs = obtenerFaqs(dto.getFaqs());
         List<ActividadRangoEtario> tarifas = obtenerTarifas(dto.getTarifas());
-        ActividadLogAltas logAltas = obtenerLogAltas(dto);
-        List<ActividadDia> calendario = generarDiasCalendario(dto, logAltas);
+        LocalDateTime ahora = LocalDateTime.now();
+        ActividadLogAltas logAltas = obtenerLogAltas(dto, ahora);
+        List<ActividadDia> calendario = generarDiasCalendario(dto, logAltas, ahora);
 
         //setear los valores obtenidos a actividad
         inclusiones.forEach(actividad::addInclusion);
@@ -555,6 +556,7 @@ public class ActividadService {
 
             actividad.addActividadDia(dia);
         }
+        //El log solo registra los días de semana que generaron al menos un ActividadDia
         logAltas.getDias().removeIf(logDia -> logDia.getActividadesDias().isEmpty());
         actividad.addLogAlta(logAltas);
         actividadRepository.save(actividad);
@@ -736,8 +738,8 @@ public class ActividadService {
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el registro del estado " + estadoActividadNombre + " en la base de datos."));
     }
 
-    private ActividadLogAltas obtenerLogAltas(DTOActividadAlta dto) {
-        ActividadLogAltas logAltas = crearLogAltas(dto.getFechaDesde(), dto.getFechaHasta(), LocalDateTime.now());
+    private ActividadLogAltas obtenerLogAltas(DTOActividadAlta dto, LocalDateTime ahora) {
+        ActividadLogAltas logAltas = crearLogAltas(dto.getFechaDesde(), dto.getFechaHasta(), ahora);
 
         if (dto.getDiasDisponibles() != null) {
             // Recorremos los días que el usuario seleccionó en la pantalla
@@ -773,12 +775,10 @@ public class ActividadService {
     }
 
     //Método para crear las ActividadDia
-    private List<ActividadDia> generarDiasCalendario(DTOActividadAlta dto, ActividadLogAltas logAltas) {
+    private List<ActividadDia> generarDiasCalendario(DTOActividadAlta dto, ActividadLogAltas logAltas, LocalDateTime ahora) {
         List<ActividadDia> diasGenerados = new ArrayList<>();
         LocalDate fechaActual = dto.getFechaDesde();
         LocalDate limite = dto.getFechaHasta();
-        LocalDateTime ahora = LocalDateTime.now();
-
         EstadoActividadDia estadoActivaEntidad = obtenerEstadoDia(EstadoActividadDiaNombre.ACTIVA);
 
         while (!fechaActual.isAfter(limite)) {
@@ -811,6 +811,8 @@ public class ActividadService {
                     + dto.getFechaDesde() + " al " + dto.getFechaHasta() +
                     ") no contiene ninguno de los días de la semana configurados.");
         }
+        //El log solo registra los días de semana que generaron al menos un ActividadDia
+        logAltas.getDias().removeIf(logDia -> logDia.getActividadesDias().isEmpty());
         return diasGenerados;
     }
 
