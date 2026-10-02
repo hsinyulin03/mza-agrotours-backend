@@ -536,10 +536,7 @@ public class ActividadService {
         }
 
         //Log del lote: un ActividadLogAltasDia por cada día de la semana elegido
-        ActividadLogAltas logAltas = new ActividadLogAltas();
-        logAltas.setFechaHoraAlta(ahora);
-        logAltas.setFechaValidaDesde(dto.getFechaDesde());
-        logAltas.setFechaValidaHasta(dto.getFechaHasta());
+        ActividadLogAltas logAltas = crearLogAltas(dto.getFechaDesde(), dto.getFechaHasta(), ahora);
         for (Dia diaSemana : dto.getDias()) {
             ActividadLogAltasDia logDia = new ActividadLogAltasDia();
             logDia.setDia(diaSemana);
@@ -626,6 +623,16 @@ public class ActividadService {
         dia.cambiarEstado(estado, ahora, motivo);
         return dia;
     }
+
+    //Crea la cabecera del log de altas (lo usan el alta de la actividad y el lote)
+    private ActividadLogAltas crearLogAltas(LocalDate fechaDesde, LocalDate fechaHasta, LocalDateTime ahora) {
+        ActividadLogAltas logAltas = new ActividadLogAltas();
+        logAltas.setFechaHoraAlta(ahora);
+        logAltas.setFechaValidaDesde(fechaDesde);
+        logAltas.setFechaValidaHasta(fechaHasta);
+        return logAltas;
+    }
+
 
     //Se usa en la US-ACT-07 y US-ACT-11: días del mes con sus cupos, para armar el calendario
     private List<DTOActividadDiaResponse> obtenerCalendarioDiasDelMes(UUID idActividad, int mes, int anio){
@@ -725,10 +732,7 @@ public class ActividadService {
     }
 
     private ActividadLogAltas obtenerLogAltas(DTOActividadAlta dto) {
-        ActividadLogAltas logAltas = new ActividadLogAltas();
-        logAltas.setFechaHoraAlta(LocalDateTime.now());
-        logAltas.setFechaValidaDesde(dto.getFechaDesde());
-        logAltas.setFechaValidaHasta(dto.getFechaHasta());
+        ActividadLogAltas logAltas = crearLogAltas(dto.getFechaDesde(), dto.getFechaHasta(), LocalDateTime.now());
 
         if (dto.getDiasDisponibles() != null) {
             // Recorremos los días que el usuario seleccionó en la pantalla
