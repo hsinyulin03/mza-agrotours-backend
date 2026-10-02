@@ -33,6 +33,9 @@ import com.mza_agrotours.backend.repositories.VisitanteRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadDiaRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
+import com.mza_agrotours.backend.enums.outbox.TipoOperacion;
+import com.mza_agrotours.backend.services.outbox.OutboxService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -105,6 +108,12 @@ public class ActividadService {
 
     @Autowired
     private ReservaService reservaService;
+
+    @Autowired
+    private OutboxService outboxService;
+
+    @Autowired
+    private ApplicationEventPublisher publisher;
 
     //US-ACT-03 Alta de actividad
     @Transactional
@@ -403,6 +412,8 @@ public class ActividadService {
         actividadRepository.save(actividad);
 
         reservaService.cancelarReservasPorBajaDeActividad(actividad, ahora);
+
+        publisher.publishEvent(this.outboxService.crearOutboxPendiente(actividad.getId().toString(), TipoOperacion.QUITAR_ACTIVIDAD_CHAT));
         return actividadMapper.actividadToDTOBajaActividad(actividad);
     }
 
