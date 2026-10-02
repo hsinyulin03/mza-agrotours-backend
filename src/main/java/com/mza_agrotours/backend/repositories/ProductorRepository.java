@@ -87,4 +87,11 @@ public interface ProductorRepository extends BaseEntityRepository<Productor, UUI
             "AND p.estadoActual.nombre = com.mza_agrotours.backend.enums.EstadoProductorNombre.ACTIVO")
     boolean esProductorVigenteyActivo(@Param("email") String email,
                                @Param("establecimientoId") UUID establecimientoId);
+
+    @Query("SELECT DISTINCT p.usuario.nombre FROM Productor p " +
+            "WHERE p.usuario.firebaseUID = :firebaseId " +
+            "AND p.establecimiento.id = :establecimientoId ")
+    Optional<String> findNombreByEstablecimientoIdAndUsuarioFirebaseId(
+            @Param("establecimientoId") UUID establecimientoId,
+            @Param("firebaseId") String firebaseId);
 }

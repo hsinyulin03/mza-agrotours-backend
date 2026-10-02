@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.config;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
+import com.google.firebase.database.FirebaseDatabase;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,8 +24,14 @@ public class FirebaseConfig {
 
         FirebaseOptions options = FirebaseOptions.builder()
                 .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                .setDatabaseUrl(environment.getProperty("firebase.database.url"))
                 .build();
 
         return FirebaseApp.initializeApp(options);
+    }
+
+    @Bean
+    public FirebaseDatabase firebaseDatabase(FirebaseApp firebaseApp) {
+        return FirebaseDatabase.getInstance(firebaseApp);
     }
 }

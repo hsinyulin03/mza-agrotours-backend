@@ -1,0 +1,395 @@
+package com.mza_agrotours.backend.services;
+
+import com.google.firebase.database.*;
+import com.mza_agrotours.backend.dtos.chat.*;
+import com.mza_agrotours.backend.entities.ActividadFoto;
+import com.mza_agrotours.backend.entities.Usuario;
+import com.mza_agrotours.backend.entities.actividad.Actividad;
+import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
+import com.mza_agrotours.backend.entities.productor.Productor;
+import com.mza_agrotours.backend.enums.EstadoActividadNombre;
+import com.mza_agrotours.backend.exceptions.*;
+import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
+import com.mza_agrotours.backend.repositories.ProductorRepository;
+import com.mza_agrotours.backend.repositories.UsuarioRepository;
+import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.stream.Collectors;
+
+@Service
+public class ChatService {
+    private final EstablecimientoRepository establecimientoRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final ProductorRepository productorRepository;
+    private final ActividadRepository actividadRepository;
+    private final FirebaseDatabase firebaseDatabase;
+    private final ArchivoService archivoService;
+
+    public ChatService(EstablecimientoRepository establecimientoRepository,
+                       UsuarioRepository usuarioRepository,
+                       ProductorRepository productorRepository,
+                       ActividadRepository actividadRepository,
+                       FirebaseDatabase firebaseDatabase,
+                       ArchivoService archivoService) {
+        this.establecimientoRepository = establecimientoRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.productorRepository = productorRepository;
+        this.actividadRepository = actividadRepository;
+        this.firebaseDatabase = firebaseDatabase;
+        this.archivoService = archivoService;
+    }
+
+    @Transactional(readOnly = true)
+    public void iniciarChat(UUID actividadId, String usuarioEmail) {
+        // Busco incluso aquellas cuyo establecimiento esté suspendido
+        Actividad actividad = actividadRepository.findByIdAndFechaHoraBajaIsNull(actividadId)
+                .orElseThrow(() -> new EntityNotFoundException("No se encontró la actividad con el ID: " + actividadId));
+
+        Usuario usuario = this.usuarioRepository.findActiveByEmail(usuarioEmail)
+                .orElseThrow(() -> new EntityNotFoundException("No se encontró el usuario"));
+
+        validarUsuarioPuedeIniciarChat(usuario, actividad);
+
+        String usuarioFirebaseId = usuario.getFirebaseUID();
+
+        String chatId = usuarioFirebaseId + "_" + actividadId;
+        DatabaseReference chatRef = firebaseDatabase.getReference("chats").child(chatId);
+
+        CompletableFuture<Boolean> commitFuture = new CompletableFuture<Boolean>();
+        chatRef.runTransaction(new Transaction.Handler() {
+
+            @Override
+            public Transaction.Result doTransaction(MutableData currentData) {
+                if (currentData.getValue() != null) {
+                    return Transaction.abort();
+                }
+
+                currentData.setValue(new ChatSnapshotDTO(usuarioFirebaseId, actividad.getEstablecimiento().getId().toString(), System.currentTimeMillis(), false));
+                return Transaction.success(currentData);
+            }
+
+            @Override
+            public void onComplete(DatabaseError error, boolean committed, DataSnapshot currentData) {
+                if (error != null) {
+                    commitFuture.completeExceptionally(error.toException());
+                    return;
+                }
+
+                commitFuture.complete(committed);
+            }
+        });
+
+        boolean existeChat;
+        try {
+            existeChat = !commitFuture.get(5000, TimeUnit.MILLISECONDS);
+        } catch (ExecutionException ee) {
+            throw new RuntimeException("Fallo al verificar la existencia del chat", ee.getCause());
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Fallo al verificar la existencia del chat", ie);
+        } catch (TimeoutException e) {
+            throw new RuntimeException("Timeout al verificar la existencia del chat");
+        }
+
+        if (existeChat) {
+            throw new AppException(ChatError.CHAT_YA_EXISTE);
+        }
+
+        crearNuevoChat(actividad, usuario);
+    }
+
+    private void crearNuevoChat(Actividad actividad, Usuario usuario) {
+        final DatabaseReference rootRef = firebaseDatabase.getReference("");
+
+        String usuarioFirebaseId = usuario.getFirebaseUID();
+        String actividadId = actividad.getId().toString();
+        String establecimientoId = actividad.getEstablecimiento().getId().toString();
+        String nuevoChatId = usuarioFirebaseId + "_" + actividadId;
+
+        long ahora = System.currentTimeMillis();
+
+        Map<String, Object> chatData = new HashMap<>();
+        chatData.put("/chats_usuario/" + usuarioFirebaseId + "/" + nuevoChatId, new ChatUsuarioDTO(establecimientoId, actividad.getNombre(), null, ahora, 0));
+        chatData.put("/chats_establecimiento/" + actividad.getEstablecimiento().getId() + "/" + nuevoChatId, new ChatEstablecimientoDTO(usuarioFirebaseId, usuario.getNombre(), null, ahora, 0));
+
+        try {
+            rootRef.updateChildrenAsync(chatData).get(5000, TimeUnit.MILLISECONDS);
+        } catch (ExecutionException ee) {
+            throw new RuntimeException("Fallo al crear el chat", ee.getCause());
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Fallo al crear el chat", ie);
+        } catch (TimeoutException e) {
+            throw new RuntimeException("Timeout al crear el chat");
+        }
+    }
+
+    public void agregarMiembroAEstablecimiento(String productorId) throws FailedFirebaseChatOperationException {
+        Productor productor = productorRepository.findByIdAndFechaHoraBajaIsNull(UUID.fromString(productorId))
+                .orElseThrow(() -> new AppException(ProductorError.NOT_FOUND));
+
+        UUID establecimientoId = productor.getEstablecimiento().getId();
+        String usrFirebaseId = productor.getUsuario().getFirebaseUID();
+        DatabaseReference miembrosRef = firebaseDatabase.getReference("establecimiento_miembros/" + establecimientoId + "/" + usrFirebaseId);
+
+        try {
+            Map<String, Object> miembroData = new HashMap<>();
+            miembroData.put(productorId, true);
+            miembrosRef.setValueAsync(miembroData).get(5000, TimeUnit.MILLISECONDS);
+        } catch (ExecutionException ee) {
+            throw new FailedFirebaseChatOperationException("Fallo al añadir al miembro", ee.getCause());
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new FailedFirebaseChatOperationException("Fallo al añadir al miembro", ie);
+        } catch (TimeoutException e) {
+            throw new FailedFirebaseChatOperationException("Timeout al añadir al miembro expirado");
+        }
+    }
+
+    public void quitarMiembroDelEstablecimiento(String productorId) throws FailedFirebaseChatOperationException {
+        Productor productor = productorRepository.findById(UUID.fromString(productorId))
+                .orElse(null);
+
+        if (productor == null) {
+            return;
+        }
+
+        String establecimientoId = productor.getEstablecimiento().getId().toString();
+        String usrFirebaseId = productor.getUsuario().getFirebaseUID();
+        DatabaseReference miembrosRef = firebaseDatabase.getReference("establecimiento_miembros/" + establecimientoId + "/" + usrFirebaseId).child(productorId);
+
+        try {
+            miembrosRef.removeValueAsync().get(5000, TimeUnit.MILLISECONDS);
+        } catch (ExecutionException ee) {
+            throw new FailedFirebaseChatOperationException("Fallo al quitar al miembro", ee.getCause());
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new FailedFirebaseChatOperationException("Fallo al quitar al miembro", ie);
+        } catch (TimeoutException e) {
+            throw new FailedFirebaseChatOperationException("Timeout al quitar al miembro expirado");
+        }
+    }
+
+    public void quitarEstablecimiento(String establecimientoId) throws FailedFirebaseChatOperationException {
+        DataSnapshot chats = leer(firebaseDatabase.getReference("chats_establecimiento").child(establecimientoId),
+                "obtener los chats del establecimiento");
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("/establecimiento_miembros/" + establecimientoId, null);
+        for (DataSnapshot chat : chats.getChildren()) {
+            updates.put("/chats/" + chat.getKey() + "/baja", true);
+        }
+
+        escribir(updates, "quitar el establecimiento");
+    }
+
+    public void quitarVisitante(String usuarioId) throws FailedFirebaseChatOperationException {
+        Usuario usuario = usuarioRepository.findById(UUID.fromString(usuarioId))
+                .orElse(null);
+
+        if (usuario == null || usuario.getFirebaseUID() == null) {
+            return;
+        }
+
+        DataSnapshot chats = leer(firebaseDatabase.getReference("chats_usuario").child(usuario.getFirebaseUID()),
+                "obtener los chats del visitante");
+
+        if (!chats.hasChildren()) {
+            return;
+        }
+
+        Map<String, Object> updates = new HashMap<>();
+        for (DataSnapshot chat : chats.getChildren()) {
+            updates.put("/chats/" + chat.getKey() + "/baja", true);
+        }
+
+        escribir(updates, "quitar al visitante");
+    }
+
+    public void quitarActividad(String actividadId) throws FailedFirebaseChatOperationException {
+        Actividad actividad = actividadRepository.findById(UUID.fromString(actividadId))
+                .orElse(null);
+
+        if (actividad == null) {
+            return;
+        }
+
+        // Una actividad pertenece a un solo establecimiento, y el chatId termina en su id
+        String establecimientoId = actividad.getEstablecimiento().getId().toString();
+        DataSnapshot chats = leer(firebaseDatabase.getReference("chats_establecimiento").child(establecimientoId),
+                "obtener los chats de la actividad");
+
+        String sufijo = "_" + actividadId;
+        Map<String, Object> updates = new HashMap<>();
+        for (DataSnapshot chat : chats.getChildren()) {
+            if (chat.getKey().endsWith(sufijo)) {
+                updates.put("/chats/" + chat.getKey() + "/baja", true);
+            }
+        }
+
+        if (updates.isEmpty()) {
+            return;
+        }
+
+        escribir(updates, "quitar la actividad");
+    }
+
+    private DataSnapshot leer(DatabaseReference ref, String operacion) throws FailedFirebaseChatOperationException {
+        CompletableFuture<DataSnapshot> future = new CompletableFuture<>();
+        ref.addListenerForSingleValueEvent(new ValueEventListener() {
+
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                future.complete(snapshot);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+                future.completeExceptionally(error.toException());
+            }
+        });
+
+        return esperar(future, operacion);
+    }
+
+
+    private void escribir(Map<String, Object> updates, String operacion) throws FailedFirebaseChatOperationException {
+        esperar(firebaseDatabase.getReference().updateChildrenAsync(updates), operacion);
+    }
+
+    private <T> T esperar(Future<T> future, String operacion) throws FailedFirebaseChatOperationException {
+        try {
+            return future.get(5000, TimeUnit.MILLISECONDS);
+        } catch (ExecutionException ee) {
+            throw new FailedFirebaseChatOperationException("Fallo al " + operacion, ee.getCause());
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new FailedFirebaseChatOperationException("Fallo al " + operacion, ie);
+        } catch (TimeoutException e) {
+            throw new FailedFirebaseChatOperationException("Timeout al " + operacion + " expirado");
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, ChatInfoUsuarioDTO> getNombresChatsByUsuarioAndActividadIds(Usuario usuario, List<ChatInfoRequest> chatInfoRequests) {
+        List<UUID> actividadIds = chatInfoRequests.stream().map(ChatInfoRequest::getActividadId).toList();
+
+        String usuarioId = usuario.getFirebaseUID();
+        if (usuarioId == null || usuarioId.isBlank()) {
+            throw new ValidacionNegocioException("El usuario no tiene una cuenta de Firebase asociada");
+        }
+
+        DatabaseReference chatsUsuarioRef = firebaseDatabase.getReference("chats_usuario").child(usuarioId);
+
+        CompletableFuture<Set<String>> chatIdsFuture = new CompletableFuture<>();
+        chatsUsuarioRef.addListenerForSingleValueEvent(new ValueEventListener() {
+
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                Set<String> chatIds = new HashSet<>();
+                for (DataSnapshot chat : snapshot.getChildren()) {
+                    chatIds.add(chat.getKey());
+                }
+                chatIdsFuture.complete(chatIds);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+                chatIdsFuture.completeExceptionally(error.toException());
+            }
+        });
+
+        Set<String> chatIds;
+        try {
+            chatIds = chatIdsFuture.get(5000, TimeUnit.MILLISECONDS);
+        } catch (ExecutionException ee) {
+            throw new RuntimeException("Fallo al obtener los chats del usuario", ee.getCause());
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Fallo al obtener los chats del usuario", ie);
+        } catch (TimeoutException e) {
+            throw new RuntimeException("Timeout al obtener los chats del usuario");
+        }
+
+        Map<String, ChatInfoUsuarioDTO> chatsPorActividad = new HashMap<>();
+        for (Actividad actividad : actividadRepository.findAllById(actividadIds)) {
+            List<ActividadFoto> fotos = actividad.getFotos();
+            String fotoUrl = fotos.isEmpty() ? null : this.archivoService.getDownloadUrl(actividad.getFotos().get(0).getArchivo().getKey()) ;
+            String chatId = usuarioId + "_" + actividad.getId();
+            if (chatIds.contains(chatId)) {
+                chatsPorActividad.put(chatId, new ChatInfoUsuarioDTO(actividad.getNombre(), actividad.getEstablecimiento().getNombre(), fotoUrl));
+            }
+        }
+
+        return chatsPorActividad;
+    }
+
+    public Map<String, ChatInfoEstablecimientoDTO> getNombresChatsByEstablecimientoAndUsuarioFirebaseIds(Establecimiento establecimiento, List<ChatInfoRequest> chatInfoRequests) {
+        DatabaseReference chatsUsuarioRef = firebaseDatabase.getReference("chats_establecimiento").child(establecimiento.getId().toString());
+
+        CompletableFuture<Set<String>> chatIdsFuture = new CompletableFuture<>();
+        chatsUsuarioRef.addListenerForSingleValueEvent(new ValueEventListener() {
+
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                Set<String> chatIds = new HashSet<>();
+                for (DataSnapshot chat : snapshot.getChildren()) {
+                    chatIds.add(chat.getKey());
+                }
+                chatIdsFuture.complete(chatIds);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+                chatIdsFuture.completeExceptionally(error.toException());
+            }
+        });
+
+        Set<String> chatIds;
+        try {
+            chatIds = chatIdsFuture.get(5000, TimeUnit.MILLISECONDS);
+        } catch (ExecutionException ee) {
+            throw new RuntimeException("Fallo al obtener los chats del usuario", ee.getCause());
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Fallo al obtener los chats del usuario", ie);
+        } catch (TimeoutException e) {
+            throw new RuntimeException("Timeout al obtener los chats del usuario");
+        }
+
+        Set<UUID> actividadIds = chatInfoRequests.stream().map(ChatInfoRequest::getActividadId).collect(Collectors.toSet());
+        Set<String> usrFirebaseIds = chatInfoRequests.stream()
+                .filter(chatInfoRequest -> chatInfoRequest.getUsuarioFirebaseId() != null && !chatInfoRequest.getUsuarioFirebaseId().isBlank())
+                .map(ChatInfoRequest::getUsuarioFirebaseId).collect(Collectors.toSet());
+        Map<UUID, Actividad> actividadesMap = actividadRepository.findAllById(actividadIds).stream().collect(Collectors.toMap(Actividad::getId, a -> a));
+        Map<String, Usuario> usuariosMap = usuarioRepository.findByFirebaseUIDIn(usrFirebaseIds).stream().collect(Collectors.toMap(Usuario::getFirebaseUID, u -> u));
+
+        Map<String, ChatInfoEstablecimientoDTO> chatsPorActividad = new HashMap<>();
+        for (ChatInfoRequest chatInfoRequest : chatInfoRequests) {
+            Actividad actividad = actividadesMap.get(chatInfoRequest.getActividadId());
+            Usuario usuario = usuariosMap.get(chatInfoRequest.getUsuarioFirebaseId());
+            if (actividad == null || usuario == null) {
+                continue;
+            }
+            String chatId = usuario.getFirebaseUID() + "_" + actividad.getId();
+            if (chatIds.contains(chatId)) {
+                ChatInfoEstablecimientoDTO infoEstablecimientoDTO = new ChatInfoEstablecimientoDTO();
+                infoEstablecimientoDTO.setChatNombre(usuario.getNombre());
+                infoEstablecimientoDTO.setActividadNombre(actividad.getNombre());
+                chatsPorActividad.put(chatId, infoEstablecimientoDTO);
+            }
+        }
+
+        return chatsPorActividad;
+    }
+
+    private void validarUsuarioPuedeIniciarChat(Usuario usuario, Actividad actividad) {
+        if (actividad.getEstado().getNombre() != EstadoActividadNombre.PUBLICADO) {
+            throw new ValidacionNegocioException("La actividad no está publicada");
+        }
+    }
+}

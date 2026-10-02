@@ -1,9 +1,11 @@
 package com.mza_agrotours.backend.services;
 
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.ValueEventListener;
 import com.mza_agrotours.backend.entities.Outbox;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.enums.outbox.EstadoOutbox;
-import com.mza_agrotours.backend.enums.outbox.TipoOperacion;
 import com.mza_agrotours.backend.exceptions.UserDeleteConditionNotMetException;
 import com.mza_agrotours.backend.repositories.OutboxRepository;
 import com.mza_agrotours.backend.repositories.UsuarioRepository;
@@ -11,6 +13,7 @@ import com.mza_agrotours.backend.schedules.OutboxScheduler;
 import com.mza_agrotours.backend.support.AbstractIntegrationTest;
 import com.mza_agrotours.backend.support.FixtureUsuario;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -20,6 +23,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
@@ -48,6 +52,25 @@ class OutboxFlowIT extends AbstractIntegrationTest {
     @MockitoBean
     private OutboxScheduler outboxScheduler;
 
+    private DatabaseReference chatsDelVisitante;
+
+    /**
+     * El visitante no tiene chats en Realtime Database, asi que quitarVisitante lee y no escribe nada.
+     */
+    @BeforeEach
+    void visitanteSinChats() {
+        DatabaseReference chatsUsuario = mock(DatabaseReference.class);
+        chatsDelVisitante = mock(DatabaseReference.class);
+        DataSnapshot sinChats = mock(DataSnapshot.class);
+
+        when(firebaseDatabase.getReference("chats_usuario")).thenReturn(chatsUsuario);
+        when(chatsUsuario.child(anyString())).thenReturn(chatsDelVisitante);
+        doAnswer(invocation -> {
+            invocation.<ValueEventListener>getArgument(0).onDataChange(sinChats);
+            return null;
+        }).when(chatsDelVisitante).addListenerForSingleValueEvent(any());
+    }
+
     @AfterEach
     void limpiarOutbox() {
         outboxRepository.deleteAll();
@@ -59,19 +82,23 @@ class OutboxFlowIT extends AbstractIntegrationTest {
 
         usuarioService.deleteUsuarioByEmail(usuario.getEmail());
 
-        Outbox outbox = unicaFilaDe(usuario);
-        assertThat(outbox.getOperacion()).isEqualTo(TipoOperacion.ELIMINAR_USUARIO);
-        assertThat(outbox.getEstado())
-                .as("el EXITOSO del listener AFTER_COMMIT tiene que llegar a la base")
-                .isEqualTo(EstadoOutbox.EXITOSO);
-        assertThat(outbox.getReintentos()).isZero();
+        for (Outbox fila : dosFilasDe(usuario)) {
+            assertThat(fila.getEstado())
+                    .as("el EXITOSO del listener AFTER_COMMIT tiene que llegar a la base")
+                    .isEqualTo(EstadoOutbox.EXITOSO);
+            assertThat(fila.getReintentos()).isZero();
+            assertThat(fila.getFechaHoraProximoIntento()).isAfter(fila.getFechaHoraAlta());
+        }
+
         verify(firebaseService).eliminarUsuarioDeFirebase(any());
+        verify(chatsDelVisitante).addListenerForSingleValueEvent(any());
     }
 
     @Test
     void dadoQueFirebaseFalla_cuandoSeDaDeBaja_entoncesLaBajaSeMantieneYLaFilaQuedaParaReintentar() throws Exception {
         Usuario usuario = usuarios.visitante().getUsuario();
         doThrow(new RuntimeException("Firebase caido")).when(firebaseService).eliminarUsuarioDeFirebase(any());
+        doThrow(new RuntimeException("Firebase caido")).when(chatsDelVisitante).addListenerForSingleValueEvent(any());
 
         usuarioService.deleteUsuarioByEmail(usuario.getEmail());
 
@@ -79,10 +106,11 @@ class OutboxFlowIT extends AbstractIntegrationTest {
                 .as("un fallo de Firebase despues del commit no revierte la baja")
                 .isNotNull();
 
-        Outbox outbox = unicaFilaDe(usuario);
-        assertThat(outbox.getEstado()).isEqualTo(EstadoOutbox.PENDIENTE);
-        assertThat(outbox.getReintentos()).isEqualTo(1);
-        assertThat(outbox.getFechaHoraProximoIntento()).isAfter(outbox.getFechaHoraAlta());
+        for (Outbox fila : dosFilasDe(usuario)) {
+            assertThat(fila.getEstado()).isEqualTo(EstadoOutbox.PENDIENTE);
+            assertThat(fila.getReintentos()).isEqualTo(1);
+            assertThat(fila.getFechaHoraProximoIntento()).isAfter(fila.getFechaHoraAlta());
+        }
     }
 
     @Test
@@ -94,12 +122,13 @@ class OutboxFlowIT extends AbstractIntegrationTest {
 
         assertThat(filasDe(administrador)).isEmpty();
         verify(firebaseService, never()).eliminarUsuarioDeFirebase(any());
+        verifyNoInteractions(firebaseDatabase);
     }
 
-    private Outbox unicaFilaDe(Usuario usuario) {
+    private List<Outbox> dosFilasDe(Usuario usuario) {
         List<Outbox> filas = filasDe(usuario);
-        assertThat(filas).hasSize(1);
-        return filas.get(0);
+        assertThat(filas).hasSize(2);
+        return filas;
     }
 
     private List<Outbox> filasDe(Usuario usuario) {
