@@ -28,7 +28,7 @@ public class ActividadVisitanteController {
 
     //US-ACT-02: Consultar detalle de una actividad
     @GetMapping("/{id}")
-    public ResponseEntity<?> obtenerDetalleActividad(@PathVariable UUID id) throws Exception {
+    public ResponseEntity<ApiResponse<DTOActividadDetalleResponse>> obtenerDetalleActividad(@PathVariable UUID id) throws Exception {
 
         DTOActividadDetalleResponse detalle = servicio.obtenerDetallePorId(id);
         return ResponseEntity.ok(ApiResponse.ok(detalle));
@@ -46,13 +46,13 @@ public class ActividadVisitanteController {
     }
     //Obtener el filtro de departamentos
     @GetMapping("/departamentos")
-    public ResponseEntity<?> obtenerFiltroDepartamentos() {
+    public ResponseEntity<ApiResponse<List<DTOFiltro>>> obtenerFiltroDepartamentos() {
         List<DTOFiltro> filtrosDpto = servicio.obtenerFiltroDepartamentos();
         return ResponseEntity.ok(ApiResponse.ok(filtrosDpto));
     }
     //Obtener el filtro de cultivos
     @GetMapping("/cultivos")
-    public ResponseEntity<?> obtenerFiltroCultivos() {
+    public ResponseEntity<ApiResponse<List<DTOFiltro>>> obtenerFiltroCultivos() {
         List<DTOFiltro> filtrosCultivo = servicio.obtenerFiltroCultivos();
         return ResponseEntity.ok(ApiResponse.ok(filtrosCultivo));
     }

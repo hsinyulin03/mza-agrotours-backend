@@ -33,7 +33,7 @@ public class ActividadProductorController {
     // US-ACT-03: Dar de alta una actividad
     @PostMapping("/alta")
     @PreAuthorize("@estAuth.tienePermiso(authentication, #establecimientoId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
-    public ResponseEntity<?> crearActividadConDetalles(@PathVariable UUID establecimientoId,
+    public ResponseEntity<ApiResponse<DTOActividadAltaResponse>> crearActividadConDetalles(@PathVariable UUID establecimientoId,
                                                        @Valid @RequestBody DTOActividadAlta dto) throws Exception {
         DTOActividadAltaResponse nuevaActividad = servicio.altaActividad(establecimientoId, dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(nuevaActividad));
@@ -74,7 +74,7 @@ public class ActividadProductorController {
     //US-ACT-04: Modificar Actividad
     @GetMapping("/edit/{actividadId}")
     @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
-    public ResponseEntity<?> obtenerActividadPorId(
+    public ResponseEntity<ApiResponse<DTOActividadGetResponse>> obtenerActividadPorId(
             @PathVariable UUID establecimientoId,
             @PathVariable UUID actividadId) {
         DTOActividadGetResponse response = servicio.obtenerActividadPorId(actividadId);
@@ -84,7 +84,7 @@ public class ActividadProductorController {
     //US-ACT-04: Modificar Actividad
     @PutMapping("/edit/{actividadId}")
     @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
-    public ResponseEntity<?> modificarActividad(
+    public ResponseEntity<ApiResponse<DTOActividadGetResponse>> modificarActividad(
             @PathVariable UUID establecimientoId,
             @PathVariable UUID actividadId,
             @Valid @RequestBody DTOActividadUpdate dto) {
@@ -94,7 +94,7 @@ public class ActividadProductorController {
 
     @GetMapping("/estados")
     @PreAuthorize("@estAuth.tienePermiso(authentication, #establecimientoId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
-    public ResponseEntity<?> obtenerFiltroEstadoActividad(@PathVariable UUID establecimientoId) {
+    public ResponseEntity<ApiResponse<List<DTOFiltro>>> obtenerFiltroEstadoActividad(@PathVariable UUID establecimientoId) {
         List<DTOFiltro> estadosRes = servicio.obtenerFiltroEstadoActividad(establecimientoId);
         return ResponseEntity.ok(ApiResponse.ok(estadosRes));
     }
