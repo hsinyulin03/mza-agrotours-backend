@@ -5,6 +5,7 @@ import com.mza_agrotours.backend.dtos.actividad.DiaActividadReservaDTO;
 import com.mza_agrotours.backend.dtos.administrador_sistemas.ConteoPorEstablecimientoDTO;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
+import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.repositories.BaseEntityRepository;
@@ -191,4 +192,17 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
             "GROUP BY er.nombre")
     List<DTOFiltro> obtenerFiltroEstadosReserva(@Param("actividadDiaId") UUID actividadDiaId,
                                                 @Param("estados") List <EstadoReservaNombre> estados);
+
+    //US-ACT-11: inicios de los días ocupados de la actividad en un rango (para detectar solapamientos)
+    @Query("SELECT ad.fechaHoraInicio FROM Actividad a " +
+            "JOIN a.actividadesDias ad " +
+            "WHERE a.id = :actividadId " +
+            "AND ad.fechaHoraBaja IS NULL " +
+            "AND ad.estadoActual.estado.nombre IN :estados " +
+            "AND ad.fechaHoraInicio >= :desde " +
+            "AND ad.fechaHoraInicio < :hasta")
+    List<LocalDateTime> findIniciosDiasOcupadosEnRango(@Param("actividadId") UUID actividadId,
+                                                       @Param("estados") List<EstadoActividadDiaNombre> estados,
+                                                       @Param("desde") LocalDateTime desde,
+                                                       @Param("hasta") LocalDateTime hasta);
 }
