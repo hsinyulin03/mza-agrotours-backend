@@ -456,26 +456,34 @@ public class ActividadService {
         LocalDate inicioMes = LocalDate.of(anio, mes, 1);
         LocalDate finMes = inicioMes.plusMonths(1).minusDays(1);
 
-        //Filas del encabezado: logs que se cruzan con el mes, agrupados por horario
-        Map<String, DTOConfiguracionHorario> configuracionesPorHorario = new LinkedHashMap<>();
+        //Encabezado: una fila por vigencia (logs con la misma vigencia se unen) y sus días agrupados por horario
+        LocalDate vigenciaDesde = null;
+        LocalDate vigenciaHasta = null;
+        Map<String, DTOConfiguracionVigencia> configuracionesPorVigencia = new LinkedHashMap<>();
         for (ActividadLogAltas log : actividad.getLogAltas()) {
+            //Vigencia general: se calcula con todos los logs, crucen o no el mes
+            if (vigenciaDesde == null || log.getFechaValidaDesde().isBefore(vigenciaDesde)) vigenciaDesde = log.getFechaValidaDesde();
+            if (vigenciaHasta == null || log.getFechaValidaHasta().isAfter(vigenciaHasta)) vigenciaHasta = log.getFechaValidaHasta();
+
             //¿El período de vigencia del log tiene al menos un día en común con el mes que estoy consultando?
             boolean cruzaElMes = !log.getFechaValidaDesde().isAfter(finMes) && !log.getFechaValidaHasta().isBefore(inicioMes);
             if (!cruzaElMes) {
                 continue;  //como no cruza, ignoro el log
             }
+            String vigencia = log.getFechaValidaDesde() + "|" + log.getFechaValidaHasta();
+            DTOConfiguracionVigencia configuracion = configuracionesPorVigencia
+                    .computeIfAbsent(vigencia, v -> new DTOConfiguracionVigencia(log.getFechaValidaDesde(), log.getFechaValidaHasta()));
             for (ActividadLogAltasDia logDia : log.getDias()) {
-                String horario = logDia.getHoraInicio() + "-" + logDia.getHoraFin();
-                configuracionesPorHorario
-                        .computeIfAbsent(horario, h -> new DTOConfiguracionHorario(logDia.getHoraInicio(), logDia.getHoraFin()))
-                        .agregar(logDia.getDia(), log.getFechaValidaDesde(), log.getFechaValidaHasta());
+                configuracion.agregar(logDia.getDia(), logDia.getHoraInicio(), logDia.getHoraFin());
             }
         }
-        List<DTOConfiguracionHorario> configuraciones = configuracionesPorHorario.values().stream()
-                .sorted(Comparator.comparing(DTOConfiguracionHorario::getHoraInicio))
+        List<DTOConfiguracionVigencia> configuraciones = configuracionesPorVigencia.values().stream()
+                .sorted(Comparator.comparing(DTOConfiguracionVigencia::getFechaDesde))
                 .toList();
 
         DTOCalendarioGestionDiasResponse dto = actividadMapper.actividadToDTOCalendarioGestionDias(actividad);
+        dto.setVigenciaDesde(vigenciaDesde);
+        dto.setVigenciaHasta(vigenciaHasta);
         dto.setConfiguraciones(configuraciones);
         dto.setDiasDelMes(diasDelMes);
         return dto;
@@ -559,6 +567,7 @@ public class ActividadService {
 
             actividad.addActividadDia(dia);
         }
+        logAltas.getDias().removeIf(logDia -> logDia.getActividadesDias().isEmpty());
         actividad.addLogAlta(logAltas);
         actividadRepository.save(actividad);
 
