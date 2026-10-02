@@ -508,11 +508,8 @@ public class ActividadService {
             throw new AppException(ActividadError.DIA_FECHA_OCUPADA, "La actividad ya tiene un día activo el " + dto.getFecha() + ".", null);
         }
 
-        ActividadDia dia = new ActividadDia();
-        dia.setFechaHoraInicio(LocalDateTime.of(dto.getFecha(),dto.getHoraInicio()));
-        dia.setFechaHoraFin(LocalDateTime.of(dto.getFecha(),dto.getHoraFin()));
-        dia.setCuposMax(dto.getCuposMax());
-        dia.cambiarEstado(obtenerEstadoDiaActiva(), ahora,  "Alta individual de día");
+        ActividadDia dia = crearActividadDia(dto.getFecha(), dto.getHoraInicio(), dto.getHoraFin(), dto.getCuposMax(),
+                                             obtenerEstadoDiaActiva(), ahora, "Alta individual de día");
         actividad.addActividadDia(dia);
         actividadRepository.flush(); // persiste el día por cascada y le asigna el id
 
@@ -553,11 +550,8 @@ public class ActividadService {
         EstadoActividadDia estadoActiva = obtenerEstadoDiaActiva();
         for (DTODiaLote diaLote : plan.getDiasACrear()) {
 
-            ActividadDia dia = new ActividadDia();
-            dia.setFechaHoraInicio(LocalDateTime.of(diaLote.getFecha(),dto.getHoraInicio()));
-            dia.setFechaHoraFin(LocalDateTime.of(diaLote.getFecha(),dto.getHoraFin()));
-            dia.setCuposMax(dto.getCuposMax());
-            dia.cambiarEstado(estadoActiva, ahora,  "Alta por lote");
+            ActividadDia dia = crearActividadDia(diaLote.getFecha(), dto.getHoraInicio(), dto.getHoraFin(),
+                                                 dto.getCuposMax(), estadoActiva, ahora, "Alta por lote");
 
             //Linkeamos el día con la config de su día de semana en el log
             logAltas.getDias().stream()
@@ -621,6 +615,17 @@ public class ActividadService {
     }
 
     //Métodos auxiliares
+
+    //Crea un ActividadDia con su estado inicial (lo usan el alta de la actividad, el lote y el alta individual)
+    private ActividadDia crearActividadDia(LocalDate fecha, LocalTime horaInicio, LocalTime horaFin, int cuposMax,
+                                           EstadoActividadDia estado, LocalDateTime ahora, String motivo) {
+        ActividadDia dia = new ActividadDia();
+        dia.setFechaHoraInicio(LocalDateTime.of(fecha, horaInicio));
+        dia.setFechaHoraFin(LocalDateTime.of(fecha, horaFin));
+        dia.setCuposMax(cuposMax);
+        dia.cambiarEstado(estado, ahora, motivo);
+        return dia;
+    }
 
     //Se usa en la US-ACT-07 y US-ACT-11: días del mes con sus cupos, para armar el calendario
     private List<DTOActividadDiaResponse> obtenerCalendarioDiasDelMes(UUID idActividad, int mes, int anio){
@@ -784,12 +789,8 @@ public class ActividadService {
                         continue; // Salta este horario y sigue buscando
                     }
 
-                    ActividadDia actividadDia = new ActividadDia();
-                    actividadDia.setFechaHoraInicio(LocalDateTime.of(fechaActual, configDia.getHoraInicio()));
-                    actividadDia.setFechaHoraFin(LocalDateTime.of(fechaActual, configDia.getHoraFin()));
-                    actividadDia.setCuposMax(dto.getCuposMax());
-
-                    actividadDia.cambiarEstado(estadoActivaEntidad, ahora, "Alta de la actividad");
+                    ActividadDia actividadDia = crearActividadDia(fechaActual, configDia.getHoraInicio(), configDia.getHoraFin(),
+                                                dto.getCuposMax(), estadoActivaEntidad, ahora, "Alta de la actividad");
 
                     configDia.addActividadDia(actividadDia);
                     diasGenerados.add(actividadDia);
