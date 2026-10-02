@@ -509,7 +509,7 @@ public class ActividadService {
         }
 
         ActividadDia dia = crearActividadDia(dto.getFecha(), dto.getHoraInicio(), dto.getHoraFin(), dto.getCuposMax(),
-                                             obtenerEstadoDiaActiva(), ahora, "Alta individual de día");
+                                            obtenerEstadoDia(EstadoActividadDiaNombre.ACTIVA), ahora, "Alta individual de día");
         actividad.addActividadDia(dia);
         actividadRepository.flush(); // persiste el día por cascada y le asigna el id
 
@@ -541,7 +541,7 @@ public class ActividadService {
             ActividadLogAltasDia logDia = crearLogAltasDia(diaSemana, dto.getHoraInicio(), dto.getHoraFin());
             logAltas.addDia(logDia);
         }
-        EstadoActividadDia estadoActiva = obtenerEstadoDiaActiva();
+        EstadoActividadDia estadoActiva = obtenerEstadoDia(EstadoActividadDiaNombre.ACTIVA);
         for (DTODiaLote diaLote : plan.getDiasACrear()) {
 
             ActividadDia dia = crearActividadDia(diaLote.getFecha(), dto.getHoraInicio(), dto.getHoraFin(),
@@ -766,9 +766,10 @@ public class ActividadService {
         }
     }
 
-    private EstadoActividadDia obtenerEstadoDiaActiva() {
-        return estadoActividadDiaRepository.findByNombre(EstadoActividadDiaNombre.ACTIVA)
-                .orElseThrow(() -> new ResourceNotFoundException("El estado ACTIVA no está configurado en la base de datos de catálogos."));
+    //Busca un estado de ActividadDia en el catálogo (ACTIVA, CANCELADA, etc.)
+    private EstadoActividadDia obtenerEstadoDia(EstadoActividadDiaNombre nombre) {
+        return estadoActividadDiaRepository.findByNombre(nombre)
+                .orElseThrow(() -> new ResourceNotFoundException("El estado " + nombre + " de ActividadDia no está configurado en la base de datos de catálogos."));
     }
 
     //Método para crear las ActividadDia
@@ -778,8 +779,7 @@ public class ActividadService {
         LocalDate limite = dto.getFechaHasta();
         LocalDateTime ahora = LocalDateTime.now();
 
-        EstadoActividadDia estadoActivaEntidad = estadoActividadDiaRepository.findByNombre(EstadoActividadDiaNombre.ACTIVA)
-                .orElseThrow(() -> new ResourceNotFoundException("El estado ACTIVA no está configurado en la base de datos de catálogos."));
+        EstadoActividadDia estadoActivaEntidad = obtenerEstadoDia(EstadoActividadDiaNombre.ACTIVA);
 
         while (!fechaActual.isAfter(limite)) {
             java.time.DayOfWeek diaSemanaActual = fechaActual.getDayOfWeek();
@@ -1168,10 +1168,7 @@ public class ActividadService {
 
     }
     private void cancelarDiasFuturos(UUID idActividad, LocalDateTime ahora) {
-        EstadoActividadDia cancelada = estadoActividadDiaRepository
-                .findByNombre(EstadoActividadDiaNombre.CANCELADA)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "No se encontró el registro del estado CANCELADA de ActividadDia en la base de datos."));
+        EstadoActividadDia cancelada = obtenerEstadoDia(EstadoActividadDiaNombre.CANCELADA);
 
         for (ActividadDia dia : actividadRepository.findDiasFuturosVigentes(idActividad, ahora)) {
             dia.cambiarEstado(cancelada, ahora, "Baja de la actividad");
