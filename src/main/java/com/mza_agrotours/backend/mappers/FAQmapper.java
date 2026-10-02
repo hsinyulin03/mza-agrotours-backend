@@ -7,6 +7,6 @@ import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface FAQmapper {
-    @Mapping(source = "categoriaFaq.nombre", target = "categoria")
+    @Mapping(source = "categoriaFAQ.nombre", target = "categoria")
     DTOListadoAdminFaq FAQtoDTOListadoAdminFaq(FAQ faq);
 }
