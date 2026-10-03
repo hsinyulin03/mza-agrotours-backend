@@ -5,6 +5,8 @@ import com.mza_agrotours.backend.entities.Outbox;
 import com.mza_agrotours.backend.enums.outbox.EstadoOutbox;
 import com.mza_agrotours.backend.enums.outbox.TipoOperacion;
 import com.mza_agrotours.backend.repositories.OutboxRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -19,7 +21,7 @@ import java.util.Random;
 @Service
 public class OutboxService {
     private static final int MAX_REINTENTOS = 4;
-
+    private static Logger logger = LoggerFactory.getLogger(OutboxService.class);
     private final OutboxRepository outboxRepository;
     private final OutboxStrategyFactory outboxStrategyFactory;
     private final OutboxService self;
@@ -52,6 +54,7 @@ public class OutboxService {
             outbox.setEstado(EstadoOutbox.EXITOSO);
             outboxRepository.save(outbox);
         } catch (Exception e) {
+            logger.error("Error al resolver outbox con id {}: {}", outbox.getId(), e.getMessage());
             handleIntentoFallido(outbox);
         }
     }

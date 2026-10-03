@@ -1,6 +1,8 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.*;
+import com.mza_agrotours.backend.dtos.chat.ChatInfoRequest;
+import com.mza_agrotours.backend.dtos.chat.ChatInfoUsuarioDTO;
 import com.mza_agrotours.backend.entities.*;
 import com.mza_agrotours.backend.enums.outbox.TipoOperacion;
 import com.mza_agrotours.backend.exceptions.*;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -36,6 +39,7 @@ public class UsuarioService {
     private final ProductorRepository productorRepository;
     private final UsuarioMapper usuarioMapper;
     private final OutboxService outboxService;
+    private final ChatService chatService;
 
     private final ApplicationEventPublisher publisher;
 
@@ -50,6 +54,7 @@ public class UsuarioService {
                         UsuarioAccesoService usuarioAccesoService,
                         VisitanteService visitanteService,
                         OutboxService outboxService,
+                        ChatService chatService,
                            FirebaseService firebaseService,
                            ApplicationEventPublisher publisher) {
         this.usuarioPersistenceService = usuarioPersistenceService;
@@ -64,6 +69,7 @@ public class UsuarioService {
         this.visitanteService = visitanteService;
         this.outboxService = outboxService;
         this.firebaseService = firebaseService;
+        this.chatService = chatService;
         this.publisher = publisher;
     }
 
@@ -169,6 +175,7 @@ public class UsuarioService {
 
         Outbox opEliminar = eliminarUsuarioDeRepositorio(usuario);
         publisher.publishEvent(opEliminar);
+        publisher.publishEvent(this.outboxService.crearOutboxPendiente(usuario.getId().toString(), TipoOperacion.QUITAR_USUARIO_CHAT));
 
         return true;
     }
@@ -191,6 +198,13 @@ public class UsuarioService {
                 .orElseThrow(() -> new UsuarioNotFound("Usuario no encontrado"));
 
         return getCondicionesDeleteUsuarioHelper(usuario);
+    }
+
+    public Map<String, ChatInfoUsuarioDTO> getNombresChatByActividadIds(List<ChatInfoRequest> chatInfoRequests, UsuarioAuthDetails usuarioAuthDetails) {
+        Usuario usuario = this.usuarioRepository.findByFirebaseUIDAndFechaHoraBajaIsNull(usuarioAuthDetails.getFirebaseUID())
+                .orElseThrow(() -> new AppException(UsuarioError.USUARIO_NOT_FOUND));
+
+        return this.chatService.getNombresChatsByUsuarioAndActividadIds(usuario, chatInfoRequests);
     }
 
     private List<CondicionDTO> getCondicionesDeleteUsuarioHelper(Usuario usuario) throws Exception {

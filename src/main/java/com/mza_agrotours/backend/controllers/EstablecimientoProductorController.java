@@ -2,6 +2,8 @@ package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.CondicionDTO;
+import com.mza_agrotours.backend.dtos.chat.ChatInfoEstablecimientoDTO;
+import com.mza_agrotours.backend.dtos.chat.ChatInfoRequest;
 import com.mza_agrotours.backend.dtos.establecimiento.*;
 import com.mza_agrotours.backend.services.EstablecimientoService;
 import jakarta.validation.Valid;
@@ -9,13 +11,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/establecimientos/{establecimientoId}")
+@Validated
 public class EstablecimientoProductorController {
 
     @Autowired
@@ -59,5 +64,18 @@ public class EstablecimientoProductorController {
     public ResponseEntity<ApiResponse<List<CondicionDTO>>> getCondicionesBajaEstablecimiento(@PathVariable UUID establecimientoId) {
         return ResponseEntity.ok(ApiResponse.ok(establecimientoService.getCondicionesDeleteEstablecimiento(establecimientoId)));
     }
+
+    @PostMapping("/chats")
+    @PreAuthorize("@estAuth.esProductorVigente(authentication, #establecimientoId)")
+    public ResponseEntity<ApiResponse<Map<String, ChatInfoEstablecimientoDTO>>> getChatsInfo(@PathVariable UUID establecimientoId, @Valid @RequestBody List<ChatInfoRequest> chatInfoRequests) {
+        return ResponseEntity.ok(ApiResponse.ok(establecimientoService.getNombresChatByUsuarioFirebaseIds(chatInfoRequests, establecimientoId)));
+    }
+
+    @GetMapping("/chats/mensaje/autor/{userProdFirebaseId}")
+    @PreAuthorize("@estAuth.esProductorVigente(authentication, #establecimientoId)")
+    public ResponseEntity<ApiResponse<String>> getMensajeAutorNombre(@PathVariable UUID establecimientoId, @PathVariable String userProdFirebaseId) {
+        return ResponseEntity.ok(ApiResponse.ok(this.establecimientoService.obtenerAutorMensaje(establecimientoId, userProdFirebaseId)));
+    }
+
 
 }

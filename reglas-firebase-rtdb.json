@@ -1,0 +1,82 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    // 1. Membresía: Solo lectura/escritura por Backend (Admin SDK)
+    "establecimiento_miembros": {
+      ".read": false,
+      ".write": false
+    },
+
+    // 2. Registro canónico: Solo lectura para involucrados, creación exclusiva vía Backend
+    "chats": {
+      "$chatId": {
+        ".read": "auth != null && (
+        data.child('visitanteId').val() === auth.uid ||
+        root.child('establecimiento_miembros').child(data.child('establecimientoId').val()).child(auth.uid).exists()
+        )",
+        ".write": false
+      }
+    },
+
+    // 3. Hilo de mensajes: Lectura para involucrados, inserción directa desde clientes
+    "mensajes": {
+      "$chatId": {
+        ".read": "auth != null && (
+        root.child('chats').child($chatId).child('visitanteId').val() === auth.uid ||
+        root.child('establecimiento_miembros').child(root.child('chats').child($chatId).child('establecimientoId').val()).child(auth.uid).exists()
+        )",
+
+        ".indexOn": "timestamp",
+
+        "$mensajeId": {
+          // Solo inserción nueva (!data.exists()). No permite editar ni borrar.
+          ".write": "auth != null && !data.exists() && (
+          root.child('chats').child($chatId).child('baja').val() === false
+          ) && (
+          root.child('chats').child($chatId).child('visitanteId').val() === auth.uid ||
+          root.child('establecimiento_miembros').child(root.child('chats').child($chatId).child('establecimientoId').val()).child(auth.uid).exists()
+          )",
+          ".validate": "newData.hasChildren(['remitenteId', 'texto', 'tipoEmisor', 'timestamp']) &&
+          newData.child('remitenteId').val() === auth.uid &&
+          newData.child('texto').isString() && newData.child('texto').val().length > 0 &&
+          (newData.child('tipoEmisor').val() === 'VISITANTE' || newData.child('tipoEmisor').val() === 'ESTABLECIMIENTO') &&
+          newData.child('timestamp').val() <= now",
+        }
+      }
+    },
+
+    // 4. Inbox del usuario visitante
+    "chats_usuario": {
+      "$usuarioId": {
+        ".read": "auth != null && auth.uid === $usuarioId",
+
+        "$chatId": {
+          ".write": "auth != null && (
+          auth.uid === $usuarioId ||
+          root.child('establecimiento_miembros').child(root.child('chats').child($chatId).child('establecimientoId').val()).child(auth.uid).exists()
+          )",
+          ".validate": "newData.hasChildren(['establecimientoId', 'ultimoMensaje', 'timestamp']) &&
+          newData.child('establecimientoId').val() === root.child('chats').child($chatId).child('establecimientoId').val()"
+        }
+      }
+    },
+
+    // 5. Inbox del establecimiento (compartido entre empleados asignados)
+    "chats_establecimiento": {
+      "$establecimientoId": {
+        ".read": "auth != null && root.child('establecimiento_miembros').child($establecimientoId).child(auth.uid).exists()",
+
+        "$chatId": {
+          ".write": "auth != null && (
+          root.child('establecimiento_miembros').child($establecimientoId).child(auth.uid).exists() ||
+          root.child('chats').child($chatId).child('visitanteId').val() === auth.uid
+          )",
+          ".validate": "root.child('chats').child($chatId).child('establecimientoId').val() ===$establecimientoId &&
+          (!data.child('visitanteId').exists() || data.child('visitanteId').val() === newData.child('visitanteId').val())"
+        }
+      }
+    }
+  }
+}
