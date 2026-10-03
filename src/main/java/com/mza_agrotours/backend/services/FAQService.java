@@ -3,6 +3,8 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.dtos.faq.*;
 
 import java.util.List;
+import java.util.UUID;
+
 import com.mza_agrotours.backend.entities.faq.CategoriaFAQ;
 import com.mza_agrotours.backend.entities.faq.FAQ;
 import com.mza_agrotours.backend.enums.CategoriaFAQNombre;
@@ -16,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.threeten.bp.LocalDate;
+import org.threeten.bp.LocalDateTime;
 
 @Service
 public class FAQService {
@@ -42,18 +45,21 @@ public class FAQService {
         return response;
     }
     @Transactional(readOnly = true)
-    public FaqFormAMRequest getformAMfaq(Long id) {
+    public FaqFormAMRequest getformAMfaq(UUID id) {
         FAQ faq = buscarFaqPorId(id);
         FaqFormAMRequest dto = new FaqFormAMRequest();
         dto.setId(faq.getId());
         dto.setPregunta(faq.getPregunta());
         dto.setRespuesta(faq.getRespuesta());
         dto.setCategoria(faq.getCategoriaFAQ().getNombre());
+        dto.setCategorias(categoriaFaqRepository.findAll().stream()
+                .map(CategoriaFAQ::getNombre)
+                .toList());
         return dto;
     }
 
     @Transactional
-    public FaqResponse updateFaq(FaqAMRequest dto, Long id) {
+    public FaqResponse updateFaq(FaqAMRequest dto, UUID id) {
         FAQ faq = buscarFaqPorId(id);
         CategoriaFAQ categoria = validarCategoria(dto.getCategoria());
         faq.setPregunta(dto.getPregunta());
@@ -66,9 +72,9 @@ public class FAQService {
         return response;
     }
     @Transactional
-    public FaqDeleteResponse deleteFaq(Long id) {
+    public FaqDeleteResponse deleteFaq(UUID id) {
         FAQ faq = buscarFaqPorId(id);
-        faq.setFechaHoraBaja(LocalDate.now());
+        faq.setFechaHoraBaja(LocalDateTime.now());
         faqRepository.save(faq);
         FaqDeleteResponse response = new FaqDeleteResponse();
         response.setId(faq.getId());
@@ -83,8 +89,8 @@ public class FAQService {
 
     @Transactional(readOnly = true)
     public Page<DTOListadoAdminFaq> listFaq(CategoriaFAQNombre categoria, String busqueda, Pageable pageable) {
-        String busquedaNormalizada = (busqueda != null && busqueda.isBlank()) ? null : busqueda;
-        return faqRepository.listarActivas(categoria, busquedaNormalizada, pageable)
+        String textoFiltro = (busqueda == null) ? "" : busqueda.trim();
+        return faqRepository.listarActivas(categoria, textoFiltro, pageable)
                 .map(faqMapper::FAQtoDTOListadoAdminFaq);
     }
     
@@ -98,8 +104,8 @@ public class FAQService {
         return categoria;
     }
 
-    public FAQ buscarFaqPorId(Long id) {
-        return faqRepository.findById(id)
+    public FAQ buscarFaqPorId(UUID id) {
+        return faqRepository.findByIdAndFechaHoraBajaIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("FAQ no encontrada con ID: " + id));
     }
 

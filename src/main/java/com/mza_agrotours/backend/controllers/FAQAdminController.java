@@ -14,6 +14,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @Controller
 @RequestMapping("/admin/faq")
@@ -34,11 +35,11 @@ public class FAQAdminController {
     }
 
     @GetMapping("/{faqId}")
-    public ResponseEntity<ApiResponse<FaqFormAMRequest>> obtenerParaEditar(@PathVariable Long faqId) {
+    public ResponseEntity<ApiResponse<FaqFormAMRequest>> obtenerParaEditar(@PathVariable UUID faqId) {
         return ResponseEntity.ok(ApiResponse.ok(faqService.getformAMfaq(faqId)));
     }
 
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<ApiResponse<FaqResponse>> crear(@Valid @RequestBody FaqAMRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(faqService.createFaq(request)));
@@ -46,13 +47,13 @@ public class FAQAdminController {
 
     @PutMapping("/{faqId}")
     public ResponseEntity<ApiResponse<FaqResponse>> actualizar(
-            @PathVariable Long faqId,
+            @PathVariable UUID faqId,
             @Valid @RequestBody FaqAMRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(faqService.updateFaq(request, faqId)));
     }
 
     @DeleteMapping("/{faqId}")
-    public ResponseEntity<ApiResponse<FaqDeleteResponse>> eliminar(@PathVariable Long faqIdid) {
+    public ResponseEntity<ApiResponse<FaqDeleteResponse>> eliminar(@PathVariable UUID faqIdid) {
         return ResponseEntity.ok(ApiResponse.ok(faqService.deleteFaq(faqIdid)));
     }
 

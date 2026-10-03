@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.threeten.bp.LocalDate;
+import org.threeten.bp.LocalDateTime;
 
 import java.util.UUID;
 @Entity
@@ -21,7 +22,7 @@ public class FAQ extends BaseEntity {
     @Column(nullable = false, length = 700)
     private String respuesta;
 
-    private LocalDate fechaHoraBaja;
+    private LocalDateTime fechaHoraBaja;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "categoria_faq_id", nullable = false)
