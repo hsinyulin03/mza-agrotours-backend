@@ -29,6 +29,10 @@ public enum TipoNotificacionNombre {
     RESERVA_CANCELADA_POR_BAJA_ACTIVIDAD(
             "Tu reserva fue cancelada",
             "La actividad %s fue dada de baja por el productor, así que cancelamos tu reserva del %s. No se te realizó ningún cobro.",
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
+    RECORDATORIO_RESERVA(
+            "Recordatorio de tu reserva",
+            "Te recordamos que el %s a las %s tenés tu reserva para %s en %s. ¡Te esperamos!",
             EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH));
 
         private final String titulo;

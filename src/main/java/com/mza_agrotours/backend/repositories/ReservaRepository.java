@@ -177,4 +177,13 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
     BigDecimal sumarIngresoDelDia(@Param("actividadDiaId") UUID actividadDiaId,
                                   @Param("estados") List<EstadoReservaNombre> estados);
 
+    //Recordatorio: reservas pagadas cuyo día empieza dentro de la ventana y que todavía no recibieron el recordatorio
+    @Query("SELECT r.id FROM Reserva r " +
+            "WHERE r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA " +
+            "AND r.fechaHoraRecordatorio IS NULL " +
+            "AND r.actividadDia.fechaHoraInicio > :desde " +
+            "AND r.actividadDia.fechaHoraInicio <= :hasta")
+    List<UUID> findIdsRecordatorioPendiente(@Param("desde") LocalDateTime desde,
+                                            @Param("hasta") LocalDateTime hasta);
+
 }
