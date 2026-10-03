@@ -13,12 +13,18 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @Controller
 @RequestMapping("/admin/faq")
 public class FAQAdminController {
     @Autowired
     private FAQService faqService;
 
+    @GetMapping("/categorias")
+    public ResponseEntity<ApiResponse<List<DTOCategoriaFaqFiltro>>> listarCategorias() {
+        return ResponseEntity.ok(ApiResponse.ok(faqService.listCategorias()));
+    }
     @GetMapping
     public ResponseEntity<ApiResponse<Page<DTOListadoAdminFaq>>> listar(
             @RequestParam(required = false) CategoriaFAQNombre categoria,
