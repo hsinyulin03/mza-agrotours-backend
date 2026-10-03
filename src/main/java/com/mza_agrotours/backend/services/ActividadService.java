@@ -610,6 +610,22 @@ public class ActividadService {
         return response;
     }
 
+    //Cierre automático: pasa a FINALIZADA los días ocupados que ya terminaron (lo llama el scheduler)
+    @Transactional
+    public int finalizarDiasTerminados() {
+        LocalDateTime ahora = LocalDateTime.now();
+        List<ActividadDia> diasTerminados = actividadRepository.findDiasTerminadosEnEstados(ESTADOS_ACTIVIDAD_DIA_OCUPADO, ahora);
+        if (diasTerminados.isEmpty()) {
+            return 0;
+        }
+
+        EstadoActividadDia finalizada = obtenerEstadoDia(EstadoActividadDiaNombre.FINALIZADA);
+        for (ActividadDia dia : diasTerminados) {
+            dia.cambiarEstado(finalizada, ahora, "Finalización automática del día");
+        }
+        return diasTerminados.size();
+    }
+
     //Métodos auxiliares
 
     //Crea un ActividadDia con su estado inicial (lo usan el alta de la actividad, el lote y el alta individual)
