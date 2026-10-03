@@ -43,6 +43,14 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "AND r.fechaHoraExpiracion < :currTime")
     List<Reserva> findReservasExpiradas(@Param("currTime")LocalDateTime currTime);
 
+    @Query("SELECT DISTINCT r FROM Reserva r " +
+            "LEFT JOIN FETCH r.estados " +
+            "JOIN r.estadoActual estado " +
+            "JOIN r.actividadDia ad " +
+            "WHERE estado.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA " +
+            "AND ad.estadoActual.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.FINALIZADA")
+    List<Reserva> findReservasPagadasDeDiasFinalizados();
+
     @Query("select r from Reserva r where r.visitante.id = :visitanteId and r.estadoActual.estadoReserva.id = :estadoId")
     List<Reserva> findByVisitanteAndReservaEstadoActual(@Param("visitanteId") UUID visitanteId, @Param("estadoId") UUID estadoReservaId);
 
