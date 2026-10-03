@@ -421,12 +421,53 @@ public class ReservaService {
             notificacionService.crearNotificacion(
                     r.getVisitante().getUsuario(),
                     TipoNotificacionNombre.RESERVA_CANCELADA_POR_BAJA_ACTIVIDAD,
-                    r.getActividad().getEstablecimiento(),
+                    null,
                     RutasNotificacionesFront.detalleReserva(r.getId()),
                     actividad.getNombre(), r.getActividadDia().getFechaHoraInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
         }
         log.info("Se cancelaron {} reservas pendientes por baja de la actividad {}", pendientes.size(), actividad.getId());
     }
+
+    //Recordatorio: notifica a las reservas pagadas cuyo día empieza en las próximas 24 h (lo llama el scheduler)
+    public void enviarRecordatoriosPendientes() {
+        LocalDateTime ahora = LocalDateTime.now();
+        List<UUID> idsPendientes = reservaRepository.findIdsRecordatorioPendiente(ahora, ahora.plusHours(24));
+        if (idsPendientes.isEmpty()) {
+            return;
+        }
+
+        List<String> idsFallidos = new ArrayList<>();
+        for (UUID reservaId : idsPendientes) {
+            try {
+                self.enviarRecordatorio(reservaId, ahora);
+            } catch (Exception e) {
+                idsFallidos.add(reservaId.toString());
+                log.warn("No se pudo enviar el recordatorio de la reserva {}", reservaId, e);
+            }
+        }
+
+        log.info("Se enviaron {}/{} recordatorios de reserva. Fallaron {}, con ids: {}",
+                idsPendientes.size() - idsFallidos.size(), idsPendientes.size(), idsFallidos.size(), idsFallidos);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void enviarRecordatorio(UUID reservaId, LocalDateTime ahora) {
+        Reserva reserva = reservaRepository.findById(reservaId)
+                .orElseThrow(ReservaNotFoundException::new);
+
+        notificacionService.crearNotificacion(
+                reserva.getVisitante().getUsuario(),
+                TipoNotificacionNombre.RECORDATORIO_RESERVA,
+                null,
+                RutasNotificacionesFront.detalleReserva(reserva.getId()),
+                reserva.getActividadDia().getFechaHoraInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                reserva.getActividadDia().getFechaHoraInicio().format(DateTimeFormatter.ofPattern("HH:mm")),
+                reserva.getActividad().getNombre(),
+                reserva.getActividad().getEstablecimiento().getNombre());
+
+        reserva.setFechaHoraRecordatorio(ahora);
+    }
+
 
 
     // AUXILIARES

@@ -205,4 +205,16 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
                                                        @Param("estados") List<EstadoActividadDiaNombre> estados,
                                                        @Param("desde") LocalDateTime desde,
                                                        @Param("hasta") LocalDateTime hasta);
+
+
+    //Localizar dias activos que ya terminaron para pasarlos a FINALIZADA
+    @Query("SELECT ad FROM Actividad a " +
+            "JOIN a.actividadesDias ad " +
+            "JOIN FETCH ad.estadoActual ade " +
+            "JOIN FETCH ade.estado e " +
+            "WHERE ad.fechaHoraBaja IS NULL " +
+            "AND e.nombre IN :estados " +
+            "AND ad.fechaHoraFin < :ahora")
+    List<ActividadDia> findDiasTerminadosEnEstados(@Param("estados") List<EstadoActividadDiaNombre> estados,
+                                                   @Param("ahora") LocalDateTime ahora);
 }

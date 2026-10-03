@@ -38,6 +38,8 @@ public class Reserva extends BaseEntity {
     @Column (nullable = false)
     private BigDecimal totalReserva;                     // Monto total de la reserva
 
+    private LocalDateTime fechaHoraRecordatorio;    // FH en que se envió el recordatorio del día anterior (null = no enviado)
+
     //TODO relaciones - Calificacion, Reembolso
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private ReservaEstado estadoActual;
