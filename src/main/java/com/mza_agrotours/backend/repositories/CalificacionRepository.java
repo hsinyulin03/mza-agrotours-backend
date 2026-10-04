@@ -31,13 +31,18 @@ public interface CalificacionRepository extends BaseEntityRepository<Calificacio
             "JOIN r.visitante v " +
             "JOIN v.usuario u " +
             "WHERE r.actividad.id = :actividadId " +
-            "AND (:puntaje IS NULL OR c.puntaje = :puntaje)",
-            countQuery = "SELECT COUNT(c) " +
+            "AND (:puntaje IS NULL OR c.puntaje = :puntaje) " +
+            "ORDER BY " +
+            "  CASE WHEN CAST(:orden AS string) = 'ASC' THEN c.fechaHoraCalificacion END ASC, " +
+            "  CASE WHEN CAST(:orden AS string) = 'ASC' THEN NULL ELSE c.fechaHoraCalificacion END DESC, " +
+            "  c.id DESC",
+             countQuery = "SELECT COUNT(c) " +
                     "FROM Calificacion c " +
                     "JOIN Reserva r ON r.calificacion = c " +
                     "WHERE r.actividad.id = :actividadId " +
                     "AND (:puntaje IS NULL OR c.puntaje = :puntaje)")
     Page<ReseniaCardDTO> findReseniasByActividad(@Param("actividadId") UUID actividadId,
                                                  @Param("puntaje") Integer puntaje,
+                                                 @Param("orden") String orden,
                                                  Pageable pageable);
 }

@@ -7,13 +7,14 @@ import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.exceptions.AppException;
 import com.mza_agrotours.backend.exceptions.CalificacionError;
+import com.mza_agrotours.backend.exceptions.ResourceNotFoundException;
 import com.mza_agrotours.backend.exceptions.reservas.ReservaNotFoundException;
 import com.mza_agrotours.backend.repositories.CalificacionRepository;
 import com.mza_agrotours.backend.repositories.ReservaRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -105,9 +106,19 @@ public class CalificacionService {
     //US-ACT-02: Reseñas de la actividad - las 3 más recientes
     @Transactional(readOnly = true)
     public List<ReseniaCardDTO> obtenerReseniasRecientes(UUID idActividad) {
-        Pageable recientes = PageRequest.of(0, CANTIDAD_RESENIAS_RECIENTES,
-                Sort.by(Sort.Direction.DESC, "fechaHoraCalificacion", "id"));
-        return calificacionRepository.findReseniasByActividad(idActividad, null, recientes).getContent();
+        Pageable recientes = PageRequest.of(0, CANTIDAD_RESENIAS_RECIENTES);
+        return calificacionRepository.findReseniasByActividad(idActividad, null, null, recientes).getContent();
     }
+
+    //US-ACT-02: Listado de todas las reseñas de la actividad - listado paginado (botón "ver todas")
+    @Transactional(readOnly = true)
+    public Page<ReseniaCardDTO> obtenerResenias(UUID idActividad, Integer puntaje, String orden, Pageable pageable) {
+
+        actividadRepository.findByIdVigenteConEstablecimientoActivo(idActividad)
+                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
+
+        return calificacionRepository.findReseniasByActividad(idActividad, puntaje, orden, pageable);
+    }
+
 
 }

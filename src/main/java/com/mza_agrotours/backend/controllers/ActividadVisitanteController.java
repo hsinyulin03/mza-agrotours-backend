@@ -6,7 +6,9 @@ import com.mza_agrotours.backend.dtos.actividad.DTOActividadDetalleResponse;
 import com.mza_agrotours.backend.dtos.actividad.DTOFiltro;
 import com.mza_agrotours.backend.dtos.actividad.DTOListadoActividadVisitanteResponse;
 import com.mza_agrotours.backend.dtos.actividad.InfoParaReservarDTO;
+import com.mza_agrotours.backend.dtos.calificacion.ReseniaCardDTO;
 import com.mza_agrotours.backend.services.ActividadService;
+import com.mza_agrotours.backend.services.CalificacionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,12 +28,26 @@ public class ActividadVisitanteController {
     @Autowired
     private ActividadService servicio;
 
+    @Autowired
+    private CalificacionService calificacionService;
+
     //US-ACT-02: Consultar detalle de una actividad
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<DTOActividadDetalleResponse>> obtenerDetalleActividad(@PathVariable UUID id) throws Exception {
 
         DTOActividadDetalleResponse detalle = servicio.obtenerDetallePorId(id);
         return ResponseEntity.ok(ApiResponse.ok(detalle));
+    }
+
+    //US-ACT-02: Listado de todas las reseñas de la actividad - listado paginado (botón "ver todas")
+    @GetMapping("/{id}/resenias")
+    public ResponseEntity<ApiResponse<Page<ReseniaCardDTO>>> obtenerResenias(
+            @PathVariable UUID id,
+            @RequestParam(required = false) Integer puntaje,
+            @RequestParam(required = false) String orden,
+            @PageableDefault(page = 0, size = 10) Pageable pageable) {
+        Page<ReseniaCardDTO> resenias = calificacionService.obtenerResenias(id, puntaje, orden, pageable);
+        return ResponseEntity.ok(ApiResponse.ok(resenias));
     }
 
     //US-ACT-12: Listado de actividades de la plataforma - vista del visitante
