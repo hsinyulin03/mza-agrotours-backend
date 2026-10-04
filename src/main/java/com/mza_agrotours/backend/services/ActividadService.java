@@ -115,6 +115,9 @@ public class ActividadService {
     @Autowired
     private ApplicationEventPublisher publisher;
 
+    @Autowired
+    private CalificacionService calificacionService;
+
     //US-ACT-03 Alta de actividad
     @Transactional
     public DTOActividadAltaResponse altaActividad(UUID establecimientoId, DTOActividadAlta dto) {
@@ -184,6 +187,9 @@ public class ActividadService {
                 .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
         DTOActividadDetalleResponse response = actividadMapper.actividadToDTOActividadDetalle(actividad);
         response.setFotos(obtenerUrlsDeDescarga(response.getFotos()));
+        // Sección de reseñas
+        response.setResumenResenias(calificacionService.obtenerResumenResenias(idActividad));
+        response.setReseniasRecientes(calificacionService.obtenerReseniasRecientes(idActividad));
         return response;
     }
 
