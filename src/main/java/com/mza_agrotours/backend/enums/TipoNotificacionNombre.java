@@ -11,12 +11,12 @@ import java.util.Set;
 public enum TipoNotificacionNombre {
     SOLICITUD_ESTABLECIMIENTO_CREADA(
             "Solicitud recibida",
-            "Recibimos tu solicitud para %s. Te avisaremos cuando la revisemos.",
+            "Recibimos tu solicitud para el establecimineto %s. Te avisaremos cuando la revisemos.",
             EnumSet.of(CanalNotificacion.PUSH)),
 
     SOLICITUD_ESTABLECIMIENTO_RECHAZADA(
             "Tu solicitud no fue aprobada",
-            "Revisamos tu solicitud para %s: %s.",
+            "Revisamos tu solicitud para el establecimiento %s: %s.",
             EnumSet.of(CanalNotificacion.EMAIL,CanalNotificacion.PUSH)),
     SOLICITUD_ESTABLECIMIENTO_APROBADA(
             "Solicitud aprobada",
@@ -24,7 +24,7 @@ public enum TipoNotificacionNombre {
             EnumSet.of(CanalNotificacion.EMAIL,CanalNotificacion.PUSH)),
     PRODUCTOR_AGREGADO(
             "Te sumaron a un establecimiento",
-            "Ya formás parte del equipo de %s.",
+            "Ya formás parte del equipo del establecimiento %s.",
             EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
     RESERVA_CANCELADA_POR_BAJA_ACTIVIDAD(
             "Tu reserva fue cancelada",
@@ -32,11 +32,11 @@ public enum TipoNotificacionNombre {
             EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
     RECORDATORIO_RESERVA(
             "Recordatorio de tu reserva",
-            "Te recordamos que el %s a las %s tenés tu reserva para %s en %s. ¡Te esperamos!",
+            "Te recordamos que el %s a las %s tenés tu reserva para la actividad %s en el establecimiento %s. ¡Te esperamos!",
             EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
     VALORAR_ACTIVIDAD(
             "¿Cómo te fue en la actividad de %s?",
-            "Esperamos que hayas disfrutado %s en %s el %s. Contanos tu experiencia calificando la actividad, tu opinión ayuda a otros visitantes.",
+            "Esperamos que hayas disfrutado en la actividad %s en %s el %s. Contanos tu experiencia calificando la actividad, tu opinión ayuda a otros visitantes.",
             EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH));
 
         private final String titulo;
