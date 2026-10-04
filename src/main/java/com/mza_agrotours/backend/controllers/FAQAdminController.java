@@ -5,6 +5,7 @@ import com.mza_agrotours.backend.dtos.faq.*;
 import com.mza_agrotours.backend.enums.CategoriaFAQNombre;
 import com.mza_agrotours.backend.services.FAQService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -53,8 +54,8 @@ public class FAQAdminController {
     }
 
     @DeleteMapping("/{faqId}")
-    public ResponseEntity<ApiResponse<FaqDeleteResponse>> eliminar(@PathVariable UUID faqIdid) {
-        return ResponseEntity.ok(ApiResponse.ok(faqService.deleteFaq(faqIdid)));
+    public ResponseEntity<ApiResponse<FaqDeleteResponse>> eliminar(@PathVariable UUID faqId) {
+        return ResponseEntity.ok(ApiResponse.ok(faqService.deleteFaq(faqId)));
     }
 
 }

@@ -91,7 +91,7 @@ public class FAQService {
     public Page<DTOListadoAdminFaq> listFaq(CategoriaFAQNombre categoria, String busqueda, Pageable pageable) {
         String textoFiltro = (busqueda == null) ? "" : busqueda.trim();
         return faqRepository.listarActivas(categoria, textoFiltro, pageable)
-                .map(faqMapper::FAQtoDTOListadoAdminFaq);
+                .map(faqMapper::fAQtoDTOListadoAdminFaq);
     }
     
 
