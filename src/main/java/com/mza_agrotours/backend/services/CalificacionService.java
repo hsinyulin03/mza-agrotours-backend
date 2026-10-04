@@ -141,4 +141,23 @@ public class CalificacionService {
         return filtros;
     }
 
+    //US-ACT-02: Filtro de orden del modal de reseñas (por fecha de calificación)
+    //Las dos opciones muestran el total de reseñas, porque ordenar no filtra
+    @Transactional(readOnly = true)
+    public List<DTOFiltro> obtenerFiltroOrden(UUID idActividad) {
+        actividadRepository.findByIdVigenteConEstablecimientoActivo(idActividad)
+                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
+
+        long totalResenias = 0;
+        for (DistribucionPuntajeDTO conteo : calificacionRepository.contarPorPuntaje(idActividad)) {
+            totalResenias += conteo.getCantidad();
+        }
+
+        // El valor es lo que el front manda en ?orden= del listado (la query solo distingue 'ASC')
+        List<DTOFiltro> filtros = new ArrayList<>();
+        filtros.add(new DTOFiltro("DESC", "Más recientes a más antiguas", totalResenias));
+        filtros.add(new DTOFiltro("ASC", "Más antiguas a más recientes", totalResenias));
+        return filtros;
+    }
+
 }

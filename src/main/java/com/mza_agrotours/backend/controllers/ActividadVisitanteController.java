@@ -51,9 +51,16 @@ public class ActividadVisitanteController {
         return ResponseEntity.ok(ApiResponse.ok(resenias));
     }
     //US-ACT-02: Filtro de puntajes del modal de reseñas
-    @GetMapping("/{idActividad}/puntajes")
+    @GetMapping("/{idActividad}/resenias/puntajes")
     public ResponseEntity<ApiResponse<List<DTOFiltro>>> obtenerFiltroPuntajes(@PathVariable UUID idActividad) {
         List<DTOFiltro> filtros = calificacionService.obtenerFiltroPuntajes(idActividad);
+        return ResponseEntity.ok(ApiResponse.ok(filtros));
+    }
+
+    //US-ACT-02: Filtro de orden del modal de reseñas
+    @GetMapping("/{idActividad}/resenias/orden")
+    public ResponseEntity<ApiResponse<List<DTOFiltro>>> obtenerFiltroOrden(@PathVariable UUID idActividad) {
+        List<DTOFiltro> filtros = calificacionService.obtenerFiltroOrden(idActividad);
         return ResponseEntity.ok(ApiResponse.ok(filtros));
     }
 
