@@ -7,7 +7,7 @@ import java.util.UUID;
 
 @Data
 public class DTOActividadAltaResponse {
-    UUID idActividad;
-    String mensaje;
-    List<String> advertencias;
+    private UUID idActividad;
+    private String mensaje;
+    private List<String> advertencias;
 }
