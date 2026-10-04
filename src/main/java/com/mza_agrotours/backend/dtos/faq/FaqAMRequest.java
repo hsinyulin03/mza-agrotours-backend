@@ -2,7 +2,6 @@ package com.mza_agrotours.backend.dtos.faq;
 
 import com.mza_agrotours.backend.enums.CategoriaFAQNombre;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;

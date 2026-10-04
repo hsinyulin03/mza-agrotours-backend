@@ -2,7 +2,6 @@ package com.mza_agrotours.backend.entities.faq;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
 import com.mza_agrotours.backend.enums.CategoriaFAQNombre;
-import com.mza_agrotours.backend.enums.DuracionNombre;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
