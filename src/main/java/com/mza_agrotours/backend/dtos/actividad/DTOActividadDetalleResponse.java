@@ -1,6 +1,8 @@
 package com.mza_agrotours.backend.dtos.actividad;
 
 import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
+import com.mza_agrotours.backend.dtos.calificacion.ReseniaCardDTO;
+import com.mza_agrotours.backend.dtos.calificacion.ResumenReseniasDTO;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -31,6 +33,8 @@ public class DTOActividadDetalleResponse {
     private List<DTOTarifaResponse> tarifas;
     private BigDecimal precioRegular;
 
-
-    //TODO- Falta mostrar pronóstico, reseñas y calendario para reservas
+    // Reseñas
+    private ResumenReseniasDTO resumenResenias;         // promedio, total y distribución
+    private List<ReseniaCardDTO> reseniasRecientes;     // las 3 reseñas más recientes
+    //TODO- Falta mostrar pronóstico y calendario para reservas
 }
