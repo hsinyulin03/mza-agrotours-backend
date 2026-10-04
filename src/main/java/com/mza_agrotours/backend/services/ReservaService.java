@@ -320,7 +320,7 @@ public class ReservaService {
 
         for (Reserva r : reservas){
             try{
-                self.cambiarEstadoReservaYGuardar(r, estadoReserva, ahora);
+                self.finalizarReservaYsolicitarValoracion(r, estadoReserva, ahora);
             } catch (Exception e) {
                 log.warn("Error de backend finalizando reserva {}", r.getId(), e);
                 idFallidas.add(r.getId().toString());
@@ -497,6 +497,22 @@ public class ReservaService {
                 reserva.getActividad().getEstablecimiento().getNombre());
 
         reserva.setFechaHoraRecordatorio(ahora);
+    }
+
+    // cambiamos la reserva a estado finalizado y enviamos notificación al visitante solicitándole una valoración
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void finalizarReservaYsolicitarValoracion(Reserva reserva, EstadoReserva estadoFinalizada, LocalDateTime ahora) {
+        reserva.cambiarEstado(estadoFinalizada, ahora);
+        reservaRepository.save(reserva);
+
+        notificacionService.crearNotificacion(
+                reserva.getVisitante().getUsuario(),
+                TipoNotificacionNombre.VALORAR_ACTIVIDAD,
+                null,
+                RutasNotificacionesFront.valorarExperiencia(reserva.getId()),
+                reserva.getActividad().getNombre(),
+                reserva.getActividad().getEstablecimiento().getNombre(),
+                reserva.getActividadDia().getFechaHoraInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
     }
 
 

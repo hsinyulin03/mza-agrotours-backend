@@ -49,7 +49,7 @@ public class NotificacionService {
         Notificacion notificacion = new Notificacion();
         notificacion.setDestinatario(destinatario);
         notificacion.setTipoNotificacion(tipoNotificacion);
-        notificacion.setTitulo(tipoNotificacionNombre.getTitulo());
+        notificacion.setTitulo(String.format(tipoNotificacionNombre.getTitulo(), datos));
         notificacion.setMensaje(String.format(tipoNotificacionNombre.getPlantillaMensaje(), datos));
         notificacion.setUrlLink(enlace);
         notificacion.setFechaHoraAlta(LocalDateTime.now());

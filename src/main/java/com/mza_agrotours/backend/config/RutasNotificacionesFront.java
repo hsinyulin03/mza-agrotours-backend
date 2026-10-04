@@ -17,4 +17,7 @@ public class RutasNotificacionesFront {
     public static String detalleReserva(UUID reservaId){
         return "/reserva/get/" + reservaId;
     }
+    public static String valorarExperiencia(UUID reservaId){
+        return "/calificaciones/reserva/" + reservaId;
+    }
 }
