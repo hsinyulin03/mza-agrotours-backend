@@ -33,6 +33,10 @@ public enum TipoNotificacionNombre {
     RECORDATORIO_RESERVA(
             "Recordatorio de tu reserva",
             "Te recordamos que el %s a las %s tenés tu reserva para %s en %s. ¡Te esperamos!",
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
+    VALORAR_ACTIVIDAD(
+            "¿Cómo te fue en la actividad de %s?",
+            "Esperamos que hayas disfrutado %s en %s el %s. Contanos tu experiencia calificando la actividad, tu opinión ayuda a otros visitantes.",
             EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH));
 
         private final String titulo;

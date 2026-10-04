@@ -123,8 +123,8 @@ class ActividadBajaIT extends AbstractIntegrationTest {
     }
 
     /**
-     * Nadie pasa las reservas a FINALIZADA todavia, asi que una pagada de una visita que ya ocurrio
-     * sigue en PAGADA para siempre. No debe bloquear la baja: esa visita ya se presto y se cobro.
+     * Una pagada de una visita que ya ocurrio sigue en PAGADA hasta que el scheduler finaliza su dia
+     * y la pasa a FINALIZADA. No debe bloquear la baja: esa visita ya se presto y se cobro.
      */
     @Test
     void permiteLaBajaSiLasReservasPagadasSonDeDiasQueYaPasaron() {
