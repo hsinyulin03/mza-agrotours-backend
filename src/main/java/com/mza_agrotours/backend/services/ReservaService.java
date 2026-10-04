@@ -301,6 +301,37 @@ public class ReservaService {
     }
 
     /**
+     * Tarea programada que busca todas las reservas "Pagada" cuyo día de actividad ya está "Finalizada"
+     * y las marca como "Finalizada".
+     * La búsqueda no depende de qué días se finalizaron en la última corrida, por lo que también alcanza a reservas
+     * pagadas tarde (luego de finalizado el día) o que fallaron en una corrida anterior.
+     * Cada reserva se cambia y guarda en su propia transacción, por lo que el fallo de una no afecta a las demás.
+     * Las reservas que no pudieron finalizarse quedan registradas en el log para su seguimiento.
+     */
+    @Transactional(readOnly = true)
+    public void finalizarReservas(){
+        LocalDateTime ahora = LocalDateTime.now();
+        List<Reserva> reservas = reservaRepository.findReservasPagadasDeDiasFinalizados();
+        if (reservas.isEmpty()) return;
+
+        EstadoReserva estadoReserva = getEstadoReserva(FINALIZADA);
+
+        List<String> idFallidas = new ArrayList<>();
+
+        for (Reserva r : reservas){
+            try{
+                self.cambiarEstadoReservaYGuardar(r, estadoReserva, ahora);
+            } catch (Exception e) {
+                log.warn("Error de backend finalizando reserva {}", r.getId(), e);
+                idFallidas.add(r.getId().toString());
+            }
+        }
+
+        log.info("Se finalizaron {}/{} reservas. Las reservas no finalizadas fueron {}, con ids: {}",
+                reservas.size() - idFallidas.size(), reservas.size(), idFallidas.size(), idFallidas);
+    }
+
+    /**
      * Workaround al todavía no tener notificaciones webhook de MercadoPago.
      * <p>
      * Tarea programada que busca todas las reservas "Pendiente" aún no expiradas y consulta a Mercado Pago,
