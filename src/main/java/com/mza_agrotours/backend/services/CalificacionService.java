@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.calificacion.*;
 import com.mza_agrotours.backend.entities.Calificacion;
+import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.exceptions.AppException;
@@ -52,9 +53,18 @@ public class CalificacionService {
 
         Calificacion calificacion = new Calificacion(dto.getPuntaje(), dto.getResenia(), LocalDateTime.now());
 
+        Actividad actividad = reserva.getActividad();
         reserva.setCalificacion(calificacion);
-        reserva.getActividad().getCalificaciones().add(calificacion);
+        actividad.getCalificaciones().add(calificacion);
         calificacionRepository.save(calificacion);
+
+        // Actualizamos el promedio de la actividad.
+        int sumaPuntajes = 0;
+        for (Calificacion c : actividad.getCalificaciones()) {
+            sumaPuntajes += c.getPuntaje();
+        }
+        float promedio = (float) sumaPuntajes / actividad.getCalificaciones().size();
+        actividad.setCalificacionPromedio(Math.round(promedio * 10) / 10f); //redondea a un decimal ej: 4.1666->4.2
 
         return new CalificacionResponseDTO(calificacion.getId(), reserva.getId(), calificacion.getPuntaje(),
                                            calificacion.getResenia(), calificacion.getFechaHoraCalificacion());
