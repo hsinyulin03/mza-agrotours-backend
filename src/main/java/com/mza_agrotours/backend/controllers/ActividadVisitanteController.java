@@ -39,7 +39,7 @@ public class ActividadVisitanteController {
         return ResponseEntity.ok(ApiResponse.ok(detalle));
     }
 
-    //US-ACT-02: Listado de todas las reseñas de la actividad - listado paginado (botón "ver todas")
+    //US-ACT-01: Listado de todas las reseñas de la actividad - listado paginado (botón "ver todas")
     //NOTA: el panel de distribucion de barras y promedio general de calificacion se puede obtener de resumenResenias del GET /actividades/{id}
     @GetMapping("/{id}/resenias")
     public ResponseEntity<ApiResponse<Page<ReseniaCardDTO>>> obtenerResenias(
@@ -50,14 +50,14 @@ public class ActividadVisitanteController {
         Page<ReseniaCardDTO> resenias = calificacionService.obtenerResenias(id, puntaje, orden, pageable);
         return ResponseEntity.ok(ApiResponse.ok(resenias));
     }
-    //US-ACT-02: Filtro de puntajes del modal de reseñas
+    //US-ACT-01: Filtro de puntajes del modal de reseñas
     @GetMapping("/{idActividad}/resenias/puntajes")
     public ResponseEntity<ApiResponse<List<DTOFiltro>>> obtenerFiltroPuntajes(@PathVariable UUID idActividad) {
         List<DTOFiltro> filtros = calificacionService.obtenerFiltroPuntajes(idActividad);
         return ResponseEntity.ok(ApiResponse.ok(filtros));
     }
 
-    //US-ACT-02: Filtro de orden del modal de reseñas
+    //US-ACT-01: Filtro de orden del modal de reseñas
     @GetMapping("/{idActividad}/resenias/orden")
     public ResponseEntity<ApiResponse<List<DTOFiltro>>> obtenerFiltroOrden(@PathVariable UUID idActividad) {
         List<DTOFiltro> filtros = calificacionService.obtenerFiltroOrden(idActividad);

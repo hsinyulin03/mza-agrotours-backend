@@ -111,7 +111,7 @@ public class CalificacionService {
         return calificacionRepository.findReseniasByActividad(idActividad, null, null, recientes).getContent();
     }
 
-    //US-ACT-02: Listado de todas las reseñas de la actividad - listado paginado (botón "ver todas")
+    //US-ACT-01: Listado de todas las reseñas de la actividad - listado paginado (botón "ver todas")
     @Transactional(readOnly = true)
     public Page<ReseniaCardDTO> obtenerResenias(UUID idActividad, Integer puntaje, String orden, Pageable pageable) {
 
@@ -121,7 +121,7 @@ public class CalificacionService {
         return calificacionRepository.findReseniasByActividad(idActividad, puntaje, orden, pageable);
     }
 
-    //US-ACT-02: Filtro de puntajes del modal de reseñas (con la cantidad de reseñas de cada uno)
+    //US-ACT-01: Filtro de puntajes del modal de reseñas (con la cantidad de reseñas de cada uno)
     @Transactional(readOnly = true)
     public List<DTOFiltro> obtenerFiltroPuntajes(UUID idActividad) {
         actividadRepository.findByIdVigenteConEstablecimientoActivo(idActividad)
@@ -141,7 +141,7 @@ public class CalificacionService {
         return filtros;
     }
 
-    //US-ACT-02: Filtro de orden del modal de reseñas (por fecha de calificación)
+    //US-ACT-01: Filtro de orden del modal de reseñas (por fecha de calificación)
     //Las dos opciones muestran el total de reseñas, porque ordenar no filtra
     @Transactional(readOnly = true)
     public List<DTOFiltro> obtenerFiltroOrden(UUID idActividad) {
