@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.entities.actividad;
 
 import com.mza_agrotours.backend.entities.ActividadFoto;
 import com.mza_agrotours.backend.entities.BaseEntity;
+import com.mza_agrotours.backend.entities.Calificacion;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import jakarta.persistence.*;
@@ -82,6 +83,9 @@ public class Actividad extends BaseEntity {
     @JoinColumn(name = "actividad_id")
     private List<ActividadDia> actividadesDias = new ArrayList<>();
 
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "actividad_id", nullable = false)
+    private List<Calificacion> calificaciones = new ArrayList<>();
 
     public void addFaq(ActividadFAQ faq) {
         this.faqs.add(faq);
@@ -106,5 +110,5 @@ public class Actividad extends BaseEntity {
     public void addFoto(ActividadFoto foto) {
         this.fotos.add(foto);
     }
-    //TODO: Falta relacion con calificacion
+
 }
