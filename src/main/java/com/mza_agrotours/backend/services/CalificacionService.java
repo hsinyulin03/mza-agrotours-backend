@@ -51,7 +51,8 @@ public class CalificacionService {
         reserva.getActividad().getCalificaciones().add(calificacion);
         calificacionRepository.save(calificacion);
 
-        return new CalificacionResponseDTO(calificacion.getId(), reserva.getId() , calificacion.getPuntaje(), calificacion.getResenia(), calificacion.getFechaHoraCalificacion());
+        return new CalificacionResponseDTO(calificacion.getId(), reserva.getId(), calificacion.getPuntaje(),
+                                           calificacion.getResenia(), calificacion.getFechaHoraCalificacion());
 
     }
 

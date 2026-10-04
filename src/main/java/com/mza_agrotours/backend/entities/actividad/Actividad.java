@@ -83,7 +83,7 @@ public class Actividad extends BaseEntity {
     @JoinColumn(name = "actividad_id")
     private List<ActividadDia> actividadesDias = new ArrayList<>();
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany
     @JoinColumn(name = "actividad_id", nullable = false)
     private List<Calificacion> calificaciones = new ArrayList<>();
 

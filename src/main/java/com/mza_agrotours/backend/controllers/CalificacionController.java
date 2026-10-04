@@ -22,7 +22,7 @@ public class CalificacionController {
         this.service = service;
     }
     //US-RESE-05-Valorar Experiencia a una reserva finalizada
-    //NOTA: El encabezado del modal se puede obtener mediante el endpoint /reserva/get de reservaController (ListarReservaDTO)
+    //NOTA: El encabezado del modal se puede obtener mediante el endpoint /reserva/get de reservaController (ConsultarReservaDTO)
     @PostMapping("/reserva/{reservaId}")
     public ResponseEntity<ApiResponse<CalificacionResponseDTO>> calificarReserva(
             @PathVariable UUID reservaId,
