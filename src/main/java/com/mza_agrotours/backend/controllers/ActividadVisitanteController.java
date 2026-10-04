@@ -83,8 +83,9 @@ public class ActividadVisitanteController {
     }
     //Obtener el filtro de cultivos
     @GetMapping("/cultivos")
-    public ResponseEntity<ApiResponse<List<DTOFiltro>>> obtenerFiltroCultivos() {
-        List<DTOFiltro> filtrosCultivo = servicio.obtenerFiltroCultivos();
+    public ResponseEntity<ApiResponse<List<DTOFiltro>>> obtenerFiltroCultivos( @RequestParam(required = false) String busqueda,
+                                                                               @RequestParam(required = false) UUID departamentoId) {
+        List<DTOFiltro> filtrosCultivo = servicio.obtenerFiltroCultivos(busqueda, departamentoId);
         return ResponseEntity.ok(ApiResponse.ok(filtrosCultivo));
     }
 

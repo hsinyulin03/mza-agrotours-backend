@@ -100,9 +100,13 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
             "FROM Actividad a JOIN a.cultivos c " +
             "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
             "AND a.fechaHoraBaja IS NULL " +
+            "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO " +
+            "AND (CAST(:busqueda AS string) IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) " +
+            "AND (:departamentoId IS NULL OR a.establecimiento.departamento.id = :departamentoId) " +
             "GROUP BY c.id, c.nombre " +
             "ORDER BY c.nombre ASC")
-    List<DTOFiltro> obtenerFiltroCultivos();
+    List<DTOFiltro> obtenerFiltroCultivos(@Param("busqueda") String busqueda,
+                                          @Param("departamentoId") UUID departamentoId);
 
     boolean existsByIdAndEstablecimientoId(UUID idActividad, UUID establecimientoId);
 

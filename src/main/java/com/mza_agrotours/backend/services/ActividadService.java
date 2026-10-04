@@ -370,8 +370,9 @@ public class ActividadService {
     }
 
     @Transactional(readOnly = true)
-    public List<DTOFiltro> obtenerFiltroCultivos() {
-        return actividadRepository.obtenerFiltroCultivos();
+    public List<DTOFiltro> obtenerFiltroCultivos(String busqueda, UUID departamentoId) {
+        String texto = (busqueda == null || busqueda.isBlank()) ? null : busqueda.trim();
+        return actividadRepository.obtenerFiltroCultivos(texto, departamentoId);
     }
 
     @Transactional
