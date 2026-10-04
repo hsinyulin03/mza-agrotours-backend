@@ -363,13 +363,16 @@ public class ActividadService {
 
     }
     @Transactional(readOnly = true)
-    public List<DTOFiltro> obtenerFiltroDepartamentos() {
-        return actividadRepository.obtenerFiltroDepartamentos();
+    public List<DTOFiltro> obtenerFiltroDepartamentos(String busqueda,  List<UUID> cultivosIds) {
+        String texto = (busqueda == null || busqueda.isBlank()) ? null : busqueda.trim();
+        List<UUID> cultivos = (cultivosIds == null || cultivosIds.isEmpty()) ? null : cultivosIds;
+        return actividadRepository.obtenerFiltroDepartamentos(texto, cultivos);
     }
 
     @Transactional(readOnly = true)
-    public List<DTOFiltro> obtenerFiltroCultivos() {
-        return actividadRepository.obtenerFiltroCultivos();
+    public List<DTOFiltro> obtenerFiltroCultivos(String busqueda, UUID departamentoId) {
+        String texto = (busqueda == null || busqueda.isBlank()) ? null : busqueda.trim();
+        return actividadRepository.obtenerFiltroCultivos(texto, departamentoId);
     }
 
     @Transactional

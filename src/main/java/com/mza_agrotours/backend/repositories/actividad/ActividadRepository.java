@@ -83,22 +83,32 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
     List<DTOFiltro> contarActividadesPorEstado(@Param("establecimientoId") UUID establecimientoId);
 
     //Filtro de Departamentos
-    @Query("SELECT NEW com.mza_agrotours.backend.dtos.actividad.DTOFiltro(d.id, d.nombre, COUNT(a)) " +
+    @Query("SELECT NEW com.mza_agrotours.backend.dtos.actividad.DTOFiltro(d.id, d.nombre, " +
+            "SUM(CASE WHEN (CAST(:busqueda AS string) IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) " +
+            "AND (:cultivosIds IS NULL OR EXISTS (SELECT 1 FROM a.cultivos cf WHERE cf.id IN :cultivosIds)) " +
+            "THEN 1 ELSE 0 END)) " +
             "FROM Actividad a JOIN a.establecimiento.departamento d " +
             "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
             "AND a.fechaHoraBaja IS NULL " +
+            "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO " +
             "GROUP BY d.id, d.nombre " +
             "ORDER BY d.nombre ASC")
-    List<DTOFiltro> obtenerFiltroDepartamentos();
+    List<DTOFiltro> obtenerFiltroDepartamentos(@Param("busqueda") String busqueda,
+                                               @Param("cultivosIds") List<UUID> cultivosIds);
 
     // Filtro de Cultivos
-    @Query("SELECT NEW com.mza_agrotours.backend.dtos.actividad.DTOFiltro(c.id, c.nombre, COUNT(a)) " +
+    @Query("SELECT NEW com.mza_agrotours.backend.dtos.actividad.DTOFiltro(c.id, c.nombre, " +
+            "SUM(CASE WHEN (CAST(:busqueda AS string) IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) " +
+            "AND (:departamentoId IS NULL OR a.establecimiento.departamento.id = :departamentoId) " +
+            "THEN 1 ELSE 0 END)) " +
             "FROM Actividad a JOIN a.cultivos c " +
             "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
             "AND a.fechaHoraBaja IS NULL " +
+            "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO " +
             "GROUP BY c.id, c.nombre " +
             "ORDER BY c.nombre ASC")
-    List<DTOFiltro> obtenerFiltroCultivos();
+    List<DTOFiltro> obtenerFiltroCultivos(@Param("busqueda") String busqueda,
+                                          @Param("departamentoId") UUID departamentoId);
 
     boolean existsByIdAndEstablecimientoId(UUID idActividad, UUID establecimientoId);
 
