@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.dtos.actividad.DTOFiltro;
 import com.mza_agrotours.backend.dtos.calificacion.*;
 import com.mza_agrotours.backend.entities.Calificacion;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
@@ -120,5 +121,24 @@ public class CalificacionService {
         return calificacionRepository.findReseniasByActividad(idActividad, puntaje, orden, pageable);
     }
 
+    //US-ACT-02: Filtro de puntajes del modal de reseñas (con la cantidad de reseñas de cada uno)
+    @Transactional(readOnly = true)
+    public List<DTOFiltro> obtenerFiltroPuntajes(UUID idActividad) {
+        actividadRepository.findByIdVigenteConEstablecimientoActivo(idActividad)
+                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
+
+        // La query solo trae los puntajes que tienen reseñas
+        Map<Integer, Long> cantidadPorPuntaje = new HashMap<>();
+        for (DistribucionPuntajeDTO conteo : calificacionRepository.contarPorPuntaje(idActividad)) {
+            cantidadPorPuntaje.put(conteo.getPuntaje(), conteo.getCantidad());
+        }
+
+        List<DTOFiltro> filtros = new ArrayList<>();
+        for (int puntaje = 5; puntaje >= 1; puntaje--) {
+            String nombre = puntaje + (puntaje == 1 ? " estrella" : " estrellas");
+            filtros.add(new DTOFiltro(String.valueOf(puntaje),nombre, cantidadPorPuntaje.getOrDefault(puntaje, 0L)));
+        }
+        return filtros;
+    }
 
 }
