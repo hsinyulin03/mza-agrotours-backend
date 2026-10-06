@@ -227,4 +227,15 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
             "AND ad.fechaHoraFin < :ahora")
     List<ActividadDia> findDiasTerminadosEnEstados(@Param("estados") List<EstadoActividadDiaNombre> estados,
                                                    @Param("ahora") LocalDateTime ahora);
+
+    @Query("SELECT COALESCE(SUM(ad.cuposMax), 0) FROM Actividad a " +
+            "JOIN a.actividadesDias ad " +
+            "WHERE a.establecimiento.id = :establecimientoId " +
+            "AND ad.fechaHoraBaja IS NULL " +
+            "AND ad.estadoActual.estado.nombre != com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.CANCELADA " +
+            "AND ad.fechaHoraInicio >= :desde " +
+            "AND ad.fechaHoraInicio < :hasta")
+    long sumarCuposOfertadosEnRango(@Param("establecimientoId") UUID establecimientoId,
+                                    @Param("desde") LocalDateTime desde,
+                                    @Param("hasta") LocalDateTime hasta);
 }

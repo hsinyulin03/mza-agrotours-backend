@@ -194,4 +194,37 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
     List<UUID> findIdsRecordatorioPendiente(@Param("desde") LocalDateTime desde,
                                             @Param("hasta") LocalDateTime hasta);
 
+
+    @Query("SELECT COUNT(rd) FROM Reserva r " +
+            "JOIN r.reservaDetalles rd " +          // una fila por persona
+            "WHERE r.actividad.establecimiento.id = :establecimientoId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados " +
+            "AND r.actividadDia.fechaHoraInicio >= :desde " +
+            "AND r.actividadDia.fechaHoraInicio < :hasta")
+    long contarCuposEnRango(@Param("establecimientoId") UUID establecimientoId,
+                            @Param("estados") List<EstadoReservaNombre> estados,
+                            @Param("desde") LocalDateTime desde,
+                            @Param("hasta") LocalDateTime hasta);
+
+    @Query("SELECT COALESCE(SUM(r.subTotalProductor), 0) FROM Reserva r " +
+            "WHERE r.actividad.establecimiento.id = :establecimientoId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados " +
+            "AND r.actividadDia.fechaHoraInicio >= :desde " +
+            "AND r.actividadDia.fechaHoraInicio < :hasta")
+    BigDecimal sumarSubTotalProductorEnRango(@Param("establecimientoId") UUID establecimientoId,
+                                             @Param("estados") List<EstadoReservaNombre> estados,
+                                             @Param("desde") LocalDateTime desde,
+                                             @Param("hasta") LocalDateTime hasta);
+
+    //Estadísticas: cantidad de reservas del establecimiento en los estados dados, cuyo día de actividad cae dentro del rango
+    @Query("SELECT COUNT(r) FROM Reserva r " +
+            "WHERE r.actividad.establecimiento.id = :establecimientoId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados " +
+            "AND r.actividadDia.fechaHoraInicio >= :desde " +
+            "AND r.actividadDia.fechaHoraInicio < :hasta")
+    long contarReservasEnRango(@Param("establecimientoId") UUID establecimientoId,
+                               @Param("estados") List<EstadoReservaNombre> estados,
+                               @Param("desde") LocalDateTime desde,
+                               @Param("hasta") LocalDateTime hasta);
+
 }
