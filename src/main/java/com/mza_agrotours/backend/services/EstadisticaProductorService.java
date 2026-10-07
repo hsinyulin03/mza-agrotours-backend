@@ -1,8 +1,10 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.dtos.estadisticasproductor.BarraDTO;
 import com.mza_agrotours.backend.dtos.estadisticasproductor.EstadisticasResponse;
 import com.mza_agrotours.backend.dtos.estadisticasproductor.KpisDTO;
 import com.mza_agrotours.backend.dtos.estadisticasproductor.PeriodoDTO;
+import com.mza_agrotours.backend.dtos.estadisticasproductor.SerieDTO;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.repositories.ReservaRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
@@ -14,8 +16,14 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Month;
+import java.time.YearMonth;
+import java.time.format.TextStyle;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -39,6 +47,8 @@ private static final List<EstadoReservaNombre> ESTADOS_GESTIONADOS = List.of(
         EstadoReservaNombre.PAGADA, EstadoReservaNombre.FINALIZADA,
         EstadoReservaNombre.CANCELADA_CON_REEMBOLSO, EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO);
 
+private static final Locale LOCALE_AR = new Locale("es", "AR");
+
 @Transactional(readOnly = true)
 public EstadisticasResponse calcularEstadisticas(UUID establecimientoId, String periodoValor) {
     PeriodoDTO periodo = calcularPeriodo(periodoValor);
@@ -48,7 +58,87 @@ public EstadisticasResponse calcularEstadisticas(UUID establecimientoId, String 
         calcularKpisBeneficios(establecimientoId, periodo, kpis);
         calcularKpisCancelacion(establecimientoId, periodo, kpis);
 
-        return new EstadisticasResponse(periodo, kpis, null, null);
+        SerieDTO serie = calcularSerie(establecimientoId, periodo);
+
+        return new EstadisticasResponse(periodo, kpis, serie, null);
+    }
+
+    /**
+     * Arma la serie del gráfico de barras: por cada sub-período (semana para "30d", mes calendario para "6m"/"12m")
+     * cuenta las reservas confirmadas y suma su subTotalProductor. Los sub-períodos sin reservas se incluyen con 0
+     * para que el eje sea continuo.
+     */
+    private SerieDTO calcularSerie(UUID establecimientoId, PeriodoDTO periodo) {
+        LocalDateTime desde = periodo.getDesde().atStartOfDay();
+        LocalDateTime hasta = periodo.getHasta().plusDays(1).atStartOfDay();
+
+        List<LocalDateTime[]> intervalos = new ArrayList<>();
+        List<String> labels = new ArrayList<>();
+        String title;
+        String sub = periodo.getLabel();
+
+        if ("30d".equals(periodo.getValor())) {
+            title = "Reservas totales semanales";
+            for (int i = 0; i < 4; i++) {
+                LocalDateTime inicio = desde.plusWeeks(i);
+                // La última semana se extiende hasta el final del rango para no dejar días afuera
+                LocalDateTime fin = (i == 3) ? hasta : inicio.plusWeeks(1);
+                intervalos.add(new LocalDateTime[]{inicio, fin});
+                labels.add("Sem " + (i + 1));
+            }
+        } else {
+            title = "Reservas totales mensuales";
+            YearMonth mesFin = YearMonth.from(periodo.getHasta());
+            for (YearMonth mes = YearMonth.from(periodo.getDesde()); !mes.isAfter(mesFin); mes = mes.plusMonths(1)) {
+                // Los meses de los extremos se recortan al rango del período
+                LocalDateTime inicio = max(mes.atDay(1).atStartOfDay(), desde);
+                LocalDateTime fin = min(mes.plusMonths(1).atDay(1).atStartOfDay(), hasta);
+                intervalos.add(new LocalDateTime[]{inicio, fin});
+                labels.add(abreviaturaMes(mes.getMonth()));
+            }
+        }
+
+        int[] cantidades = new int[intervalos.size()];
+        BigDecimal[] ganancias = new BigDecimal[intervalos.size()];
+        Arrays.fill(ganancias, BigDecimal.ZERO);
+
+        List<Object[]> reservas = reservaRepository.findFechaYSubTotalProductorEnRango(
+                establecimientoId, ESTADOS_CONFIRMADOS, desde, hasta);
+
+        for (Object[] fila : reservas) {
+            LocalDateTime fecha = (LocalDateTime) fila[0];
+            BigDecimal subTotal = Optional.ofNullable((BigDecimal) fila[1]).orElse(BigDecimal.ZERO);
+            for (int i = 0; i < intervalos.size(); i++) {
+                if (!fecha.isBefore(intervalos.get(i)[0]) && fecha.isBefore(intervalos.get(i)[1])) {
+                    cantidades[i]++;
+                    ganancias[i] = ganancias[i].add(subTotal);
+                    break;
+                }
+            }
+        }
+
+        List<BarraDTO> barras = new ArrayList<>();
+        for (int i = 0; i < intervalos.size(); i++) {
+            barras.add(new BarraDTO(labels.get(i), cantidades[i], ganancias[i]));
+        }
+
+        return new SerieDTO(title, sub, barras);
+    }
+
+    /**
+     * Devuelve la abreviatura de un mes (por ejemplo, "Ene", "Feb", ..., "Dic")
+     */
+    private String abreviaturaMes(Month mes) {
+        String nombre = mes.getDisplayName(TextStyle.SHORT, LOCALE_AR).replace(".", "");
+        return nombre.substring(0, 1).toUpperCase(LOCALE_AR) + nombre.substring(1, 3);
+    }
+
+    private static LocalDateTime max(LocalDateTime a, LocalDateTime b) {
+        return a.isAfter(b) ? a : b;
+    }
+
+    private static LocalDateTime min(LocalDateTime a, LocalDateTime b) {
+        return a.isBefore(b) ? a : b;
     }
 
     /**

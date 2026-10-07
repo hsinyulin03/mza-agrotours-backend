@@ -227,4 +227,15 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
                                @Param("desde") LocalDateTime desde,
                                @Param("hasta") LocalDateTime hasta);
 
+    //Estadísticas: fecha de inicio del día y subTotalProductor de cada reserva del establecimiento en el rango, para armar la serie del gráfico
+    @Query("SELECT r.actividadDia.fechaHoraInicio, r.subTotalProductor FROM Reserva r " +
+            "WHERE r.actividad.establecimiento.id = :establecimientoId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados " +
+            "AND r.actividadDia.fechaHoraInicio >= :desde " +
+            "AND r.actividadDia.fechaHoraInicio < :hasta")
+    List<Object[]> findFechaYSubTotalProductorEnRango(@Param("establecimientoId") UUID establecimientoId,
+                                                      @Param("estados") List<EstadoReservaNombre> estados,
+                                                      @Param("desde") LocalDateTime desde,
+                                                      @Param("hasta") LocalDateTime hasta);
+
 }
