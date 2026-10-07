@@ -10,8 +10,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Setter
@@ -39,8 +37,15 @@ public class Notificacion extends BaseEntity {
     @ManyToOne(optional = false)
     private TipoNotificacion tipoNotificacion;
 
+    /**
+     * Copia del scope del tipo, para filtrar la bandeja sin pasar por TipoNotificacion.
+     */
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "scope_notificacion_id", nullable = false)
+    private ScopeNotificacion scopeNotificacion;
+
     @ManyToOne
     @JoinColumn(name = "establecimiento_id")
-    private Establecimiento establecimiento;   // null = notificación personal
+    private Establecimiento establecimiento;
 
 }

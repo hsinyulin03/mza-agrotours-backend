@@ -8,6 +8,17 @@ import java.util.UUID;
 public class RutasNotificacionesFront {
     private RutasNotificacionesFront() {}
 
+    public static String solicitudEstablecimiento(UUID solicitudId) {
+        return "/mis-solicitudes/" + solicitudId;
+    }
+
+    public static String  panelEstablecimiento(UUID establecimientoId) {
+        return "/panel/" + establecimientoId;
+    }
+    public static String solicitudEstablecimientoAdmin(UUID solicitudId) {
+        return "/admin/solicitudes/" + solicitudId;
+    }
+
     public static String detalleSolicitudEstablecimiento(UUID solicitudId) {
         return "/mis-solicitudes/" + solicitudId;
     }

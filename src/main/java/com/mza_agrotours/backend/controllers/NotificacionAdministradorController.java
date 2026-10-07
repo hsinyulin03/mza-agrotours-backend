@@ -13,6 +13,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -21,12 +22,13 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/notificacion")
+@RequestMapping("/admin/notificacion")
 @Validated
-public class NotificacionController {
+@PreAuthorize("@adminAuth.esAdministradorVigente(authentication)")
+public class NotificacionAdministradorController {
     private final NotificacionService service;
 
-    public NotificacionController(NotificacionService service) {
+    public NotificacionAdministradorController(NotificacionService service) {
         this.service = service;
     }
 
@@ -35,24 +37,24 @@ public class NotificacionController {
             @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails,
             @PageableDefault(page = 0, size = 10, sort = "fechaHoraAlta", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        Page<NotificacionDTO> dtos = service.listarNotificaciones(usuarioAuthDetails.getEmail(), ScopeNotificacionNombre.VISITANTE, null, pageable);
+        Page<NotificacionDTO> dtos = service.listarNotificaciones(usuarioAuthDetails.getEmail(), ScopeNotificacionNombre.ADMINISTRADOR, null, pageable);
         return ResponseEntity.ok(ApiResponse.ok(dtos));
     }
 
     @GetMapping("/no-leidas/cantidad")
-    public ResponseEntity<?> contarNoLeidas(
+    public ResponseEntity<ApiResponse<Long>> contarNoLeidas(
             @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
     ) {
-        long cantidad = service.contarNoLeidas(usuarioAuthDetails.getEmail(), ScopeNotificacionNombre.VISITANTE, null);
+        long cantidad = service.contarNoLeidas(usuarioAuthDetails.getEmail(), ScopeNotificacionNombre.ADMINISTRADOR, null);
         return ResponseEntity.ok(ApiResponse.ok(cantidad));
     }
 
     @PatchMapping("/{idNotificacion}/leer")
-    public ResponseEntity<?> marcarLeida(
+    public ResponseEntity<ApiResponse<NotificacionDTO>> marcarLeida(
             @PathVariable UUID idNotificacion,
             @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
     ) {
-        NotificacionDTO notificacionActualizada= service.marcarLeida(idNotificacion, usuarioAuthDetails.getEmail(), ScopeNotificacionNombre.VISITANTE, null);
+        NotificacionDTO notificacionActualizada = service.marcarLeida(idNotificacion, usuarioAuthDetails.getEmail(), ScopeNotificacionNombre.ADMINISTRADOR, null);
         return ResponseEntity.ok(ApiResponse.ok(notificacionActualizada));
     }
 
@@ -60,7 +62,7 @@ public class NotificacionController {
     public ResponseEntity<ApiResponse<Integer>> marcarLeidasListado(
             @Valid @PastOrPresent @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaHoraHasta,
             @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails) {
-        return ResponseEntity.ok(ApiResponse.ok(service.marcarLeidasListado(fechaHoraHasta, usuarioAuthDetails.getEmail(), ScopeNotificacionNombre.VISITANTE, null)));
+        return ResponseEntity.ok(ApiResponse.ok(service.marcarLeidasListado(fechaHoraHasta, usuarioAuthDetails.getEmail(), ScopeNotificacionNombre.ADMINISTRADOR, null)));
     }
 
 }
