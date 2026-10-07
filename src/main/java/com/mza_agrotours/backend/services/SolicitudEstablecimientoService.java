@@ -132,7 +132,7 @@ public class SolicitudEstablecimientoService {
                 nuevaSolicitudEstablecimiento.getUsuario(),
                 TipoNotificacionNombre.SOLICITUD_ESTABLECIMIENTO_CREADA,
                 null,
-                RutasNotificacionesFront.solicitudEstablecimiento(nuevaSolicitudEstablecimiento.getId()),
+                RutasNotificacionesFront.detalleSolicitudEstablecimiento(nuevaSolicitudEstablecimiento.getId()),
                 nuevaSolicitudEstablecimiento.getNombreEstablecimiento()
         );
 
@@ -246,7 +246,7 @@ public class SolicitudEstablecimientoService {
                     solicitudEstablecimiento.getUsuario(),
                     TipoNotificacionNombre.SOLICITUD_ESTABLECIMIENTO_APROBADA,
                     null,
-                    RutasNotificacionesFront.panelEstablecimiento(nuevoEstablecimiento.getId()),
+                    RutasNotificacionesFront.panelProductor(),
                     solicitudEstablecimiento.getRazonSocial());
         }else{
             solicitudEstablecimiento.setFechaHoraBaja(LocalDateTime.now());
@@ -254,7 +254,7 @@ public class SolicitudEstablecimientoService {
                     solicitudEstablecimiento.getUsuario(),
                     TipoNotificacionNombre.SOLICITUD_ESTABLECIMIENTO_RECHAZADA,
                     null,
-                    RutasNotificacionesFront.solicitudEstablecimiento(solicitudEstablecimiento.getId()),
+                    RutasNotificacionesFront.detalleSolicitudEstablecimiento(solicitudEstablecimiento.getId()),
                     solicitudEstablecimiento.getRazonSocial(),
                     observacionSolicitudDTO.getObservacion());
         }

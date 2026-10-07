@@ -43,6 +43,14 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "AND r.fechaHoraExpiracion < :currTime")
     List<Reserva> findReservasExpiradas(@Param("currTime")LocalDateTime currTime);
 
+    @Query("SELECT DISTINCT r FROM Reserva r " +
+            "LEFT JOIN FETCH r.estados " +
+            "JOIN r.estadoActual estado " +
+            "JOIN r.actividadDia ad " +
+            "WHERE estado.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA " +
+            "AND ad.estadoActual.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.FINALIZADA")
+    List<Reserva> findReservasPagadasDeDiasFinalizados();
+
     @Query("select r from Reserva r where r.visitante.id = :visitanteId and r.estadoActual.estadoReserva.id = :estadoId")
     List<Reserva> findByVisitanteAndReservaEstadoActual(@Param("visitanteId") UUID visitanteId, @Param("estadoId") UUID estadoReservaId);
 
@@ -176,5 +184,14 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "AND r.estadoActual.estadoReserva.nombre IN :estados")
     BigDecimal sumarIngresoDelDia(@Param("actividadDiaId") UUID actividadDiaId,
                                   @Param("estados") List<EstadoReservaNombre> estados);
+
+    //Recordatorio: reservas pagadas cuyo día empieza dentro de la ventana y que todavía no recibieron el recordatorio
+    @Query("SELECT r.id FROM Reserva r " +
+            "WHERE r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA " +
+            "AND r.fechaHoraRecordatorio IS NULL " +
+            "AND r.actividadDia.fechaHoraInicio > :desde " +
+            "AND r.actividadDia.fechaHoraInicio <= :hasta")
+    List<UUID> findIdsRecordatorioPendiente(@Param("desde") LocalDateTime desde,
+                                            @Param("hasta") LocalDateTime hasta);
 
 }

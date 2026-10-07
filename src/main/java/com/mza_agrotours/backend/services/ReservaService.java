@@ -301,6 +301,37 @@ public class ReservaService {
     }
 
     /**
+     * Tarea programada que busca todas las reservas "Pagada" cuyo día de actividad ya está "Finalizada"
+     * y las marca como "Finalizada".
+     * La búsqueda no depende de qué días se finalizaron en la última corrida, por lo que también alcanza a reservas
+     * pagadas tarde (luego de finalizado el día) o que fallaron en una corrida anterior.
+     * Cada reserva se cambia y guarda en su propia transacción, por lo que el fallo de una no afecta a las demás.
+     * Las reservas que no pudieron finalizarse quedan registradas en el log para su seguimiento.
+     */
+    @Transactional(readOnly = true)
+    public void finalizarReservas(){
+        LocalDateTime ahora = LocalDateTime.now();
+        List<Reserva> reservas = reservaRepository.findReservasPagadasDeDiasFinalizados();
+        if (reservas.isEmpty()) return;
+
+        EstadoReserva estadoReserva = getEstadoReserva(FINALIZADA);
+
+        List<String> idFallidas = new ArrayList<>();
+
+        for (Reserva r : reservas){
+            try{
+                self.finalizarReservaYsolicitarValoracion(r, estadoReserva, ahora);
+            } catch (Exception e) {
+                log.warn("Error de backend finalizando reserva {}", r.getId(), e);
+                idFallidas.add(r.getId().toString());
+            }
+        }
+
+        log.info("Se finalizaron {}/{} reservas. Las reservas no finalizadas fueron {}, con ids: {}",
+                reservas.size() - idFallidas.size(), reservas.size(), idFallidas.size(), idFallidas);
+    }
+
+    /**
      * Workaround al todavía no tener notificaciones webhook de MercadoPago.
      * <p>
      * Tarea programada que busca todas las reservas "Pendiente" aún no expiradas y consulta a Mercado Pago,
@@ -427,6 +458,63 @@ public class ReservaService {
         }
         log.info("Se cancelaron {} reservas pendientes por baja de la actividad {}", pendientes.size(), actividad.getId());
     }
+
+    //Recordatorio: notifica a las reservas pagadas cuyo día empieza en las próximas 24 h (lo llama el scheduler)
+    public void enviarRecordatoriosPendientes() {
+        LocalDateTime ahora = LocalDateTime.now();
+        List<UUID> idsPendientes = reservaRepository.findIdsRecordatorioPendiente(ahora, ahora.plusHours(24));
+        if (idsPendientes.isEmpty()) {
+            return;
+        }
+
+        List<String> idsFallidos = new ArrayList<>();
+        for (UUID reservaId : idsPendientes) {
+            try {
+                self.enviarRecordatorio(reservaId, ahora);
+            } catch (Exception e) {
+                idsFallidos.add(reservaId.toString());
+                log.warn("No se pudo enviar el recordatorio de la reserva {}", reservaId, e);
+            }
+        }
+
+        log.info("Se enviaron {}/{} recordatorios de reserva. Fallaron {}, con ids: {}",
+                idsPendientes.size() - idsFallidos.size(), idsPendientes.size(), idsFallidos.size(), idsFallidos);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void enviarRecordatorio(UUID reservaId, LocalDateTime ahora) {
+        Reserva reserva = reservaRepository.findById(reservaId)
+                .orElseThrow(ReservaNotFoundException::new);
+
+        notificacionService.crearNotificacion(
+                reserva.getVisitante().getUsuario(),
+                TipoNotificacionNombre.RECORDATORIO_RESERVA,
+                null,
+                RutasNotificacionesFront.detalleReserva(reserva.getId()),
+                reserva.getActividadDia().getFechaHoraInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                reserva.getActividadDia().getFechaHoraInicio().format(DateTimeFormatter.ofPattern("HH:mm")),
+                reserva.getActividad().getNombre(),
+                reserva.getActividad().getEstablecimiento().getNombre());
+
+        reserva.setFechaHoraRecordatorio(ahora);
+    }
+
+    // cambiamos la reserva a estado finalizado y enviamos notificación al visitante solicitándole una valoración
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void finalizarReservaYsolicitarValoracion(Reserva reserva, EstadoReserva estadoFinalizada, LocalDateTime ahora) {
+        reserva.cambiarEstado(estadoFinalizada, ahora);
+        reservaRepository.save(reserva);
+
+        notificacionService.crearNotificacion(
+                reserva.getVisitante().getUsuario(),
+                TipoNotificacionNombre.VALORAR_ACTIVIDAD,
+                null,
+                RutasNotificacionesFront.valorarExperiencia(reserva.getId()),
+                reserva.getActividad().getNombre(),
+                reserva.getActividad().getEstablecimiento().getNombre(),
+                reserva.getActividadDia().getFechaHoraInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+    }
+
 
 
     // AUXILIARES

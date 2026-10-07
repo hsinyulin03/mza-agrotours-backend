@@ -115,6 +115,9 @@ public class ActividadService {
     @Autowired
     private ApplicationEventPublisher publisher;
 
+    @Autowired
+    private CalificacionService calificacionService;
+
     //US-ACT-03 Alta de actividad
     @Transactional
     public DTOActividadAltaResponse altaActividad(UUID establecimientoId, DTOActividadAlta dto) {
@@ -184,6 +187,9 @@ public class ActividadService {
                 .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
         DTOActividadDetalleResponse response = actividadMapper.actividadToDTOActividadDetalle(actividad);
         response.setFotos(obtenerUrlsDeDescarga(response.getFotos()));
+        // Sección de reseñas
+        response.setResumenResenias(calificacionService.obtenerResumenResenias(idActividad));
+        response.setReseniasRecientes(calificacionService.obtenerReseniasRecientes(idActividad));
         return response;
     }
 
@@ -357,13 +363,16 @@ public class ActividadService {
 
     }
     @Transactional(readOnly = true)
-    public List<DTOFiltro> obtenerFiltroDepartamentos() {
-        return actividadRepository.obtenerFiltroDepartamentos();
+    public List<DTOFiltro> obtenerFiltroDepartamentos(String busqueda,  List<UUID> cultivosIds) {
+        String texto = (busqueda == null || busqueda.isBlank()) ? null : busqueda.trim();
+        List<UUID> cultivos = (cultivosIds == null || cultivosIds.isEmpty()) ? null : cultivosIds;
+        return actividadRepository.obtenerFiltroDepartamentos(texto, cultivos);
     }
 
     @Transactional(readOnly = true)
-    public List<DTOFiltro> obtenerFiltroCultivos() {
-        return actividadRepository.obtenerFiltroCultivos();
+    public List<DTOFiltro> obtenerFiltroCultivos(String busqueda, UUID departamentoId) {
+        String texto = (busqueda == null || busqueda.isBlank()) ? null : busqueda.trim();
+        return actividadRepository.obtenerFiltroCultivos(texto, departamentoId);
     }
 
     @Transactional
@@ -619,6 +628,22 @@ public class ActividadService {
         DTOActividadDiaResponse response = actividadMapper.actividadDiatoDTOActividadDia(dia);
         response.aplicarCupos(cupos);
         return response;
+    }
+
+    //Cierre automático: pasa a FINALIZADA los días ocupados que ya terminaron (lo llama el scheduler)
+    @Transactional
+    public int finalizarDiasTerminados() {
+        LocalDateTime ahora = LocalDateTime.now();
+        List<ActividadDia> diasTerminados = actividadRepository.findDiasTerminadosEnEstados(ESTADOS_ACTIVIDAD_DIA_OCUPADO, ahora);
+        if (diasTerminados.isEmpty()) {
+            return 0;
+        }
+
+        EstadoActividadDia finalizada = obtenerEstadoDia(EstadoActividadDiaNombre.FINALIZADA);
+        for (ActividadDia dia : diasTerminados) {
+            dia.cambiarEstado(finalizada, ahora, "Finalización automática del día");
+        }
+        return diasTerminados.size();
     }
 
     //Métodos auxiliares
