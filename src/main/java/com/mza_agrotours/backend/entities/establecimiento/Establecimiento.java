@@ -16,6 +16,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Entity
 @Setter
@@ -48,6 +49,7 @@ public class Establecimiento extends BaseEntity {
     private String email;
     private String ubicacion;
 
+    // TODO quitar CVU: el cobro se hace con la CuentaMercadoPago vinculada por OAuth (requiere cambios en el front)
     @Column(nullable = false, length = 22)
     private String cvu;
 
@@ -68,6 +70,10 @@ public class Establecimiento extends BaseEntity {
 
     @ManyToOne
     private Productor titular;
+
+    // Historial de cuentas de MP vinculadas; a lo sumo una vigente (fechaHoraBaja == null)
+    @OneToMany(mappedBy = "establecimiento", cascade = CascadeType.ALL)
+    private List<CuentaMercadoPago> cuentasMercadoPago = new ArrayList<>();
 
     // Cultivos del establecimento
     @ManyToMany
@@ -101,5 +107,24 @@ public class Establecimiento extends BaseEntity {
 
         this.estados.add(nuevoTramo);
         this.estadoActual = nuevoTramo;
+    }
+
+    public Optional<CuentaMercadoPago> getCuentaMercadoPagoVigente() {
+        return this.cuentasMercadoPago.stream()
+                .filter(CuentaMercadoPago::isVigente)
+                .findFirst();
+    }
+
+    /**
+     * Da de baja la cuenta de MP vigente (si la hay) y vincula la nueva, manteniendo el invariante
+     * de que a lo sumo una CuentaMercadoPago tiene fechaHoraBaja == null.
+     */
+    public void vincularCuentaMercadoPago(CuentaMercadoPago nuevaCuenta, LocalDateTime tiempoCambio) {
+        getCuentaMercadoPagoVigente().ifPresent(cuenta -> cuenta.setFechaHoraBaja(tiempoCambio));
+
+        nuevaCuenta.setEstablecimiento(this);
+        nuevaCuenta.setFechaHoraAlta(tiempoCambio);
+        nuevaCuenta.setFechaHoraBaja(null);
+        this.cuentasMercadoPago.add(nuevaCuenta);
     }
 }

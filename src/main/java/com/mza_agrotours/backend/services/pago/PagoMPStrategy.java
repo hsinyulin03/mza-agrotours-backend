@@ -1,6 +1,5 @@
 package com.mza_agrotours.backend.services.pago;
 
-import com.google.api.client.util.Value;
 import com.mercadopago.client.common.IdentificationRequest;
 import com.mercadopago.client.preference.*;
 import com.mercadopago.resources.preference.Preference;
@@ -20,6 +19,7 @@ import com.mza_agrotours.backend.services.ParametrosService;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -120,9 +120,9 @@ public class PagoMPStrategy implements EstrategiaPago{
             // Info del pago
             reserva.setSubTotalComisionTransaccion(BigDecimal.valueOf(0)); // TODO fee nuestra y del marketplace
             reserva.setSubTotalComisionPropia(
-                    reserva.getTotalReserva().multiply(
-                            BigDecimal.valueOf(parametrosService.getInstance().getPorcentajeComision())
-                    )
+                    reserva.getTotalReserva()
+                            .multiply(parametrosService.getInstance().getPorcentajeComision())
+                            .setScale(2, RoundingMode.HALF_UP)
             );
             reserva.setSubTotalProductor(
                     reserva.getTotalReserva().subtract(

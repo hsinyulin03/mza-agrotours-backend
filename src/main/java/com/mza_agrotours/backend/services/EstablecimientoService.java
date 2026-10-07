@@ -162,6 +162,10 @@ public class EstablecimientoService  {
         roles.forEach(rol -> rol.setFechaHoraBaja(fechaHoraBajaAhora));
         rolRepository.saveAll(roles);
 
+        // Se desvincula la cuenta de MP para dejar de renovar (y usar) su token
+        establecimiento.getCuentaMercadoPagoVigente()
+                .ifPresent(cuenta -> cuenta.setFechaHoraBaja(fechaHoraBajaAhora));
+
         EstadoActividad estadoActividadBaja = this.estadoActividadRepository.findByNombre(EstadoActividadNombre.DADO_DE_BAJA)
                 .orElseThrow(() -> new ValidacionNegocioException("No se encuentra configurado el estado DADO DE BAJA"));
 
