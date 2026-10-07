@@ -9,12 +9,15 @@ public class RutasNotificacionesFront {
     private RutasNotificacionesFront() {}
 
     public static String solicitudEstablecimiento(UUID solicitudId) {
-        return "/solicitudes-establecimiento/me/" + solicitudId;
+        return "/mis-solicitudes/" + solicitudId;
+    }
+    public static String solicitudEstablecimientoAdmin(UUID solicitudId) {
+        return "/admin/solicitudes/" + solicitudId;
     }
     public static String establecimiento(UUID establecimientoId) {
         return "/establecimientos/" + establecimientoId;
     }
     public static String detalleReserva(UUID reservaId){
-        return "/reserva/get/" + reservaId;
+        return "/mis-reservas/" + reservaId;
     }
 }
