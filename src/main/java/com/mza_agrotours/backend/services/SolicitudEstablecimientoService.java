@@ -1,6 +1,5 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.enums.CarpetaArchivo;
 import com.mza_agrotours.backend.config.RutasNotificacionesFront;
 import com.mza_agrotours.backend.dtos.ObservacionSolicitudDTO;
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.*;
@@ -14,6 +13,7 @@ import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolici
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolicitudEstablecimientoNombre;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimiento;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimientoEstado;
+import com.mza_agrotours.backend.enums.CarpetaArchivo;
 import com.mza_agrotours.backend.enums.PermisoCodigo;
 import com.mza_agrotours.backend.enums.TipoNotificacionNombre;
 import com.mza_agrotours.backend.exceptions.*;
@@ -245,8 +245,8 @@ public class SolicitudEstablecimientoService {
             this.notificacionService.crearNotificacion(
                     solicitudEstablecimiento.getUsuario(),
                     TipoNotificacionNombre.SOLICITUD_ESTABLECIMIENTO_APROBADA,
-                    nuevoEstablecimiento,
-                    RutasNotificacionesFront.solicitudEstablecimiento(solicitudEstablecimiento.getId()),
+                    null,
+                    RutasNotificacionesFront.panelEstablecimiento(nuevoEstablecimiento.getId()),
                     solicitudEstablecimiento.getRazonSocial());
         }else{
             solicitudEstablecimiento.setFechaHoraBaja(LocalDateTime.now());

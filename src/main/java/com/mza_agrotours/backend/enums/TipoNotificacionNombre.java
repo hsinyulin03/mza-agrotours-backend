@@ -20,7 +20,7 @@ public enum TipoNotificacionNombre {
             "Revisamos tu solicitud para %s: %s.",
             EnumSet.of(CanalNotificacion.EMAIL,CanalNotificacion.PUSH)),
     SOLICITUD_ESTABLECIMIENTO_APROBADA(
-            ScopeNotificacionNombre.ESTABLECIMIENTO,
+            ScopeNotificacionNombre.VISITANTE,
             "Solicitud aprobada",
             "Tu establecimiento %s ya está habilitado.",
             EnumSet.of(CanalNotificacion.EMAIL,CanalNotificacion.PUSH)),
