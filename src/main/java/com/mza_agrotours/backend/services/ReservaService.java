@@ -421,7 +421,7 @@ public class ReservaService {
             notificacionService.crearNotificacion(
                     r.getVisitante().getUsuario(),
                     TipoNotificacionNombre.RESERVA_CANCELADA_POR_BAJA_ACTIVIDAD,
-                    r.getActividad().getEstablecimiento(),
+                    null,
                     RutasNotificacionesFront.detalleReserva(r.getId()),
                     actividad.getNombre(), r.getActividadDia().getFechaHoraInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
         }
