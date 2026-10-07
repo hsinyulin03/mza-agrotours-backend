@@ -238,4 +238,16 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
                                                       @Param("desde") LocalDateTime desde,
                                                       @Param("hasta") LocalDateTime hasta);
 
+
+    @Query("SELECT r.actividad.id, COUNT(r), COALESCE(SUM(r.totalReserva), 0) FROM Reserva r " +
+            "WHERE r.actividad.establecimiento.id = :establecimientoId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados " +
+            "AND r.actividadDia.fechaHoraInicio >= :desde " +
+            "AND r.actividadDia.fechaHoraInicio < :hasta " +
+            "GROUP BY r.actividad.id")
+    List<Object[]> contarYSumarReservasEnRangoPorActividad(@Param("establecimientoId") UUID establecimientoId,
+                                                           @Param("estados") List<EstadoReservaNombre> estados,
+                                                           @Param("desde") LocalDateTime desde,
+                                                           @Param("hasta") LocalDateTime hasta);
+
 }

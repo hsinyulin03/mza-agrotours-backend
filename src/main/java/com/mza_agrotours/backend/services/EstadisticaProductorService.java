@@ -1,10 +1,13 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.dtos.estadisticasproductor.ActividadPerformanceDTO;
 import com.mza_agrotours.backend.dtos.estadisticasproductor.BarraDTO;
 import com.mza_agrotours.backend.dtos.estadisticasproductor.EstadisticasResponse;
 import com.mza_agrotours.backend.dtos.estadisticasproductor.KpisDTO;
 import com.mza_agrotours.backend.dtos.estadisticasproductor.PeriodoDTO;
 import com.mza_agrotours.backend.dtos.estadisticasproductor.SerieDTO;
+import com.mza_agrotours.backend.entities.actividad.Actividad;
+import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.repositories.ReservaRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
@@ -22,10 +25,13 @@ import java.time.format.TextStyle;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -60,7 +66,49 @@ public EstadisticasResponse calcularEstadisticas(UUID establecimientoId, String 
 
         SerieDTO serie = calcularSerie(establecimientoId, periodo);
 
-        return new EstadisticasResponse(periodo, kpis, serie, null);
+        List<ActividadPerformanceDTO> actividades = calcularPerformanceActividades(establecimientoId, periodo);
+
+        return new EstadisticasResponse(periodo, kpis, serie, actividades);
+    }
+
+    /**
+     * Arma la tabla de performance por actividad para todas las actividades vigentes del establecimiento en el rango
+     * actual.
+     */
+    private List<ActividadPerformanceDTO> calcularPerformanceActividades(UUID establecimientoId, PeriodoDTO periodo) {
+
+        LocalDateTime desde = periodo.getDesde().atStartOfDay();
+        LocalDateTime hasta = periodo.getHasta().plusDays(1).atStartOfDay();
+
+        Map<UUID, Integer> cuposPorActividad = new HashMap<>();
+        for (Object[] fila : actividadRepository.sumarCuposOfertadosEnRangoPorActividad(establecimientoId, desde, hasta)) {
+            cuposPorActividad.put((UUID) fila[0], ((Number) fila[1]).intValue());
+        }
+
+        Map<UUID, Integer> reservasPorActividad = new HashMap<>();
+        Map<UUID, BigDecimal> ingresosPorActividad = new HashMap<>();
+        for (Object[] fila : reservaRepository.contarYSumarReservasEnRangoPorActividad(
+                establecimientoId, ESTADOS_CONFIRMADOS, desde, hasta)) {
+            UUID actividadId = (UUID) fila[0];
+            reservasPorActividad.put(actividadId, ((Number) fila[1]).intValue());
+            ingresosPorActividad.put(actividadId, Optional.ofNullable((BigDecimal) fila[2]).orElse(BigDecimal.ZERO));
+        }
+
+        List<ActividadPerformanceDTO> resultado = new ArrayList<>();
+        for (Actividad actividad : actividadRepository.findVigentesConCultivosByEstablecimientoId(establecimientoId)) {
+            UUID id = actividad.getId();
+            int cupos = cuposPorActividad.getOrDefault(id, 0);
+            int reservas = reservasPorActividad.getOrDefault(id, 0);
+            int ocupacion = cupos == 0 ? 0 : (int) Math.round(reservas * 100.0 / cupos);
+            String cultivo = actividad.getCultivos().stream()
+                    .map(TipoCultivo::getNombre)
+                    .collect(Collectors.joining(", "));
+
+            resultado.add(new ActividadPerformanceDTO(id, actividad.getNombre(), cultivo, cupos, reservas, ocupacion,
+                    ingresosPorActividad.getOrDefault(id, BigDecimal.ZERO)));
+        }
+        return resultado;
+
     }
 
     /**
@@ -125,9 +173,7 @@ public EstadisticasResponse calcularEstadisticas(UUID establecimientoId, String 
         return new SerieDTO(title, sub, barras);
     }
 
-    /**
-     * Devuelve la abreviatura de un mes (por ejemplo, "Ene", "Feb", ..., "Dic")
-     */
+    // "Ene", "Feb", ..., "Sep", "Dic": se normaliza porque el JDK puede devolver "sept." o minúsculas
     private String abreviaturaMes(Month mes) {
         String nombre = mes.getDisplayName(TextStyle.SHORT, LOCALE_AR).replace(".", "");
         return nombre.substring(0, 1).toUpperCase(LOCALE_AR) + nombre.substring(1, 3);
@@ -232,5 +278,6 @@ public EstadisticasResponse calcularEstadisticas(UUID establecimientoId, String 
             default    -> "Período personalizado";
         };
     }
+
 
 }
