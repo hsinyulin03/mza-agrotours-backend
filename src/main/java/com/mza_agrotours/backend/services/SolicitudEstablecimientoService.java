@@ -14,6 +14,7 @@ import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolici
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolicitudEstablecimientoNombre;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimiento;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimientoEstado;
+import com.mza_agrotours.backend.enums.PermisoCodigo;
 import com.mza_agrotours.backend.enums.TipoNotificacionNombre;
 import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.mappers.SolicitudEstablecimientoMapper;
@@ -132,6 +133,14 @@ public class SolicitudEstablecimientoService {
                 TipoNotificacionNombre.SOLICITUD_ESTABLECIMIENTO_CREADA,
                 null,
                 RutasNotificacionesFront.solicitudEstablecimiento(nuevaSolicitudEstablecimiento.getId()),
+                nuevaSolicitudEstablecimiento.getNombreEstablecimiento()
+        );
+
+        notificacionService.notificarAdministradores(
+                PermisoCodigo.GESTIONAR_SOLICITUD_ESTABLECIMIENTO,
+                TipoNotificacionNombre.SOLICITUD_ESTABLECIMIENTO_POR_REVISAR,
+                RutasNotificacionesFront.solicitudEstablecimientoAdmin(nuevaSolicitudEstablecimiento.getId()),
+                usuarioSolicitante.getNombre(),
                 nuevaSolicitudEstablecimiento.getNombreEstablecimiento()
         );
 
