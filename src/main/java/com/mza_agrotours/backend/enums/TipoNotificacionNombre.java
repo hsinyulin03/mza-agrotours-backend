@@ -40,10 +40,12 @@ public enum TipoNotificacionNombre {
             "La actividad %s fue dada de baja por el productor, así que cancelamos tu reserva del %s. No se te realizó ningún cobro.",
             EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
     RECORDATORIO_RESERVA(
+            ScopeNotificacionNombre.VISITANTE,
             "Recordatorio de tu reserva",
             "Te recordamos que el %s a las %s tenés tu reserva para la actividad %s en el establecimiento %s. ¡Te esperamos!",
             EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
     VALORAR_ACTIVIDAD(
+            ScopeNotificacionNombre.VISITANTE,
             "¿Cómo te fue en la actividad de %s?",
             "Esperamos que hayas disfrutado en la actividad %s en %s el %s. Contanos tu experiencia calificando la actividad, tu opinión ayuda a otros visitantes.",
             EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH));
