@@ -22,7 +22,7 @@ public class Incidencia extends BaseEntity {
     @Column(nullable = false, length = 50)
     private String titulo;
 
-    @Column(nullable = false, length = 300)
+    @Column(nullable = false, length = 1000)
     private String descripcion;
 
     @Column(name = "fecha_hora_incio")

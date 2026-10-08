@@ -72,7 +72,21 @@ public class GrupoPermisoSeeder implements CommandLineRunner {
                             TipoPermisoNombre.PRODUCTOR,
                             "Altas, bajas y modificación de las actividades del establecimiento",
                             "user-pen",
-                            List.of(PermisoCodigo.GESTIONAR_ACTIVIDAD)))
+                            List.of(PermisoCodigo.GESTIONAR_ACTIVIDAD))),
+            entry("Gestión de FAQ",
+                    new SeedGrupoPermiso(
+                      TipoPermisoNombre.ADMIN,
+                      "Ver y gestionar las preguntas frecuentes del sistema",
+                      "user-pen",
+                      List.of(PermisoCodigo.GESTIONAR_FAQ)
+                    )),
+            entry("Gestión de Incidencias",
+                    new SeedGrupoPermiso(
+                            TipoPermisoNombre.ADMIN,
+                            "Ver y gestionar las incidencias del sistema",
+                            "user-pen",
+                            List.of(PermisoCodigo.LEER_INCIDENCIAS, PermisoCodigo.GESTIONAR_INCIDENCIAS)
+                    ))
 
     );
 

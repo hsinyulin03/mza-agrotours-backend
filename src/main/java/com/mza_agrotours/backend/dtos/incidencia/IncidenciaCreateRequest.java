@@ -12,6 +12,6 @@ public class IncidenciaCreateRequest {
     @Size(min = 1, max = 50, message = "El título debe tener entre 1 y 50 caracteres")
     private String titulo;
     @NotBlank(message = "La descripción no puede estar vacía")
-    @Size(min=1, max=300, message = "La descripción debe tener entre 1 y 300 caracteres")
+    @Size(min=1, max=1000, message = "La descripción debe tener entre 1 y 1000 caracteres")
     private String descripcion;
 }
