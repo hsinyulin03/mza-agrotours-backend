@@ -25,12 +25,12 @@ public class IncidenciaAdminController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<DTOIncidenciaGestionListado>> listarIncidencias(
+    public ResponseEntity<ApiResponse<Page<DTOIncidenciaGestionListado>>> listarIncidencias(
             @ModelAttribute DTOIncidenciaFiltro filtro,
             @PageableDefault(sort = "fechaHoraInicio", direction = Sort.Direction.DESC) Pageable pageable) {
 
         Page<DTOIncidenciaGestionListado> paginaResultado = incidenciaService.obtenerIncidencias(filtro, pageable);
-        return ResponseEntity.ok(paginaResultado);
+        return ResponseEntity.ok(ApiResponse.ok(paginaResultado));
     }
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<DTOFormGestionarIncidencia>> obtenerFormularioGestionarIncidencia(@PathVariable UUID id) {
