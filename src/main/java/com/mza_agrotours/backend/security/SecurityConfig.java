@@ -91,6 +91,11 @@ public class SecurityConfig {
                         .requestMatchers("/recetas").permitAll()
                         .requestMatchers("/recetas/**").permitAll()
 
+                        .requestMatchers("/admin/faq/**").hasAuthority(PermisoCodigo.GESTIONAR_FAQ.name())
+
+                        .requestMatchers(HttpMethod.GET,"/admin/incidencias/**").hasAuthority(PermisoCodigo.LEER_INCIDENCIAS.name())
+                        .requestMatchers("/admin/incidencias/**").hasAuthority(PermisoCodigo.GESTIONAR_INCIDENCIAS.name())
+
                         //Permisos
                         .requestMatchers( "/permisos/grupos-permisos/admin").hasAuthority(PermisoCodigo.LEER_ADMIN.name())
                         .requestMatchers("/permisos/grupos-permisos/productor").authenticated()

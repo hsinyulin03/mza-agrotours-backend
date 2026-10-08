@@ -28,4 +28,14 @@ public class DTOActividadDiaResponse {
         public int getCuposLibres() {
                 return Math.max(0, cuposMaximos - cuposPagados - cuposPendientes);
         }
+
+        //Mínimo permitido al modificar el cupo: personas con reserva vigente (pagadas + pendientes)
+        public int getCuposReservados() {
+                return cuposPagados + cuposPendientes;
+        }
+
+        public int getPorcentajeOcupado() {
+                if (cuposMaximos == 0) return 0;
+                return (int) Math.round(getCuposReservados() * 100.0 / cuposMaximos);
+        }
 }

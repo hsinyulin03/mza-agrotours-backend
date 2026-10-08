@@ -15,11 +15,14 @@ public class EmailNotificacionSender implements CanalNotificacionSender {
 
     private final JavaMailSender mailSender;
     private final String remitente;
+    private final String urlFront;
 
     public EmailNotificacionSender(JavaMailSender mailSender,
-                            @Value("${notificaciones.email.remitente}") String remitente) {
+                            @Value("${notificaciones.email.remitente}") String remitente,
+                            @Value("${app.front.url}") String urlFront) {
         this.mailSender = mailSender;
         this.remitente = remitente;
+        this.urlFront = urlFront;
     }
 
     @Override
@@ -40,10 +43,19 @@ public class EmailNotificacionSender implements CanalNotificacionSender {
         mensaje.setFrom(this.remitente);
         mensaje.setTo(destinatario);
         mensaje.setSubject(notificacion.getTitulo());
-        mensaje.setText(notificacion.getMensaje());
+        mensaje.setText(armarCuerpo(notificacion));
 
         this.mailSender.send(mensaje);
 
-        log.info("MAIL enviado a {} | asunto: {}| mensaje: {}", destinatario, notificacion.getTitulo(), notificacion.getMensaje());
+        log.info("MAIL enviado a {} | asunto: {}| mensaje: {}", destinatario, notificacion.getTitulo(), mensaje.getText());
+    }
+
+    // El urlLink es una ruta relativa del front; en el mail se arma la URL completa para que se pueda clickear
+    private String armarCuerpo(Notificacion notificacion) {
+        String link = notificacion.getUrlLink();
+        if (link == null || link.isBlank()) {
+            return notificacion.getMensaje();
+        }
+        return notificacion.getMensaje() + "\n\nPara más detalles, ingrese acá: " + this.urlFront + link;
     }
 }

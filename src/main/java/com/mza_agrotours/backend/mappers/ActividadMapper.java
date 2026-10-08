@@ -30,6 +30,8 @@ public interface ActividadMapper {
     @Mapping(target = "precioRegular", ignore = true)
     @Mapping(target = "cultivos", ignore = true)
     @Mapping(target = "ubicacion", source = "establecimiento")
+    @Mapping(target = "resumenResenias", ignore = true)
+    @Mapping(target = "reseniasRecientes", ignore = true)
     DTOActividadDetalleResponse actividadToDTOActividadDetalle(Actividad actividad);
 
     @Mapping(target = "key", source = "archivo.key")
@@ -117,6 +119,15 @@ public interface ActividadMapper {
     @Mapping(target = "edad", ignore = true)
     DTODetalleVisitantesCard reservaDetalleToDTODetalleVisitantesCard(ReservaDetalle detalle);
 
+    //US-ACT-11
+    @Mapping(target = "nombreEstablecimiento", source = "establecimiento.nombre")
+    @Mapping(target = "estadoActividad", source = "estado.nombre")
+    @Mapping(target = "cupoBase", source = "cuposMax")
+    @Mapping(target = "precioBase", ignore = true)
+    @Mapping(target = "configuraciones", ignore = true)
+    @Mapping(target = "diasDelMes", ignore = true)
+    DTOCalendarioGestionDiasResponse actividadToDTOCalendarioGestionDias(Actividad actividad);
+
     //US-RESE-01
     RangoEtarioReservaDTO actividadRangoEtarioToDTO(ActividadRangoEtario actividadRangoEtarios);
 
@@ -188,6 +199,11 @@ public interface ActividadMapper {
         dto.setFaqs(faqs);
         dto.setRangosEtarios(tarifas);
         dto.setCultivos(cultivosAsociados);
+    }
+
+    @AfterMapping
+    default void llenarPrecioBaseGestionDias(Actividad actividad, @MappingTarget DTOCalendarioGestionDiasResponse dto) {
+        dto.setPrecioBase(obtenerPrecioBaseVigente(actividad));
     }
 
 

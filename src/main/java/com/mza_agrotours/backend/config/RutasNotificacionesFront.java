@@ -9,12 +9,32 @@ public class RutasNotificacionesFront {
     private RutasNotificacionesFront() {}
 
     public static String solicitudEstablecimiento(UUID solicitudId) {
-        return "/solicitudes-establecimiento/me/" + solicitudId;
+        return "/mis-solicitudes/" + solicitudId;
     }
-    public static String establecimiento(UUID establecimientoId) {
-        return "/establecimientos/" + establecimientoId;
+
+    public static String  panelEstablecimiento(UUID establecimientoId) {
+        return "/panel/" + establecimientoId;
     }
+    public static String solicitudEstablecimientoAdmin(UUID solicitudId) {
+        return "/admin/solicitudes/" + solicitudId;
+    }
+
+    public static String detalleSolicitudEstablecimiento(UUID solicitudId) {
+        return "/mis-solicitudes/" + solicitudId;
+    }
+    public static String datosEstablecimiento() {
+        return "/panel/datos";
+    }
+
     public static String detalleReserva(UUID reservaId){
-        return "/reserva/get/" + reservaId;
+        return "/mis-reservas/" + reservaId;
+    }
+
+    //TODO: Ajustar esta url a la ruta correcta del front
+    public static String valorarExperiencia(UUID reservaId){
+        return "/calificaciones/reserva/" + reservaId;
+    }
+    public static String panelProductor(){
+        return "/panel/actividades";
     }
 }

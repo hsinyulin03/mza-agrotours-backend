@@ -3,6 +3,8 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.dtos.CondicionDTO;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
 import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
+import com.mza_agrotours.backend.dtos.chat.ChatInfoEstablecimientoDTO;
+import com.mza_agrotours.backend.dtos.chat.ChatInfoRequest;
 import com.mza_agrotours.backend.dtos.establecimiento.*;
 import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.Departamento;
@@ -19,14 +21,17 @@ import com.mza_agrotours.backend.enums.CarpetaArchivo;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
+import com.mza_agrotours.backend.enums.outbox.TipoOperacion;
 import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.mappers.EstablecimientoMapper;
 import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
+import com.mza_agrotours.backend.services.outbox.OutboxService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -34,7 +39,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
-
 
 
 @Service
@@ -68,6 +72,15 @@ public class EstablecimientoService  {
 
     @Autowired
     private EstadoActividadRepository estadoActividadRepository;
+
+    @Autowired
+    private OutboxService outboxService;
+
+    @Autowired
+    private ApplicationEventPublisher publisher;
+
+    @Autowired
+    private ChatService chatService;
 
 // ALTA ESTABLECIMIENTO
     @Transactional
@@ -178,6 +191,9 @@ public class EstablecimientoService  {
         this.actividadRepository.saveAll(establecimiento.getActividades());
 
         Establecimiento eliminado = establecimientoRepository.save(establecimiento);
+
+        publisher.publishEvent(this.outboxService.crearOutboxPendiente(eliminado.getId().toString(), TipoOperacion.QUITAR_ESTABLECIMIENTO));
+
         DTOBajaEstablecimientoResponse response = new DTOBajaEstablecimientoResponse();
         response.setIdestablecimiento(eliminado.getId());
         response.setMensaje("Establecimiento dado de baja exitosamente.");
@@ -215,6 +231,18 @@ public class EstablecimientoService  {
         Establecimiento establecimiento = this.establecimientoRepository.obtenerEstablecimientoActivoById(id)
                 .orElseThrow(() -> new EntityNotFoundException("No se encuentra el establecimiento indicado"));
         return mapearADetalleVisitante(establecimiento);
+    }
+
+    public Map<String, ChatInfoEstablecimientoDTO> getNombresChatByUsuarioFirebaseIds(List<ChatInfoRequest> chatInfoRequests, UUID establecimientoId) {
+       Establecimiento establecimiento = this.establecimientoRepository.findByIdAndFechaHoraBajaIsNull(establecimientoId)
+               .orElseThrow(() -> new EstablecimientoNotFoundException("No se encuentra el establecimiento indicado"));
+
+       return this.chatService.getNombresChatsByEstablecimientoAndUsuarioFirebaseIds(establecimiento, chatInfoRequests);
+    }
+
+    public String obtenerAutorMensaje(UUID establecimientoId, String prodFirebaseId) {
+        return this.productorRepository.findNombreByEstablecimientoIdAndUsuarioFirebaseId(establecimientoId, prodFirebaseId)
+                .orElseThrow(() -> new AppException(ProductorError.NOT_FOUND));
     }
 
 
