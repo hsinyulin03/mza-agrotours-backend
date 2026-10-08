@@ -22,7 +22,7 @@ public class IncidenciaEstado extends BaseEntity {
     @Column(name = "fecha_hora_fin")
     private LocalDateTime fechaHoraFin;
 
-    @Column(nullable = false, length = 500)
+    @Column(nullable = false, length = 2000)
     private String motivo;
 
     @ManyToOne(fetch = FetchType.LAZY)
