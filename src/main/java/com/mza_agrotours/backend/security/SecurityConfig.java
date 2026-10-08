@@ -91,6 +91,8 @@ public class SecurityConfig {
                         .requestMatchers("/recetas").permitAll()
                         .requestMatchers("/recetas/**").permitAll()
 
+                        .requestMatchers("/admin/faq/**").hasAuthority(PermisoCodigo.GESTIONAR_FAQ.name())
+
                         //Permisos
                         .requestMatchers( "/permisos/grupos-permisos/admin").hasAuthority(PermisoCodigo.LEER_ADMIN.name())
                         .requestMatchers("/permisos/grupos-permisos/productor").authenticated()
