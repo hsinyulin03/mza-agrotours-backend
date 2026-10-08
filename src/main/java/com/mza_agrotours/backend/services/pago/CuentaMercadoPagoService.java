@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.services.pago;
 
+import com.mercadopago.core.MPRequestOptions;
 import com.mza_agrotours.backend.clients.mercadopago.MercadoPagoOAuthClient;
 import com.mza_agrotours.backend.clients.mercadopago.MercadoPagoOAuthTokenResponse;
 import com.mza_agrotours.backend.dtos.establecimiento.DTOCuentaMercadoPagoEstado;
@@ -7,6 +8,7 @@ import com.mza_agrotours.backend.entities.establecimiento.CuentaMercadoPago;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.productor.Productor;
 import com.mza_agrotours.backend.exceptions.EstablecimientoNotFoundException;
+import com.mza_agrotours.backend.exceptions.pago.EstablecimientoSinCuentaMercadoPagoException;
 import com.mza_agrotours.backend.exceptions.pago.MercadoPagoOAuthException;
 import com.mza_agrotours.backend.repositories.CuentaMercadoPagoRepository;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
@@ -132,6 +134,29 @@ public class CuentaMercadoPagoService {
         return getEstablecimientoVigente(establecimientoId).getCuentaMercadoPagoVigente()
                 .map(c -> new DTOCuentaMercadoPagoEstado(true, c.getFechaHoraAlta(), c.getFechaHoraExpiracionToken()))
                 .orElseGet(DTOCuentaMercadoPagoEstado::sinVincular);
+    }
+
+    /**
+     * Cuenta de MP con la que se le cobra a un visitante en nombre del establecimiento: la vigente,
+     * con el token sin vencer (el scheduler lo renueva antes de que venza).
+     *
+     * @throws EstablecimientoSinCuentaMercadoPagoException si no tiene cuenta vigente o su token venció
+     */
+    public CuentaMercadoPago getCuentaParaCobrar(Establecimiento establecimiento) {
+        return establecimiento.getCuentaMercadoPagoVigente()
+                .filter(c -> !c.isTokenVencido(LocalDateTime.now()))
+                .orElseThrow(EstablecimientoSinCuentaMercadoPagoException::new);
+    }
+
+    /**
+     * Opciones de request del SDK de MP para operar en nombre de la cuenta del vendedor.
+     * Con {@code cuenta == null} (pagos anteriores al split) usa el token global de Agrotours.
+     */
+    public MPRequestOptions opcionesDe(CuentaMercadoPago cuenta) {
+        if (cuenta == null) return MPRequestOptions.createDefault();
+        return MPRequestOptions.builder()
+                .accessToken(cuenta.getAccessToken())
+                .build();
     }
 
     /**

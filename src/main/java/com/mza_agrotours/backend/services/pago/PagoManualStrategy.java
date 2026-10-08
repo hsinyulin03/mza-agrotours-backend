@@ -38,7 +38,7 @@ public class PagoManualStrategy implements EstrategiaPago{
         Pago pago = new Pago();
 
         pago.setMetodoPago(MetodoPago.MANUAL);
-        pago.setIdPagoExterno("MANUAL-"+UUID.randomUUID());
+        pago.setIdTransaccionExterna("MANUAL-"+UUID.randomUUID());
         pago.setFechaHoraPago(ahora);
         pago.setMontoTotal(reserva.getTotalReserva());
 

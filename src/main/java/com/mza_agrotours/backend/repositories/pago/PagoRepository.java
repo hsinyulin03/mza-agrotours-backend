@@ -16,5 +16,5 @@ public interface PagoRepository extends BaseEntityRepository<Pago, UUID> {
             "WHERE ep.nombre = :estadoPagoNombre")
     Optional<EstadoPago> findEstadoPagoByEstadoPagoNombre(@Param("estadoPagoNombre") EstadoPagoNombre estadoPagoNombre);
 
-    Optional<Pago> findByIdPagoExterno(String idPagoExterno);
+    Optional<Pago> findByIdTransaccionExterna(String idTransaccionExterna);
 }
