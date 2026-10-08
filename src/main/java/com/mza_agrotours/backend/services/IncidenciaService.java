@@ -6,18 +6,18 @@ import com.mza_agrotours.backend.entities.incidencia.EstadoIncidencia;
 import com.mza_agrotours.backend.entities.incidencia.Incidencia;
 import com.mza_agrotours.backend.entities.incidencia.IncidenciaEstado;
 import com.mza_agrotours.backend.enums.EstadoIncidenciaNombre;
-import com.mza_agrotours.backend.mappers.IncidenciaMapper;
 import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
 import com.mza_agrotours.backend.exceptions.ValidacionNegocioException;
-import com.mza_agrotours.backend.repositories.IncidenciaRepository;
+import com.mza_agrotours.backend.mappers.IncidenciaMapper;
 import com.mza_agrotours.backend.repositories.EstadoIncidenciaRepository;
+import com.mza_agrotours.backend.repositories.IncidenciaRepository;
 import com.mza_agrotours.backend.repositories.UsuarioRepository;
 import jakarta.persistence.EntityNotFoundException;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -91,6 +91,7 @@ public class IncidenciaService {
         dto.setEstadoactual(incidencia.getEstadoActual().getEstado().getNombre());
         EstadoIncidenciaNombre estadoActual = incidencia.getEstadoActual().getEstado().getNombre();
         dto.setEstadoactual(estadoActual);
+        dto.setMotivo(incidencia.getEstadoActual().getMotivo());
         List<EstadoIncidenciaNombre> estadosPosibles;
         if (esEstadoFinal(estadoActual)) {
             estadosPosibles = List.of(); // ya está cerrada, no hay más transiciones válidas
