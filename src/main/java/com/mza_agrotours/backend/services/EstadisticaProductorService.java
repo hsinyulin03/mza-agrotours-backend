@@ -71,6 +71,66 @@ public EstadisticasResponse calcularEstadisticas(UUID establecimientoId, String 
         return new EstadisticasResponse(periodo, kpis, serie, actividades);
     }
 
+    // MÉTODOS PÚBLICOS PARA TESTEAR CADA ESTADÍSTICA POR SEPARADO
+    /**
+     * Calcula todos los KPIs en conjunto para un PeriodoRango.
+     */
+    public KpisDTO calcularKpis(UUID establecimientoId, PeriodoRango periodoValor) {
+        return calcularKpis(establecimientoId, calcularPeriodo(periodoValor));
+    }
+
+    /**
+     * Calcula todos los KPIs en conjunto a partir de un PeriodoDTO ya resuelto.
+     */
+    public KpisDTO calcularKpis(UUID establecimientoId, PeriodoDTO periodo) {
+        KpisDTO kpis = new KpisDTO();
+        calcularKpisOcupacion(establecimientoId, periodo, kpis);
+        calcularKpisBeneficios(establecimientoId, periodo, kpis);
+        calcularKpisCancelacion(establecimientoId, periodo, kpis);
+        return kpis;
+    }
+
+    /**
+     * Calcula únicamente los KPIs de ocupación (cupos reservados, ofertados y porcentaje).
+     */
+    public KpisDTO calcularKpisOcupacion(UUID establecimientoId, PeriodoRango periodoValor) {
+        KpisDTO kpis = new KpisDTO();
+        calcularKpisOcupacion(establecimientoId, calcularPeriodo(periodoValor), kpis);
+        return kpis;
+    }
+
+    /**
+     * Calcula únicamente los KPIs de beneficios (monto total y variación porcentual).
+     */
+    public KpisDTO calcularKpisBeneficios(UUID establecimientoId, PeriodoRango periodoValor) {
+        KpisDTO kpis = new KpisDTO();
+        calcularKpisBeneficios(establecimientoId, calcularPeriodo(periodoValor), kpis);
+        return kpis;
+    }
+
+    /**
+     * Calcula únicamente los KPIs de cancelación (cantidad cancelada y porcentaje sobre gestionadas).
+     */
+    public KpisDTO calcularKpisCancelacion(UUID establecimientoId, PeriodoRango periodoValor) {
+        KpisDTO kpis = new KpisDTO();
+        calcularKpisCancelacion(establecimientoId, calcularPeriodo(periodoValor), kpis);
+        return kpis;
+    }
+
+    /**
+     * Calcula la serie para el gráfico de barras individualmente.
+     */
+    public SerieDTO calcularSerie(UUID establecimientoId, PeriodoRango periodoValor) {
+        return calcularSerie(establecimientoId, calcularPeriodo(periodoValor));
+    }
+
+    /**
+     * Calcula la performance por actividad individualmente.
+     */
+    public List<ActividadPerformanceDTO> calcularPerformanceActividades(UUID establecimientoId, PeriodoRango periodoValor) {
+        return calcularPerformanceActividades(establecimientoId, calcularPeriodo(periodoValor));
+    }
+
     /**
      * Arma la tabla de performance por actividad para todas las actividades vigentes del establecimiento en el rango
      * actual.
