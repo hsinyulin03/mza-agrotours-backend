@@ -305,10 +305,6 @@ public EstadisticasResponse calcularEstadisticas(UUID establecimientoId, Periodo
 
         kpis.setBeneficios(actual);
         kpis.setBeneficiosDelta(delta);
-
-
-        kpis.setBeneficios(actual);
-        kpis.setBeneficiosDelta(delta);
     }
 
     /**
