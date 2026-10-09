@@ -1,6 +1,5 @@
 package com.mza_agrotours.backend.services.pago;
 
-import com.google.api.client.util.Value;
 import com.mercadopago.client.common.IdentificationRequest;
 import com.mercadopago.client.preference.*;
 import com.mercadopago.resources.preference.Preference;
@@ -9,6 +8,7 @@ import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
+import com.mza_agrotours.backend.entities.establecimiento.CuentaMercadoPago;
 import com.mza_agrotours.backend.entities.pago.EstadoPago;
 import com.mza_agrotours.backend.entities.pago.Pago;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
@@ -20,6 +20,7 @@ import com.mza_agrotours.backend.services.ParametrosService;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -32,10 +33,12 @@ public class PagoMPStrategy implements EstrategiaPago{
 
     private final PagoRepository pagoRepository;
     private final ParametrosService parametrosService;
+    private final CuentaMercadoPagoService cuentaMercadoPagoService;
 
-    public PagoMPStrategy(PagoRepository pagoRepository, ParametrosService parametrosService) {
+    public PagoMPStrategy(PagoRepository pagoRepository, ParametrosService parametrosService, CuentaMercadoPagoService cuentaMercadoPagoService) {
         this.pagoRepository = pagoRepository;
         this.parametrosService = parametrosService;
+        this.cuentaMercadoPagoService = cuentaMercadoPagoService;
     }
 
     @Override
@@ -49,6 +52,14 @@ public class PagoMPStrategy implements EstrategiaPago{
         Usuario usuario = visitante.getUsuario();
         Actividad actividad = reserva.getActividad();
         ActividadDia actividadDia = reserva.getActividadDia();
+
+        // El cobro se acredita en la cuenta del establecimiento; fuera del try para que llegue tal cual al handler
+        CuentaMercadoPago cuentaVendedor = cuentaMercadoPagoService.getCuentaParaCobrar(actividad.getEstablecimiento());
+
+        // Comisión de Agrotours, que MP descuenta del cobro al vendedor como marketplace_fee
+        BigDecimal comisionPropia = reserva.getTotalReserva()
+                .multiply(parametrosService.getInstance().getPorcentajeComision())
+                .setScale(2, RoundingMode.HALF_UP);
 
         try {
             // Creamos el item de la Preference Request
@@ -88,8 +99,9 @@ public class PagoMPStrategy implements EstrategiaPago{
                     .build();
 
             // Creamos la preference Request con Items, Payer, Métodos de Pago, info del marketplace y un par de datos nuevos
-            PreferenceRequest preferenceRequest = PreferenceRequest.builder() // TODO notificaciones, back url y fee
+            PreferenceRequest preferenceRequest = PreferenceRequest.builder() // TODO back url
                     .items(items)
+                    .marketplaceFee(comisionPropia)
                     .payer(payer)
                     .paymentMethods(paymentMethods)
                     .statementDescriptor("MDZ_AGROTOURS")
@@ -99,18 +111,19 @@ public class PagoMPStrategy implements EstrategiaPago{
                     .externalReference(reserva.getId().toString())
                     .build();
 
-            // Creamos el cliente y enviamos la PreferenceReq a que sea aceptada por MP
+            // Creamos la preference con el token del vendedor, así el pago queda en su cuenta
             PreferenceClient client = new PreferenceClient();
-            Preference preference = client.create(preferenceRequest);
+            Preference preference = client.create(preferenceRequest, cuentaMercadoPagoService.opcionesDe(cuentaVendedor));
 
             // Ahora creamos el pago en estado PENDIENTE
             LocalDateTime ahora = LocalDateTime.now();
             Pago pago = new Pago();
 
             pago.setMetodoPago(MetodoPago.MERCADO_PAGO);
-            pago.setIdPagoExterno(preference.getId());
+            pago.setIdCheckoutExterno(preference.getId());   // idTransaccionExterna se completa al conciliar el pago aprobado
             pago.setFechaHoraPago(ahora);
             pago.setMontoTotal(reserva.getTotalReserva());
+            pago.setCuentaMercadoPago(cuentaVendedor);
 
             EstadoPago estadoPendiente = pagoRepository.findEstadoPagoByEstadoPagoNombre(EstadoPagoNombre.PENDIENTE)
                     .orElseThrow(() -> new EstadoPagoNotFoundException(EstadoPagoNombre.PENDIENTE));
@@ -118,12 +131,8 @@ public class PagoMPStrategy implements EstrategiaPago{
             pago.cambiarEstado(estadoPendiente, ahora);
 
             // Info del pago
-            reserva.setSubTotalComisionTransaccion(BigDecimal.valueOf(0)); // TODO fee nuestra y del marketplace
-            reserva.setSubTotalComisionPropia(
-                    reserva.getTotalReserva().multiply(
-                            BigDecimal.valueOf(parametrosService.getInstance().getPorcentajeComision())
-                    )
-            );
+            reserva.setSubTotalComisionTransaccion(BigDecimal.valueOf(0)); // TODO comisión de MP: se conoce recién con el pago aprobado (fee_details)
+            reserva.setSubTotalComisionPropia(comisionPropia);
             reserva.setSubTotalProductor(
                     reserva.getTotalReserva().subtract(
                             reserva.getSubTotalComisionPropia()

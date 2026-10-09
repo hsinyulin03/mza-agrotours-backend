@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.entities.pago;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
+import com.mza_agrotours.backend.entities.establecimiento.CuentaMercadoPago;
 import com.mza_agrotours.backend.enums.MetodoPago;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -20,8 +21,11 @@ import java.util.List;
 @NoArgsConstructor
 public class Pago extends BaseEntity {
 
-    @Column(nullable = false)
-    private String idPagoExterno;
+    // ID de la transacción en el medio de pago. En MP es el ID del payment aprobado: es null hasta que se concilia
+    private String idTransaccionExterna;
+
+    // ID del checkout con el que se cobra. En MP es el ID de la preference de Checkout Pro
+    private String idCheckoutExterno;
 
     @Column(nullable = false)
     private LocalDateTime fechaHoraPago;
@@ -32,6 +36,13 @@ public class Pago extends BaseEntity {
     // NOTE Esto no estaba en el DC ni la US, pero lo veo útil para usar estrategia y hacer pagos manuales y por mp
     @Enumerated(EnumType.STRING)
     private MetodoPago metodoPago;
+
+    // Cuenta de MP del vendedor con cuyo token se creó la preference. Toda llamada posterior a MP sobre este
+    // pago (consulta, expiración, reembolso) debe usar esta misma cuenta, aunque el establecimiento haya
+    // vinculado otra después. Null en pagos manuales y en preferences anteriores al split (cuenta de Agrotours).
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cuenta_mercado_pago_id")
+    private CuentaMercadoPago cuentaMercadoPago;
 
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private PagoEstado estadoActual;

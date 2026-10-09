@@ -13,4 +13,9 @@ public class PagoExceptionHandler {
     public ResponseEntity<?> handleEstadoPagoNotFoundException(EstadoPagoNotFoundException ex){
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("estadoNotFound", ex.getMessage()));
     }
+
+    @ExceptionHandler(EstablecimientoSinCuentaMercadoPagoException.class)
+    public ResponseEntity<?> handleEstablecimientoSinCuentaMercadoPagoException(EstablecimientoSinCuentaMercadoPagoException ex){
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.fail("establecimientoSinCuentaMP", ex.getMessage()));
+    }
 }

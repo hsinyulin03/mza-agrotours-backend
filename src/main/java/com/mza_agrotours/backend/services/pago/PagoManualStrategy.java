@@ -12,6 +12,7 @@ import com.mza_agrotours.backend.services.ParametrosService;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -37,7 +38,7 @@ public class PagoManualStrategy implements EstrategiaPago{
         Pago pago = new Pago();
 
         pago.setMetodoPago(MetodoPago.MANUAL);
-        pago.setIdPagoExterno("MANUAL-"+UUID.randomUUID());
+        pago.setIdTransaccionExterna("MANUAL-"+UUID.randomUUID());
         pago.setFechaHoraPago(ahora);
         pago.setMontoTotal(reserva.getTotalReserva());
 
@@ -48,9 +49,9 @@ public class PagoManualStrategy implements EstrategiaPago{
 
         reserva.setSubTotalComisionTransaccion(BigDecimal.valueOf(0));
         reserva.setSubTotalComisionPropia(
-                reserva.getTotalReserva().multiply(
-                        BigDecimal.valueOf(parametrosService.getInstance().getPorcentajeComision())
-                )
+                reserva.getTotalReserva()
+                        .multiply(parametrosService.getInstance().getPorcentajeComision())
+                        .setScale(2, RoundingMode.HALF_UP)
         );
         reserva.setSubTotalProductor(
                 reserva.getTotalReserva().subtract(

@@ -70,8 +70,8 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
 
     @Query("SELECT r FROM Reserva r " +
             "JOIN FETCH r.pago p " +
-            "WHERE p.idPagoExterno = :idPagoExterno ")
-    Optional<Reserva> findByPagoWithIdPagoExterno(@Param("idPagoExterno") String idPagoExterno);
+            "WHERE p.idCheckoutExterno = :idCheckoutExterno ")
+    Optional<Reserva> findByPagoWithIdCheckoutExterno(@Param("idCheckoutExterno") String idCheckoutExterno);
 
     @Query("SELECT COUNT(r) > 0 FROM Reserva r " +
             "WHERE r.visitante.id = :visitanteId " +

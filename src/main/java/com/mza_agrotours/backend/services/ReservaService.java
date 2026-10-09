@@ -1,14 +1,17 @@
 package com.mza_agrotours.backend.services;
 
 import com.mercadopago.client.merchantorder.MerchantOrderClient;
+import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.client.preference.PreferenceClient;
 import com.mercadopago.client.preference.PreferenceRequest;
+import com.mercadopago.core.MPRequestOptions;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
 import com.mercadopago.net.MPElementsResourcesPage;
 import com.mercadopago.net.MPSearchRequest;
 import com.mercadopago.resources.merchantorder.MerchantOrder;
 import com.mercadopago.resources.merchantorder.MerchantOrderPayment;
+import com.mercadopago.resources.payment.Payment;
 import com.mza_agrotours.backend.config.RutasNotificacionesFront;
 import com.mza_agrotours.backend.dtos.reservas.*;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
@@ -33,6 +36,7 @@ import com.mza_agrotours.backend.exceptions.actividad.ActividadDiaNotFound;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
 import com.mza_agrotours.backend.exceptions.pago.EstadoPagoNotFoundException;
+import com.mza_agrotours.backend.exceptions.pago.PagoNoConciliableException;
 import com.mza_agrotours.backend.exceptions.reservas.ActividadFullException;
 import com.mza_agrotours.backend.exceptions.reservas.EstadoReservaNotFoundException;
 import com.mza_agrotours.backend.exceptions.reservas.FechaNacimientoInvalidaException;
@@ -42,6 +46,8 @@ import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.repositories.pago.EstadoPagoRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.services.notificaciones.NotificacionService;
+import com.mza_agrotours.backend.services.pago.ConciliadorPagoMP;
+import com.mza_agrotours.backend.services.pago.CuentaMercadoPagoService;
 import com.mza_agrotours.backend.services.pago.EstrategiaPago;
 import com.mza_agrotours.backend.services.pago.EstrategiaPagoFactory;
 import org.slf4j.Logger;
@@ -78,8 +84,10 @@ public class ReservaService {
     private final EstrategiaPagoFactory estrategiaPagoFactory;
     private final ReservaService self;
     private final NotificacionService notificacionService;
+    private final CuentaMercadoPagoService cuentaMercadoPagoService;
+    private final ConciliadorPagoMP conciliadorPagoMP;
 
-    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, ActividadRepository actividadRepository, ParametrosService parametrosService, UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstrategiaPagoFactory estrategiaPagoFactory, @Lazy ReservaService self, EstadoPagoRepository estadoPagoRepository, NotificacionService notificacionService) {
+    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, ActividadRepository actividadRepository, ParametrosService parametrosService, UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstrategiaPagoFactory estrategiaPagoFactory, @Lazy ReservaService self, EstadoPagoRepository estadoPagoRepository, NotificacionService notificacionService, CuentaMercadoPagoService cuentaMercadoPagoService, ConciliadorPagoMP conciliadorPagoMP) {
         this.reservaRepository = reservaRepository;
         this.reservaMapper = reservaMapper;
         this.usuarioRepository = usuarioRepository;
@@ -91,6 +99,8 @@ public class ReservaService {
         this.estrategiaPagoFactory = estrategiaPagoFactory;
         this.self = self;
         this.notificacionService = notificacionService;
+        this.cuentaMercadoPagoService = cuentaMercadoPagoService;
+        this.conciliadorPagoMP = conciliadorPagoMP;
     }
 
     @Transactional
@@ -171,7 +181,7 @@ public class ReservaService {
 
         log.info("Se buscó reserva duplicada sin problemas"); // NOTE borrar
 
-        reservaDuplicada.ifPresent(reserva -> liberarCupoReserva(reserva, reserva.getPago().getIdPagoExterno()));
+        reservaDuplicada.ifPresent(this::liberarCupoReserva);
 
         log.info("Se encontró reserva duplicada? {}", reservaDuplicada.isPresent()); // NOTE borrar
 
@@ -337,16 +347,23 @@ public class ReservaService {
      * Tarea programada que busca todas las reservas "Pendiente" aún no expiradas y consulta a Mercado Pago,
      * por medio de la preference de cada una, si existe una merchant order con algún pago aprobado.
      * <p>
-     * Cuando encuentra un pago aprobado, marca el pago como "Aprobado", la reserva como "Pagada", le quita la
-     * fecha de expiración y expira la preference en Mercado Pago para reducir la chance de un pago
-     * duplicado. Los errores de comunicación con la API de Mercado Pago o de backend al procesar una
+     * Cuando encuentra un pago aprobado lo concilia con la reserva ({@link ConciliadorPagoMP}): si es por el total
+     * y al vendedor correcto, registra el ID del payment y las comisiones, marca el pago como "Aprobado", la reserva
+     * como "Pagada", le quita la fecha de expiración y expira la preference en Mercado Pago para reducir la chance
+     * de un pago duplicado. Si no concilia, la reserva queda pendiente y se loguea como error para revisión manual.
+     * Los errores de comunicación con la API de Mercado Pago o de backend al procesar una
      * reserva particular no interrumpen el procesamiento del resto y quedan registrados en el log.
+     * <p>
+     * TODO (rama de reembolsos): solo se revisan reservas pendientes no expiradas. Un pago aprobado después de que la
+     *  reserva expiró o se canceló (ej. baja de la actividad) nunca se detecta y el visitante pierde el dinero sin reserva.
+     *  Agregar una revisión de reservas expiradas/canceladas con preference de MP que reembolse esos pagos automáticamente.
      */
     @Transactional(readOnly = true)
     public void pagarReservas(){
         LocalDateTime ahora = LocalDateTime.now();
         List<Reserva> reservas = reservaRepository.findReservasPendientes(ahora);
         MerchantOrderClient merchantOrderClient = new MerchantOrderClient();
+        PaymentClient paymentClient = new PaymentClient();
 
         EstadoReserva estadoReserva = getEstadoReserva(PAGADA);
         EstadoPago estadoPago = getEstadoPago(EstadoPagoNombre.APROBADO);
@@ -356,9 +373,12 @@ public class ReservaService {
 
         for (Reserva r : reservas){
             Pago pago = r.getPago();
-            String preferenceId = pago.getIdPagoExterno();
+            String preferenceId = pago.getIdCheckoutExterno();
 
             try{
+                // La preference, sus merchant orders y sus pagos están en la cuenta del vendedor que la creó
+                MPRequestOptions opcionesMP = cuentaMercadoPagoService.opcionesDe(pago.getCuentaMercadoPago());
+
                 // Creamos el tipo de búsqueda que queremos hacer: por preferenceId
                 MPSearchRequest searchRequest = MPSearchRequest.builder()
                         .filters(Map.of("preference_id", preferenceId))
@@ -366,31 +386,46 @@ public class ReservaService {
                         .offset(0)  // Buscamos el primero, sin offest
                         .build();
 
-                MPElementsResourcesPage<MerchantOrder> resultado = merchantOrderClient.search(searchRequest);
+                MPElementsResourcesPage<MerchantOrder> resultado = merchantOrderClient.search(searchRequest, opcionesMP);
                 if (resultado.getElements() == null ) continue; // Si no se encuentra merchant order significa que no hay pagos, skip
-                for (MerchantOrder mo: resultado.getElements()){
-                    List <MerchantOrderPayment> pagos = mo.getPayments();   // Buscamos la lista de pagos de la merchant order
 
-                    boolean reservaPagada = pagos.stream().anyMatch(p ->
-                            "approved".equals(p.getStatus())    // Buscar pago aprobado TODO - Buscamos el primer pago pero nunca comparamos que sea por el total. No veo por qué NO lo sería, pero es un punto débil
-                    );
+                List<Long> aprobados = resultado.getElements().stream()
+                        .filter(mo -> mo.getPayments() != null)
+                        .flatMap(mo -> mo.getPayments().stream())
+                        .filter(p -> "approved".equals(p.getStatus()))
+                        .map(MerchantOrderPayment::getId)
+                        .toList();
+                if (aprobados.isEmpty()) continue;
 
-                    if (reservaPagada) {
-                        pago.cambiarEstado(estadoPago, ahora);  //Estado del pago
+                // TODO (rama de reembolsos): reembolsar automáticamente los pagos aprobados extra (todos menos el conciliado),
+                //  con el token del vendedor (opcionesMP), X-Idempotency-Key "refund-<paymentId>" y registrando qué pagos se
+                //  reembolsaron para no repetirlo en la próxima corrida. Notificar al visitante. No setear Reembolso.pagoReembolsoSistema
+                if (aprobados.size() > 1)
+                    log.warn("La reserva {} tiene {} pagos aprobados en MP {}: se concilia el primero, el resto requiere reembolso manual",
+                            r.getId(), aprobados.size(), aprobados);
 
-                        r.setFechaHoraExpiracion(null);         // FHExpiración de la reserva
-                        self.cambiarEstadoReservaYGuardar(r, estadoReserva, ahora); // Estado de la reserva
+                // Conciliamos con el detalle del pago (monto, vendedor y comisiones) antes de tocar la reserva
+                Payment payment = paymentClient.get(aprobados.get(0), opcionesMP);
+                conciliadorPagoMP.conciliar(r, payment);
 
-                        // Expírar la preference (para menor chance que se pague 2 veces)
-                        PreferenceClient client = new PreferenceClient();
-                        PreferenceRequest preferenceRequest = PreferenceRequest.builder()
-                                .expirationDateTo(ahora.atZone(ZoneId.systemDefault()).toOffsetDateTime())
-                                .build();
-                        client.update(preferenceId, preferenceRequest);
+                pago.setIdTransaccionExterna(payment.getId().toString());
+                pago.cambiarEstado(estadoPago, ahora);  //Estado del pago
 
-                        pagosExitosos++; // Contador de reservas pagadas para el log
-                    }
-                }
+                r.setFechaHoraExpiracion(null);         // FHExpiración de la reserva
+                self.cambiarEstadoReservaYGuardar(r, estadoReserva, ahora); // Estado de la reserva
+
+                // Expirar la preference (para menor chance que se pague 2 veces)
+                expirarPreferenceMercadoPago(pago, ahora);
+
+                pagosExitosos++; // Contador de reservas pagadas para el log
+            } catch (PagoNoConciliableException e) {
+                // No se confirma: queda pendiente (y se reintenta) hasta que expire. Requiere revisión manual
+                // TODO (rama de reembolsos): si no concilia por monto o moneda, reembolsar automáticamente (token del vendedor,
+                //  X-Idempotency-Key "refund-<paymentId>", registrar el reembolso para no repetirlo y notificar al visitante).
+                //  Si es por vendedor distinto NO reembolsar: solo alertar (indica un problema de vinculación o de datos).
+                //  Para distinguir el motivo, PagoNoConciliableException necesita exponerlo (ej. un enum)
+                log.error("Pago aprobado de la reserva {} que no concilia, requiere revisión manual: {}", r.getId(), e.getMessage());
+                idFallidas.add(r.getId().toString());
             } catch (MPApiException e) {
                 log.warn("Error de la API de MP consultando merchant orders para reserva {}: {}", r.getId(), e.getApiResponse().getContent());
                 idFallidas.add(r.getId().toString());
@@ -424,7 +459,7 @@ public class ReservaService {
         Usuario usuario = getUsuario(emailUsuario);
         Visitante visitante = getVisitante(usuario);
 
-        Optional<Reserva> optReserva = reservaRepository.findByPagoWithIdPagoExterno(preferenceId);
+        Optional<Reserva> optReserva = reservaRepository.findByPagoWithIdCheckoutExterno(preferenceId);
         if (optReserva.isEmpty()) {
             throw new ReservaNotFoundException();
         }
@@ -434,7 +469,7 @@ public class ReservaService {
         if (reserva.getVisitante() != visitante){
             throw new ReservaNotFoundException();
         }
-        liberarCupoReserva(reserva, preferenceId);
+        liberarCupoReserva(reserva);
         reservaRepository.save(reserva);
     }
 
@@ -448,7 +483,7 @@ public class ReservaService {
         for (Reserva r : pendientes) {
             r.setFechaHoraExpiracion(null);
             r.cambiarEstado(cancelada, ahora);
-            expirarPreferenceMercadoPago(r.getPago() != null ? r.getPago().getIdPagoExterno() : null, ahora);
+            expirarPreferenceMercadoPago(r.getPago(), ahora);
             notificacionService.crearNotificacion(
                     r.getVisitante().getUsuario(),
                     TipoNotificacionNombre.RESERVA_CANCELADA_POR_BAJA_ACTIVIDAD,
@@ -525,9 +560,8 @@ public class ReservaService {
      * al momento actual y expira la preference de Mercado Pago asociada, si existe.
      *
      * @param reserva reserva cuyo cupo se libera
-     * @param preferenceId ID externo de la preference de Mercado Pago asociada, puede ser null si no tiene
      */
-    private void liberarCupoReserva(Reserva reserva, String preferenceId){
+    private void liberarCupoReserva(Reserva reserva){
         LocalDateTime ahora = LocalDateTime.now();
 
         EstadoReserva estadoReserva = getEstadoReserva(EXPIRADA);
@@ -535,28 +569,29 @@ public class ReservaService {
         // Cambiar estado reserva
         reserva.setFechaHoraExpiracion(ahora);
         self.cambiarEstadoReservaYGuardar(reserva, estadoReserva, ahora);
-        expirarPreferenceMercadoPago(preferenceId, ahora);
+        expirarPreferenceMercadoPago(reserva.getPago(), ahora);
 
     }
 
     // TODO: No me gusta mucho que las preference puedan quedar no expiradas si hay error, pero por ahora queda así
     /**
-     * Expira en Mercado Pago la preference indicada, seteando su fecha de expiración al momento actual,
-     * para que ya no pueda pagarse. Cualquier error al comunicarse con Mercado Pago se registra
-     * en el log y la preference quedará hasta que expire por cuenta propia.
+     * Expira en Mercado Pago la preference del pago indicado, seteando su fecha de expiración al momento actual,
+     * para que ya no pueda pagarse. Usa el token de la cuenta del vendedor con la que se creó la preference.
+     * Cualquier error al comunicarse con Mercado Pago se registra en el log y la preference quedará hasta
+     * que expire por cuenta propia.
      *
-     * @param preferenceId ID externo de la preference de Mercado Pago a expirar
+     * @param pago pago cuya preference de Mercado Pago se expira, puede ser null si la reserva no tiene
      * @param ahora fecha y hora a usar como nueva fecha de expiración de la preference
      */
-    private void expirarPreferenceMercadoPago(String preferenceId, LocalDateTime ahora) {
-        if (preferenceId == null) return;
+    private void expirarPreferenceMercadoPago(Pago pago, LocalDateTime ahora) {
+        if (pago == null || pago.getMetodoPago() != MetodoPago.MERCADO_PAGO || pago.getIdCheckoutExterno() == null) return;
         try{
             // Expírar la preference para liberar el cupo
             PreferenceClient client = new PreferenceClient();
             PreferenceRequest preferenceRequest = PreferenceRequest.builder()
                     .expirationDateTo(ahora.atZone(ZoneId.systemDefault()).toOffsetDateTime())
                     .build();
-            client.update(preferenceId, preferenceRequest);
+            client.update(pago.getIdCheckoutExterno(), preferenceRequest, cuentaMercadoPagoService.opcionesDe(pago.getCuentaMercadoPago()));
         } catch (Exception e) {
             log.info("Hubo una reserva cuyo pago no pudo ser cancelado. Quedará hasta expirar sola.");
         }
