@@ -19,4 +19,6 @@ public interface PagoRepository extends BaseEntityRepository<Pago, UUID> {
     Optional<EstadoPago> findEstadoPagoByEstadoPagoNombre(@Param("estadoPagoNombre") EstadoPagoNombre estadoPagoNombre);
 
     Optional<Pago> findByIdCheckoutExterno(String idCheckoutExterno);
+
+    Optional<Pago> findByIdTransaccionExterna(String idTransaccionExterna);
 }

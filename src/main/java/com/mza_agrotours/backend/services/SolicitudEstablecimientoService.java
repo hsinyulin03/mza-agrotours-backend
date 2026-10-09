@@ -1,6 +1,5 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.enums.CarpetaArchivo;
 import com.mza_agrotours.backend.config.RutasNotificacionesFront;
 import com.mza_agrotours.backend.dtos.ObservacionSolicitudDTO;
 import com.mza_agrotours.backend.dtos.solicitud_establecimiento.*;
@@ -14,6 +13,8 @@ import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolici
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.EstadoSolicitudEstablecimientoNombre;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimiento;
 import com.mza_agrotours.backend.entities.solicitud_establecimiento.SolicitudEstablecimientoEstado;
+import com.mza_agrotours.backend.enums.CarpetaArchivo;
+import com.mza_agrotours.backend.enums.PermisoCodigo;
 import com.mza_agrotours.backend.enums.TipoNotificacionNombre;
 import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.mappers.SolicitudEstablecimientoMapper;
@@ -131,7 +132,15 @@ public class SolicitudEstablecimientoService {
                 nuevaSolicitudEstablecimiento.getUsuario(),
                 TipoNotificacionNombre.SOLICITUD_ESTABLECIMIENTO_CREADA,
                 null,
-                RutasNotificacionesFront.solicitudEstablecimiento(nuevaSolicitudEstablecimiento.getId()),
+                RutasNotificacionesFront.detalleSolicitudEstablecimiento(nuevaSolicitudEstablecimiento.getId()),
+                nuevaSolicitudEstablecimiento.getNombreEstablecimiento()
+        );
+
+        notificacionService.notificarAdministradores(
+                PermisoCodigo.GESTIONAR_SOLICITUD_ESTABLECIMIENTO,
+                TipoNotificacionNombre.SOLICITUD_ESTABLECIMIENTO_POR_REVISAR,
+                RutasNotificacionesFront.solicitudEstablecimientoAdmin(nuevaSolicitudEstablecimiento.getId()),
+                usuarioSolicitante.getNombre(),
                 nuevaSolicitudEstablecimiento.getNombreEstablecimiento()
         );
 
@@ -236,8 +245,8 @@ public class SolicitudEstablecimientoService {
             this.notificacionService.crearNotificacion(
                     solicitudEstablecimiento.getUsuario(),
                     TipoNotificacionNombre.SOLICITUD_ESTABLECIMIENTO_APROBADA,
-                    nuevoEstablecimiento,
-                    RutasNotificacionesFront.solicitudEstablecimiento(solicitudEstablecimiento.getId()),
+                    null,
+                    RutasNotificacionesFront.panelProductor(),
                     solicitudEstablecimiento.getRazonSocial());
         }else{
             solicitudEstablecimiento.setFechaHoraBaja(LocalDateTime.now());
@@ -245,7 +254,7 @@ public class SolicitudEstablecimientoService {
                     solicitudEstablecimiento.getUsuario(),
                     TipoNotificacionNombre.SOLICITUD_ESTABLECIMIENTO_RECHAZADA,
                     null,
-                    RutasNotificacionesFront.solicitudEstablecimiento(solicitudEstablecimiento.getId()),
+                    RutasNotificacionesFront.detalleSolicitudEstablecimiento(solicitudEstablecimiento.getId()),
                     solicitudEstablecimiento.getRazonSocial(),
                     observacionSolicitudDTO.getObservacion());
         }

@@ -5,6 +5,7 @@ import com.mza_agrotours.backend.dtos.productor.ProductorCreateReq;
 import com.mza_agrotours.backend.dtos.productor.ProductorGetDTO;
 import com.mza_agrotours.backend.dtos.productor.ProductorUpdateReq;
 import com.mza_agrotours.backend.dtos.roles_permisos.RolGetShortDTO;
+import com.mza_agrotours.backend.entities.Outbox;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.productor.EstadoProductor;
@@ -13,6 +14,7 @@ import com.mza_agrotours.backend.entities.roles_permisos.Rol;
 import com.mza_agrotours.backend.enums.EstadoProductorNombre;
 import com.mza_agrotours.backend.enums.TipoNotificacionNombre;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
+import com.mza_agrotours.backend.enums.outbox.TipoOperacion;
 import com.mza_agrotours.backend.exceptions.AppException;
 import com.mza_agrotours.backend.exceptions.ProductorError;
 import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
@@ -20,9 +22,11 @@ import com.mza_agrotours.backend.mappers.ProductorMapper;
 import com.mza_agrotours.backend.mappers.RolMapper;
 import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.services.notificaciones.NotificacionService;
+import com.mza_agrotours.backend.services.outbox.OutboxService;
 import com.mza_agrotours.backend.services.roles_permisos.RolService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -54,6 +58,9 @@ public class ProductorService {
     private final NotificacionService notificacionService;
     private final ProductorService self;
 
+    private final OutboxService outboxService;
+    private final ApplicationEventPublisher publisher;
+
     public ProductorService(EstadoProductorRepository estadoProductorRepository,
                             RolService rolService,
                             ProductorRepository productorRepository,
@@ -63,7 +70,9 @@ public class ProductorService {
                             ProductorMapper productorMapper,
                             RolMapper rolMapper,
                             NotificacionService notificacionService,
-                            @Lazy ProductorService self) {
+                            @Lazy ProductorService self,
+                            OutboxService outboxService,
+                            ApplicationEventPublisher publisher) {
         this.estadoProductorRepository = estadoProductorRepository;
         this.rolService = rolService;
         this.productorRepository = productorRepository;
@@ -74,6 +83,8 @@ public class ProductorService {
         this.rolMapper = rolMapper;
         this.notificacionService =notificacionService;
         this.self = self;
+        this.outboxService = outboxService;
+        this.publisher = publisher;
     }
 
     // ---------------------------------------------------------------- ABM
@@ -112,12 +123,15 @@ public class ProductorService {
 
         productor = this.productorRepository.save(productor);
 
+        this.crearOutboxPendienteYPublicar(productor.getId().toString(), TipoOperacion.AGREGAR_MIEMBRO_ESTABLECIMIENTO);
+
+
         // TODO: entidad que diga quien hizo el cambio
         this.notificacionService.crearNotificacion(
                 usuario,
                 TipoNotificacionNombre.PRODUCTOR_AGREGADO,
-                establecimiento,
-                RutasNotificacionesFront.establecimiento(establecimientoId),
+                null,
+                RutasNotificacionesFront.panelProductor(),
                 establecimiento.getNombre());
         return this.productorMapper.productorToProductorGetDTO(productor);
     }
@@ -155,6 +169,9 @@ public class ProductorService {
 
         // TODO: entidad que diga quien hizo el cambio
         this.productorRepository.save(productor);
+
+        this.crearOutboxPendienteYPublicar(productor.getId().toString(), TipoOperacion.QUITAR_MIEMBRO_ESTABLECIMIENTO);
+
         return true;
     }
 
@@ -197,6 +214,9 @@ public class ProductorService {
         productor.cambiarEstado(estadoSuspendido, motivo, ahora, fechaHoraFinPrevista);
 
         productor = this.productorRepository.save(productor);
+
+        this.crearOutboxPendienteYPublicar(productor.getId().toString(), TipoOperacion.QUITAR_MIEMBRO_ESTABLECIMIENTO);
+
         return this.productorMapper.productorToProductorGetDTO(productor);
     }
 
@@ -281,14 +301,21 @@ public class ProductorService {
         productorLider.setUsuario(usuarioProductor);
         productorLider.setRol(this.rolService.crearRolProductorLider(establecimiento));
         productorLider.cambiarEstado(estadoActivo, MOTIVO_ALTA_LIDER, ahora, null);
+        productorLider = this.productorRepository.save(productorLider);
 
-        return this.productorRepository.save(productorLider);
+        this.crearOutboxPendienteYPublicar(productorLider.getId().toString(), TipoOperacion.AGREGAR_MIEMBRO_ESTABLECIMIENTO);
+
+        return productorLider;
     }
 
     private Productor reactivar(Productor productor, String motivo, LocalDateTime ahora) {
         EstadoProductor estadoActivo = obtenerEstadoProductorByNombre(EstadoProductorNombre.ACTIVO);
         productor.cambiarEstado(estadoActivo, motivo, ahora, null);
-        return this.productorRepository.save(productor);
+        productor = this.productorRepository.save(productor);
+
+        this.crearOutboxPendienteYPublicar(productor.getId().toString(), TipoOperacion.AGREGAR_MIEMBRO_ESTABLECIMIENTO);
+
+        return productor;
     }
 
     private Productor obtenerProductorEnEstablecimiento(UUID productorId, UUID establecimientoId) {
@@ -331,5 +358,10 @@ public class ProductorService {
     public List<RolGetShortDTO> obtenerRolesProductor(UUID establecimientoId) {
         List<Rol> rol = this.rolRepository.findAllVigentesMutablesEnScope(TipoPermisoNombre.PRODUCTOR, establecimientoId);
         return rolMapper.rolListToRolGetShortDTOList(rol);
+    }
+
+    private void crearOutboxPendienteYPublicar(String productorId, TipoOperacion tipoOperacion) {
+        Outbox outbox = this.outboxService.crearOutboxPendiente(productorId, tipoOperacion);
+        publisher.publishEvent(outbox);
     }
 }

@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.services.pago;
 
 import com.mercadopago.client.common.IdentificationRequest;
 import com.mercadopago.client.merchantorder.MerchantOrderClient;
+import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.client.payment.PaymentRefundClient;
 import com.mercadopago.client.preference.*;
 import com.mercadopago.core.MPRequestOptions;
@@ -10,6 +11,8 @@ import com.mercadopago.exceptions.MPException;
 import com.mercadopago.net.MPElementsResourcesPage;
 import com.mercadopago.net.MPSearchRequest;
 import com.mercadopago.resources.merchantorder.MerchantOrder;
+import com.mercadopago.resources.merchantorder.MerchantOrderPayment;
+import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.payment.PaymentRefund;
 import com.mercadopago.resources.preference.Preference;
 import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaPagoDTO;
@@ -20,6 +23,7 @@ import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
+import com.mza_agrotours.backend.entities.establecimiento.CuentaMercadoPago;
 import com.mza_agrotours.backend.entities.pago.EstadoPago;
 import com.mza_agrotours.backend.entities.pago.Pago;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
@@ -34,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -48,10 +53,14 @@ public class PagoMPStrategy implements EstrategiaPago{
 
     private final PagoRepository pagoRepository;
     private final ParametrosService parametrosService;
+    private final CuentaMercadoPagoService cuentaMercadoPagoService;
+    private final ConciliadorPagoMP conciliadorPagoMP;
 
-    public PagoMPStrategy(PagoRepository pagoRepository, ParametrosService parametrosService) {
+    public PagoMPStrategy(PagoRepository pagoRepository, ParametrosService parametrosService, CuentaMercadoPagoService cuentaMercadoPagoService, ConciliadorPagoMP conciliadorPagoMP) {
         this.pagoRepository = pagoRepository;
         this.parametrosService = parametrosService;
+        this.cuentaMercadoPagoService = cuentaMercadoPagoService;
+        this.conciliadorPagoMP = conciliadorPagoMP;
     }
 
     @Override
@@ -65,6 +74,14 @@ public class PagoMPStrategy implements EstrategiaPago{
         Usuario usuario = visitante.getUsuario();
         Actividad actividad = reserva.getActividad();
         ActividadDia actividadDia = reserva.getActividadDia();
+
+        // El cobro se acredita en la cuenta del establecimiento; fuera del try para que llegue tal cual al handler
+        CuentaMercadoPago cuentaVendedor = cuentaMercadoPagoService.getCuentaParaCobrar(actividad.getEstablecimiento());
+
+        // Comisión de Agrotours, que MP descuenta del cobro al vendedor como marketplace_fee
+        BigDecimal comisionPropia = reserva.getTotalReserva()
+                .multiply(parametrosService.getInstance().getPorcentajeComision())
+                .setScale(2, RoundingMode.HALF_UP);
 
         try {
             // Creamos el item de la Preference Request
@@ -104,8 +121,9 @@ public class PagoMPStrategy implements EstrategiaPago{
                     .build();
 
             // Creamos la preference Request con Items, Payer, Métodos de Pago, info del marketplace y un par de datos nuevos
-            PreferenceRequest preferenceRequest = PreferenceRequest.builder() // TODO notificaciones, back url y fee
+            PreferenceRequest preferenceRequest = PreferenceRequest.builder() // TODO back url
                     .items(items)
+                    .marketplaceFee(comisionPropia)
                     .payer(payer)
                     .paymentMethods(paymentMethods)
                     .statementDescriptor("MDZ_AGROTOURS")
@@ -115,18 +133,19 @@ public class PagoMPStrategy implements EstrategiaPago{
                     .externalReference(reserva.getId().toString())
                     .build();
 
-            // Creamos el cliente y enviamos la PreferenceReq a que sea aceptada por MP
+            // Creamos la preference con el token del vendedor, así el pago queda en su cuenta
             PreferenceClient client = new PreferenceClient();
-            Preference preference = client.create(preferenceRequest);
+            Preference preference = client.create(preferenceRequest, cuentaMercadoPagoService.opcionesDe(cuentaVendedor));
 
             // Ahora creamos el pago en estado PENDIENTE
             LocalDateTime ahora = LocalDateTime.now();
             Pago pago = new Pago();
 
             pago.setMetodoPago(MetodoPago.MERCADO_PAGO);
-            pago.setIdCheckoutExterno(preference.getId());
+            pago.setIdCheckoutExterno(preference.getId());   // idTransaccionExterna se completa al conciliar el pago aprobado
             pago.setFechaHoraPago(ahora);
             pago.setMontoTotal(reserva.getTotalReserva());
+            pago.setCuentaMercadoPago(cuentaVendedor);
 
             EstadoPago estadoPendiente = pagoRepository.findEstadoPagoByEstadoPagoNombre(EstadoPagoNombre.PENDIENTE)
                     .orElseThrow(() -> new EstadoPagoNotFoundException(EstadoPagoNombre.PENDIENTE));
@@ -134,12 +153,8 @@ public class PagoMPStrategy implements EstrategiaPago{
             pago.cambiarEstado(estadoPendiente, ahora);
 
             // Info del pago
-            reserva.setSubTotalComisionTransaccion(BigDecimal.valueOf(0)); // TODO fee nuestra y del marketplace
-            reserva.setSubTotalComisionPropia(
-                    reserva.getTotalReserva().multiply(
-                            BigDecimal.valueOf(parametrosService.getInstance().getPorcentajeComision())
-                    )
-            );
+            reserva.setSubTotalComisionTransaccion(BigDecimal.valueOf(0)); // TODO comisión de MP: se conoce recién con el pago aprobado (fee_details)
+            reserva.setSubTotalComisionPropia(comisionPropia);
             reserva.setSubTotalProductor(
                     reserva.getTotalReserva().subtract(
                             reserva.getSubTotalComisionPropia()
@@ -158,12 +173,16 @@ public class PagoMPStrategy implements EstrategiaPago{
 
     /**
      * Workaround al todavía no tener notificaciones webhook de Mercado Pago: busca las merchant orders de la
-     * preference del pago y devuelve el primer pago aprobado que encuentre.
+     * preference del pago y concilia con la reserva ({@link ConciliadorPagoMP}) el primer pago aprobado que encuentre.
      */
     @Override
-    public ResultadoConsultaPagoDTO consultarPago(Pago pago) {
+    public ResultadoConsultaPagoDTO consultarPago(Reserva reserva) {
+        Pago pago = reserva.getPago();
         String preferenceId = pago.getIdCheckoutExterno();
         try {
+            // La preference, sus merchant orders y sus pagos están en la cuenta del vendedor que la creó
+            MPRequestOptions opcionesMP = opcionesDe(pago);
+
             // Creamos el tipo de búsqueda que queremos hacer: por preferenceId
             MPSearchRequest searchRequest = MPSearchRequest.builder()
                     .filters(Map.of("preference_id", preferenceId))
@@ -171,17 +190,29 @@ public class PagoMPStrategy implements EstrategiaPago{
                     .offset(0)  // Buscamos el primero, sin offest
                     .build();
 
-            MPElementsResourcesPage<MerchantOrder> resultado = new MerchantOrderClient().search(searchRequest);
+            MPElementsResourcesPage<MerchantOrder> resultado = new MerchantOrderClient().search(searchRequest, opcionesMP);
             if (resultado.getElements() == null) return ResultadoConsultaPagoDTO.noAprobado(); // Sin merchant order no hay pagos
 
-            // Buscar pago aprobado TODO - Buscamos el primer pago pero nunca comparamos que sea por el total. No veo por qué NO lo sería, pero es un punto débil
-            return resultado.getElements().stream()
+            List<Long> aprobados = resultado.getElements().stream()
                     .filter(mo -> mo.getPayments() != null)
                     .flatMap(mo -> mo.getPayments().stream())
                     .filter(p -> "approved".equals(p.getStatus()))
-                    .findFirst()
-                    .map(p -> new ResultadoConsultaPagoDTO(true, String.valueOf(p.getId())))
-                    .orElseGet(ResultadoConsultaPagoDTO::noAprobado);
+                    .map(MerchantOrderPayment::getId)
+                    .toList();
+            if (aprobados.isEmpty()) return ResultadoConsultaPagoDTO.noAprobado();
+
+            // TODO (rama de reembolsos): reembolsar automáticamente los pagos aprobados extra (todos menos el conciliado),
+            //  con el token del vendedor (opcionesMP), X-Idempotency-Key "refund-<paymentId>" y registrando qué pagos se
+            //  reembolsaron para no repetirlo en la próxima corrida. Notificar al visitante. No setear Reembolso.pagoReembolsoSistema
+            if (aprobados.size() > 1)
+                log.warn("La reserva {} tiene {} pagos aprobados en MP {}: se concilia el primero, el resto requiere reembolso manual",
+                        reserva.getId(), aprobados.size(), aprobados);
+
+            // Conciliamos con el detalle del pago (monto, vendedor y comisiones) antes de darlo por aprobado
+            Payment payment = new PaymentClient().get(aprobados.get(0), opcionesMP);
+            conciliadorPagoMP.conciliar(reserva, payment);
+
+            return new ResultadoConsultaPagoDTO(true, payment.getId().toString());
         } catch (MPApiException e) {
             throw new PasarelaPagoException("Error de la API de MP consultando merchant orders: " + e.getApiResponse().getContent(), e);
         } catch (MPException e) {
@@ -199,7 +230,7 @@ public class PagoMPStrategy implements EstrategiaPago{
             PreferenceRequest preferenceRequest = PreferenceRequest.builder()
                     .expirationDateTo(ahora.atZone(ZoneId.systemDefault()).toOffsetDateTime())
                     .build();
-            new PreferenceClient().update(pago.getIdCheckoutExterno(), preferenceRequest);
+            new PreferenceClient().update(pago.getIdCheckoutExterno(), preferenceRequest, opcionesDe(pago));
         } catch (MPApiException e) {
             throw new PasarelaPagoException("Error de la API de MP expirando la preference: " + e.getApiResponse().getContent(), e);
         } catch (MPException e) {
@@ -208,9 +239,9 @@ public class PagoMPStrategy implements EstrategiaPago{
     }
 
     /**
-     * Pide el reembolso total del payment aprobado. Usa una idempotency key por pago para que un doble
-     * pedido no genere dos reembolsos. Un error 4xx de MP es un rechazo; un 5xx o un error de red no
-     * garantizan que el reembolso no se haya hecho, así que se lanzan.
+     * Pide el reembolso total del payment aprobado, con el token del vendedor que lo cobró. Usa una idempotency
+     * key por pago para que un doble pedido no genere dos reembolsos. Un error 4xx de MP es un rechazo; un 5xx
+     * o un error de red no garantizan que el reembolso no se haya hecho, así que se lanzan.
      */
     @Override
     public ResultadoReembolsoDTO reembolsar(Pago pago) {
@@ -220,6 +251,7 @@ public class PagoMPStrategy implements EstrategiaPago{
         }
 
         MPRequestOptions options = MPRequestOptions.builder()
+                .accessToken(opcionesDe(pago).getAccessToken())
                 .customHeaders(Map.of("X-Idempotency-Key", "reembolso-pago-" + pago.getId()))
                 .build();
         try {
@@ -243,7 +275,7 @@ public class PagoMPStrategy implements EstrategiaPago{
     public Optional<String> buscarReembolso(Pago pago) {
         try {
             List<PaymentRefund> refunds = new PaymentRefundClient()
-                    .list(Long.valueOf(pago.getIdTransaccionExterna()))
+                    .list(Long.valueOf(pago.getIdTransaccionExterna()), opcionesDe(pago))
                     .getResults();
             if (refunds == null || refunds.isEmpty()) return Optional.empty();
             return Optional.of(String.valueOf(refunds.get(0).getId()));
@@ -263,7 +295,7 @@ public class PagoMPStrategy implements EstrategiaPago{
     public ResultadoConsultaReembolso consultarReembolso(Pago pago, String idReembolsoExterno) {
         try {
             PaymentRefund refund = new PaymentRefundClient()
-                    .get(Long.valueOf(pago.getIdTransaccionExterna()), Long.valueOf(idReembolsoExterno));
+                    .get(Long.valueOf(pago.getIdTransaccionExterna()), Long.valueOf(idReembolsoExterno), opcionesDe(pago));
 
             String status = refund.getStatus();
             if ("approved".equals(status)) return ResultadoConsultaReembolso.APROBADO;
@@ -274,5 +306,13 @@ public class PagoMPStrategy implements EstrategiaPago{
         } catch (MPException e) {
             throw new PasarelaPagoException("Error de red/SDK consultando el refund", e);
         }
+    }
+
+    /**
+     * Opciones de las llamadas a MP sobre la preference o el payment del pago: usan el token de la cuenta del
+     * vendedor que creó la preference (o el global de Agrotours si el pago es anterior al split).
+     */
+    private MPRequestOptions opcionesDe(Pago pago) {
+        return cuentaMercadoPagoService.opcionesDe(pago.getCuentaMercadoPago());
     }
 }

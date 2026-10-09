@@ -7,6 +7,7 @@ import com.mza_agrotours.backend.dtos.reservas.PagoStrategyDTO;
 import com.mza_agrotours.backend.enums.MetodoPago;
 import com.mza_agrotours.backend.entities.pago.Pago;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
+import com.mza_agrotours.backend.exceptions.pago.PagoNoConciliableException;
 import com.mza_agrotours.backend.exceptions.pago.PasarelaPagoException;
 
 import java.time.LocalDateTime;
@@ -22,13 +23,15 @@ public interface EstrategiaPago {
     PagoStrategyDTO procesarPago(Reserva reserva); // TODO cada uno coloca los subtotales
 
     /**
-     * Consulta a la pasarela si el pago fue aprobado.
+     * Consulta a la pasarela si el pago de la reserva fue aprobado y, en tal caso, lo concilia con la reserva
+     * (valida que sea por lo esperado y registra sus subtotales). No cambia el estado del pago ni de la reserva.
      *
-     * @param pago pago a consultar
+     * @param reserva reserva cuyo pago se consulta
      * @return si fue aprobado y, en tal caso, el ID de la transacción en la pasarela
      * @throws PasarelaPagoException si falla la comunicación con la pasarela
+     * @throws PagoNoConciliableException si hay un pago aprobado que no concilia con la reserva
      */
-    ResultadoConsultaPagoDTO consultarPago(Pago pago);
+    ResultadoConsultaPagoDTO consultarPago(Reserva reserva);
 
     /**
      * Invalida la sesión de cobro del pago para que ya no pueda pagarse.

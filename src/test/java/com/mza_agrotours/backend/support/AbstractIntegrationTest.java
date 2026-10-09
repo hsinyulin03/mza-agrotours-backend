@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.support;
 
 import com.google.firebase.FirebaseApp;
+import com.google.firebase.database.FirebaseDatabase;
 import com.mza_agrotours.backend.services.ObjectStoragePolicies;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -84,6 +85,9 @@ public abstract class AbstractIntegrationTest {
 
     @MockitoBean
     protected FirebaseApp firebaseApp;
+
+    @MockitoBean
+    protected FirebaseDatabase firebaseDatabase;
 
     @MockitoBean
     protected JavaMailSender mailSender;

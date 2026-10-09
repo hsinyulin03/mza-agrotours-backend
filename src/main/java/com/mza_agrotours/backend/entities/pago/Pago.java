@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.entities.pago;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
+import com.mza_agrotours.backend.entities.establecimiento.CuentaMercadoPago;
 import com.mza_agrotours.backend.enums.MetodoPago;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -23,7 +24,7 @@ public class Pago extends BaseEntity {
     // ID de la sesión de cobro creada en la pasarela antes de pagar (MP: preference id). Null si el método no usa pasarela
     private String idCheckoutExterno;
 
-    // ID de la transacción real en la pasarela, se completa al aprobarse el pago (MP: payment id). Null si el método no usa pasarela
+    // ID de la transacción real en la pasarela, se completa al conciliarse el pago aprobado (MP: payment id). Null si el método no usa pasarela
     private String idTransaccionExterna;
 
     @Column(nullable = false)
@@ -36,6 +37,13 @@ public class Pago extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private MetodoPago metodoPago;
+
+    // Cuenta de MP del vendedor con cuyo token se creó la preference. Toda llamada posterior a MP sobre este
+    // pago (consulta, expiración, reembolso) debe usar esta misma cuenta, aunque el establecimiento haya
+    // vinculado otra después. Null en pagos manuales y en preferences anteriores al split (cuenta de Agrotours).
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cuenta_mercado_pago_id")
+    private CuentaMercadoPago cuentaMercadoPago;
 
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private PagoEstado estadoActual;

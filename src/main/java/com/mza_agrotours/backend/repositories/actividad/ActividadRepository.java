@@ -5,6 +5,7 @@ import com.mza_agrotours.backend.dtos.actividad.DiaActividadReservaDTO;
 import com.mza_agrotours.backend.dtos.administrador_sistemas.ConteoPorEstablecimientoDTO;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
+import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
 import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.repositories.BaseEntityRepository;
@@ -82,22 +83,32 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
     List<DTOFiltro> contarActividadesPorEstado(@Param("establecimientoId") UUID establecimientoId);
 
     //Filtro de Departamentos
-    @Query("SELECT NEW com.mza_agrotours.backend.dtos.actividad.DTOFiltro(d.id, d.nombre, COUNT(a)) " +
+    @Query("SELECT NEW com.mza_agrotours.backend.dtos.actividad.DTOFiltro(d.id, d.nombre, " +
+            "SUM(CASE WHEN (CAST(:busqueda AS string) IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) " +
+            "AND (:cultivosIds IS NULL OR EXISTS (SELECT 1 FROM a.cultivos cf WHERE cf.id IN :cultivosIds)) " +
+            "THEN 1 ELSE 0 END)) " +
             "FROM Actividad a JOIN a.establecimiento.departamento d " +
             "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
             "AND a.fechaHoraBaja IS NULL " +
+            "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO " +
             "GROUP BY d.id, d.nombre " +
             "ORDER BY d.nombre ASC")
-    List<DTOFiltro> obtenerFiltroDepartamentos();
+    List<DTOFiltro> obtenerFiltroDepartamentos(@Param("busqueda") String busqueda,
+                                               @Param("cultivosIds") List<UUID> cultivosIds);
 
     // Filtro de Cultivos
-    @Query("SELECT NEW com.mza_agrotours.backend.dtos.actividad.DTOFiltro(c.id, c.nombre, COUNT(a)) " +
+    @Query("SELECT NEW com.mza_agrotours.backend.dtos.actividad.DTOFiltro(c.id, c.nombre, " +
+            "SUM(CASE WHEN (CAST(:busqueda AS string) IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) " +
+            "AND (:departamentoId IS NULL OR a.establecimiento.departamento.id = :departamentoId) " +
+            "THEN 1 ELSE 0 END)) " +
             "FROM Actividad a JOIN a.cultivos c " +
             "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
             "AND a.fechaHoraBaja IS NULL " +
+            "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO " +
             "GROUP BY c.id, c.nombre " +
             "ORDER BY c.nombre ASC")
-    List<DTOFiltro> obtenerFiltroCultivos();
+    List<DTOFiltro> obtenerFiltroCultivos(@Param("busqueda") String busqueda,
+                                          @Param("departamentoId") UUID departamentoId);
 
     boolean existsByIdAndEstablecimientoId(UUID idActividad, UUID establecimientoId);
 
@@ -191,4 +202,29 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
             "GROUP BY er.nombre")
     List<DTOFiltro> obtenerFiltroEstadosReserva(@Param("actividadDiaId") UUID actividadDiaId,
                                                 @Param("estados") List <EstadoReservaNombre> estados);
+
+    //US-ACT-11: inicios de los días ocupados de la actividad en un rango (para detectar solapamientos)
+    @Query("SELECT ad.fechaHoraInicio FROM Actividad a " +
+            "JOIN a.actividadesDias ad " +
+            "WHERE a.id = :actividadId " +
+            "AND ad.fechaHoraBaja IS NULL " +
+            "AND ad.estadoActual.estado.nombre IN :estados " +
+            "AND ad.fechaHoraInicio >= :desde " +
+            "AND ad.fechaHoraInicio < :hasta")
+    List<LocalDateTime> findIniciosDiasOcupadosEnRango(@Param("actividadId") UUID actividadId,
+                                                       @Param("estados") List<EstadoActividadDiaNombre> estados,
+                                                       @Param("desde") LocalDateTime desde,
+                                                       @Param("hasta") LocalDateTime hasta);
+
+
+    //Localizar dias activos que ya terminaron para pasarlos a FINALIZADA
+    @Query("SELECT ad FROM Actividad a " +
+            "JOIN a.actividadesDias ad " +
+            "JOIN FETCH ad.estadoActual ade " +
+            "JOIN FETCH ade.estado e " +
+            "WHERE ad.fechaHoraBaja IS NULL " +
+            "AND e.nombre IN :estados " +
+            "AND ad.fechaHoraFin < :ahora")
+    List<ActividadDia> findDiasTerminadosEnEstados(@Param("estados") List<EstadoActividadDiaNombre> estados,
+                                                   @Param("ahora") LocalDateTime ahora);
 }

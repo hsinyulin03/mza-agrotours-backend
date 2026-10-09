@@ -37,6 +37,7 @@ public interface ReservaMapper {
     @Mapping(target = "nombreEstablecimiento", source = "reserva.actividad.establecimiento.razonSocial")
     @Mapping(target = "idActividad", source = "reserva.actividad.id")
     @Mapping(target = "idEstablecimiento", source = "reserva.actividad.establecimiento.id")
+    @Mapping(target = "calificada", expression = "java(reserva.getCalificacion() != null)")
     ConsultarReservaDTO reservaToConsultarReservaDTO(Reserva reserva);
 
     @Mapping(target = "tipoRangoEtario", source = "reservaDetalle.actividadRangoEtario.nombre")

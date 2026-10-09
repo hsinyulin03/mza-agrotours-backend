@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.entities.reservas;
 
 import com.mza_agrotours.backend.entities.BaseEntity;
+import com.mza_agrotours.backend.entities.Calificacion;
 import com.mza_agrotours.backend.entities.pago.Pago;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
@@ -38,7 +39,8 @@ public class Reserva extends BaseEntity {
     @Column (nullable = false)
     private BigDecimal totalReserva;                     // Monto total de la reserva
 
-    //TODO relaciones - Calificacion
+    private LocalDateTime fechaHoraRecordatorio;    // FH en que se envió el recordatorio del día anterior (null = no enviado)
+
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private ReservaEstado estadoActual;
 
@@ -64,6 +66,10 @@ public class Reserva extends BaseEntity {
 
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Pago pago;
+
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinColumn(name = "calificacion_id", unique = true)
+    private Calificacion calificacion;
 
     // Métodos
 

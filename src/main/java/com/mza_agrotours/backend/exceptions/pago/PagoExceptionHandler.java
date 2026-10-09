@@ -28,4 +28,9 @@ public class PagoExceptionHandler {
     public ResponseEntity<?> handleReembolsoDateException(ReembolsoDateException ex){
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("forbiddenDate", ex.getMessage()));
     }
+
+    @ExceptionHandler(EstablecimientoSinCuentaMercadoPagoException.class)
+    public ResponseEntity<?> handleEstablecimientoSinCuentaMercadoPagoException(EstablecimientoSinCuentaMercadoPagoException ex){
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.fail("establecimientoSinCuentaMP", ex.getMessage()));
+    }
 }
