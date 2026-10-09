@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.dtos.estadisticasproductor;
 
+import com.mza_agrotours.backend.enums.PeriodoRango;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

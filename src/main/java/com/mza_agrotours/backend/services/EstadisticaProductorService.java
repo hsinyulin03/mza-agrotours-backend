@@ -9,6 +9,7 @@ import com.mza_agrotours.backend.dtos.estadisticasproductor.SerieDTO;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
+import com.mza_agrotours.backend.enums.PeriodoRango;
 import com.mza_agrotours.backend.repositories.ReservaRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import lombok.RequiredArgsConstructor;
@@ -56,7 +57,7 @@ private static final List<EstadoReservaNombre> ESTADOS_GESTIONADOS = List.of(
 private static final Locale LOCALE_AR = new Locale("es", "AR");
 
 @Transactional(readOnly = true)
-public EstadisticasResponse calcularEstadisticas(UUID establecimientoId, String periodoValor) {
+public EstadisticasResponse calcularEstadisticas(UUID establecimientoId, PeriodoRango periodoValor) {
     PeriodoDTO periodo = calcularPeriodo(periodoValor);
 
         KpisDTO kpis = new KpisDTO();
@@ -145,65 +146,60 @@ public EstadisticasResponse calcularEstadisticas(UUID establecimientoId, String 
             cuposPorActividad.put((UUID) fila[0], ((Number) fila[1]).intValue());
         }
 
-        Map<UUID, Integer> reservasPorActividad = new HashMap<>();
-        Map<UUID, BigDecimal> ingresosPorActividad = new HashMap<>();
-        for (Object[] fila : reservaRepository.contarYSumarReservasEnRangoPorActividad(
+        Map<UUID, Integer> cuposReservadosPorActividad = new HashMap<>();
+        for (Object[] fila : reservaRepository.contarCuposEnRangoPorActividad(
                 establecimientoId, ESTADOS_CONFIRMADOS, desde, hasta)) {
-            UUID actividadId = (UUID) fila[0];
-            reservasPorActividad.put(actividadId, ((Number) fila[1]).intValue());
-            ingresosPorActividad.put(actividadId, Optional.ofNullable((BigDecimal) fila[2]).orElse(BigDecimal.ZERO));
+            cuposReservadosPorActividad.put((UUID) fila[0], ((Number) fila[1]).intValue());
+        }
+
+        Map<UUID, BigDecimal> ingresosPorActividad = new HashMap<>();
+        for (Object[] fila : reservaRepository.sumarIngresosEnRangoPorActividad(
+                establecimientoId, ESTADOS_CONFIRMADOS, desde, hasta)) {
+            ingresosPorActividad.put((UUID) fila[0], Optional.ofNullable((BigDecimal) fila[1]).orElse(BigDecimal.ZERO));
         }
 
         List<ActividadPerformanceDTO> resultado = new ArrayList<>();
         for (Actividad actividad : actividadRepository.findVigentesConCultivosByEstablecimientoId(establecimientoId)) {
             UUID id = actividad.getId();
             int cupos = cuposPorActividad.getOrDefault(id, 0);
-            int reservas = reservasPorActividad.getOrDefault(id, 0);
-            int ocupacion = cupos == 0 ? 0 : (int) Math.round(reservas * 100.0 / cupos);
+            int reservados = cuposReservadosPorActividad.getOrDefault(id, 0);
+            int ocupacion = cupos == 0 ? 0 : (int) Math.round(reservados * 100.0 / cupos);
             String cultivo = actividad.getCultivos().stream()
                     .map(TipoCultivo::getNombre)
                     .collect(Collectors.joining(", "));
 
-            resultado.add(new ActividadPerformanceDTO(id, actividad.getNombre(), cultivo, cupos, reservas, ocupacion,
+            resultado.add(new ActividadPerformanceDTO(id, actividad.getNombre(), cultivo, cupos, reservados, ocupacion,
                     ingresosPorActividad.getOrDefault(id, BigDecimal.ZERO)));
         }
         return resultado;
-
     }
 
     /**
-     * Arma la serie del gráfico de barras: por cada sub-período (semana para "30d", mes calendario para "6m"/"12m")
-     * cuenta las reservas confirmadas y suma su subTotalProductor. Los sub-períodos sin reservas se incluyen con 0
-     * para que el eje sea continuo.
+     * Arma la serie del gráfico de barras
      */
     private SerieDTO calcularSerie(UUID establecimientoId, PeriodoDTO periodo) {
         LocalDateTime desde = periodo.getDesde().atStartOfDay();
         LocalDateTime hasta = periodo.getHasta().plusDays(1).atStartOfDay();
 
-        List<LocalDateTime[]> intervalos = new ArrayList<>();
-        List<String> labels = new ArrayList<>();
-        String title;
-        String sub = periodo.getLabel();
+        return switch (periodo.getValor()) {
+            case TREINTA_D -> new SerieDTO("Reservas totales semanales", periodo.getLabel(),
+                    barrasSemanales(establecimientoId, desde, hasta));
+            case SEIS_M, DOCE_M -> new SerieDTO("Reservas totales mensuales", periodo.getLabel(),
+                    barrasMensuales(establecimientoId, periodo, desde, hasta));
+            default -> throw new IllegalArgumentException("Período inválido: " + periodo.getValor());
+        };
+    }
 
-        if ("30d".equals(periodo.getValor())) {
-            title = "Reservas totales semanales";
-            for (int i = 0; i < 4; i++) {
-                LocalDateTime inicio = desde.plusWeeks(i);
-                // La última semana se extiende hasta el final del rango para no dejar días afuera
-                LocalDateTime fin = (i == 3) ? hasta : inicio.plusWeeks(1);
-                intervalos.add(new LocalDateTime[]{inicio, fin});
-                labels.add("Sem " + (i + 1));
-            }
-        } else {
-            title = "Reservas totales mensuales";
-            YearMonth mesFin = YearMonth.from(periodo.getHasta());
-            for (YearMonth mes = YearMonth.from(periodo.getDesde()); !mes.isAfter(mesFin); mes = mes.plusMonths(1)) {
-                // Los meses de los extremos se recortan al rango del período
-                LocalDateTime inicio = max(mes.atDay(1).atStartOfDay(), desde);
-                LocalDateTime fin = min(mes.plusMonths(1).atDay(1).atStartOfDay(), hasta);
-                intervalos.add(new LocalDateTime[]{inicio, fin});
-                labels.add(abreviaturaMes(mes.getMonth()));
-            }
+    private List<BarraDTO> barrasSemanales(UUID establecimientoId, LocalDateTime desde, LocalDateTime hasta) {
+        List<LocalDateTime[]> intervalos = new ArrayList<>();
+        System.out.println("=== INTERVALOS SEMANALES ===");
+        for (int i = 0; i < 4; i++) {
+            LocalDateTime inicio = desde.plusWeeks(i);
+            System.out.println("Semana " + (i + 1) + ": " + inicio);
+            // La última semana se extiende hasta el final del rango para no dejar días afuera
+            LocalDateTime fin = (i == 3) ? hasta : inicio.plusWeeks(1);
+            System.out.println("  - " + inicio + " - " + fin);
+            intervalos.add(new LocalDateTime[]{inicio, fin});
         }
 
         int[] cantidades = new int[intervalos.size()];
@@ -227,10 +223,28 @@ public EstadisticasResponse calcularEstadisticas(UUID establecimientoId, String 
 
         List<BarraDTO> barras = new ArrayList<>();
         for (int i = 0; i < intervalos.size(); i++) {
-            barras.add(new BarraDTO(labels.get(i), cantidades[i], ganancias[i]));
+            barras.add(new BarraDTO("Sem " + (i + 1), cantidades[i], ganancias[i]));
+        }
+        return barras;
+    }
+
+    private List<BarraDTO> barrasMensuales(UUID establecimientoId, PeriodoDTO periodo,
+                                           LocalDateTime desde, LocalDateTime hasta) {
+        Map<YearMonth, Object[]> porMes = new HashMap<>();
+        for (Object[] f : reservaRepository.contarYSumarPorMesEnRango(
+                establecimientoId, ESTADOS_CONFIRMADOS, desde, hasta)) {
+            porMes.put(YearMonth.of(((Number) f[0]).intValue(), ((Number) f[1]).intValue()), f);
         }
 
-        return new SerieDTO(title, sub, barras);
+        List<BarraDTO> barras = new ArrayList<>();
+        YearMonth mesFin = YearMonth.from(periodo.getHasta());
+        for (YearMonth mes = YearMonth.from(periodo.getDesde()); !mes.isAfter(mesFin); mes = mes.plusMonths(1)) {
+            Object[] f = porMes.get(mes);
+            int cantidad = f == null ? 0 : ((Number) f[2]).intValue();
+            BigDecimal ganancia = f == null ? BigDecimal.ZERO : (BigDecimal) f[3];
+            barras.add(new BarraDTO(abreviaturaMes(mes.getMonth()), cantidad, ganancia));
+        }
+        return barras;
     }
 
     // "Ene", "Feb", ..., "Sep", "Dic": se normaliza porque el JDK puede devolver "sept." o minúsculas
@@ -265,8 +279,8 @@ public EstadisticasResponse calcularEstadisticas(UUID establecimientoId, String 
     }
 
     /**
-     * Calcula los beneficios del productor (suma de subTotalProductor de reservas confirmadas) en el rango actual
-     * y su variación porcentual contra el rango anterior. El delta es null si el período anterior no tuvo beneficios.
+     * Calcula los beneficios del productor  en el rango actual
+     * y su variación porcentual contra el rango anterior.
      */
     private void calcularKpisBeneficios(UUID establecimientoId, PeriodoDTO periodo, KpisDTO kpis) {
         LocalDateTime desdeActual = periodo.getDesde().atStartOfDay();
@@ -299,7 +313,7 @@ public EstadisticasResponse calcularEstadisticas(UUID establecimientoId, String 
 
     /**
      * Calcula la cantidad de reservas canceladas en el rango actual y su proporción sobre el total de reservas
-     * gestionadas (confirmadas + canceladas) en ese mismo rango. El porcentaje es 0 si no hubo reservas gestionadas.
+     * gestionadas (confirmadas + canceladas) en ese mismo rango.
      */
     private void calcularKpisCancelacion(UUID establecimientoId, PeriodoDTO periodo, KpisDTO kpis) {
         // Rango inclusivo en días: desde 00:00 hasta el final del día "hasta"
@@ -316,25 +330,30 @@ public EstadisticasResponse calcularEstadisticas(UUID establecimientoId, String 
 
 
 
-    public PeriodoDTO calcularPeriodo(String periodoValor) {
+
+    public PeriodoDTO calcularPeriodo(PeriodoRango periodoValor) {
         LocalDate hoy = LocalDate.now();
         LocalDate desde = switch (periodoValor) {
-            case "30d" -> hoy.minusDays(30);
-            case "6m"  -> hoy.minusMonths(6);
-            case "12m" -> hoy.minusMonths(12);
+            case TREINTA_D -> hoy.minusDays(30);
+            case SEIS_M  -> hoy.minusMonths(5).withDayOfMonth(1);
+            case DOCE_M -> hoy.minusMonths(11).withDayOfMonth(1);
             default -> throw new IllegalArgumentException("Período inválido: " + periodoValor);
         };
         long duracionDias = ChronoUnit.DAYS.between(desde, hoy);
         LocalDate hastaAnterior = desde;
-        LocalDate desdeAnterior = desde.minusDays(duracionDias);
-
+        LocalDate desdeAnterior =switch (periodoValor) {
+            case TREINTA_D -> desde.minusDays(30);
+            case SEIS_M  -> desde.minusMonths(5).withDayOfMonth(1);
+            case DOCE_M -> desde.minusMonths(11).withDayOfMonth(1);
+            default -> throw new IllegalArgumentException("Período inválido: " + periodoValor);
+        };
         return new PeriodoDTO(periodoValor, labelPara(periodoValor), desde, hoy, desdeAnterior, hastaAnterior);
     }
-    private String labelPara(String periodoValor) {
+    private String labelPara(PeriodoRango periodoValor) {
         return switch (periodoValor) {
-            case "30d" -> "Últimos 30 días";
-            case "6m"  -> "Últimos 6 meses";
-            case "12m" -> "Último año";
+            case TREINTA_D -> "Últimos 30 días";
+            case SEIS_M -> "Últimos 6 meses";
+            case DOCE_M-> "Último año";
             default    -> "Período personalizado";
         };
     }

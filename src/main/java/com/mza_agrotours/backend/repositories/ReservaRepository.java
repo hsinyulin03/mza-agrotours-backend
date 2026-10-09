@@ -239,15 +239,42 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
                                                       @Param("hasta") LocalDateTime hasta);
 
 
-    @Query("SELECT r.actividad.id, COUNT(r), COALESCE(SUM(r.totalReserva), 0) FROM Reserva r " +
+
+    @Query("SELECT YEAR(r.actividadDia.fechaHoraInicio), MONTH(r.actividadDia.fechaHoraInicio), " +
+            "COUNT(r), COALESCE(SUM(r.subTotalProductor), 0) " +
+            "FROM Reserva r " +
+            "WHERE r.actividad.establecimiento.id = :establecimientoId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados " +
+            "AND r.actividadDia.fechaHoraInicio >= :desde " +
+            "AND r.actividadDia.fechaHoraInicio < :hasta " +
+            "GROUP BY YEAR(r.actividadDia.fechaHoraInicio), MONTH(r.actividadDia.fechaHoraInicio)")
+    List<Object[]> contarYSumarPorMesEnRango(@Param("establecimientoId") UUID establecimientoId,
+                                             @Param("estados") List<EstadoReservaNombre> estados,
+                                             @Param("desde") LocalDateTime desde,
+                                             @Param("hasta") LocalDateTime hasta);
+    // Ingresos por actividad
+    @Query("SELECT r.actividad.id, COALESCE(SUM(r.totalReserva), 0) FROM Reserva r " +
             "WHERE r.actividad.establecimiento.id = :establecimientoId " +
             "AND r.estadoActual.estadoReserva.nombre IN :estados " +
             "AND r.actividadDia.fechaHoraInicio >= :desde " +
             "AND r.actividadDia.fechaHoraInicio < :hasta " +
             "GROUP BY r.actividad.id")
-    List<Object[]> contarYSumarReservasEnRangoPorActividad(@Param("establecimientoId") UUID establecimientoId,
-                                                           @Param("estados") List<EstadoReservaNombre> estados,
-                                                           @Param("desde") LocalDateTime desde,
-                                                           @Param("hasta") LocalDateTime hasta);
+    List<Object[]> sumarIngresosEnRangoPorActividad(@Param("establecimientoId") UUID establecimientoId,
+                                                    @Param("estados") List<EstadoReservaNombre> estados,
+                                                    @Param("desde") LocalDateTime desde,
+                                                    @Param("hasta") LocalDateTime hasta);
+
+    // Cupos reservados (personas) por actividad
+    @Query("SELECT r.actividad.id, COUNT(rd) FROM Reserva r " +
+            "JOIN r.reservaDetalles rd " +          // una fila por persona
+            "WHERE r.actividad.establecimiento.id = :establecimientoId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados " +
+            "AND r.actividadDia.fechaHoraInicio >= :desde " +
+            "AND r.actividadDia.fechaHoraInicio < :hasta " +
+            "GROUP BY r.actividad.id")
+    List<Object[]> contarCuposEnRangoPorActividad(@Param("establecimientoId") UUID establecimientoId,
+                                                  @Param("estados") List<EstadoReservaNombre> estados,
+                                                  @Param("desde") LocalDateTime desde,
+                                                  @Param("hasta") LocalDateTime hasta);
 
 }
