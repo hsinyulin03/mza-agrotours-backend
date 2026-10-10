@@ -194,4 +194,87 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
     List<UUID> findIdsRecordatorioPendiente(@Param("desde") LocalDateTime desde,
                                             @Param("hasta") LocalDateTime hasta);
 
+
+    @Query("SELECT COUNT(rd) FROM Reserva r " +
+            "JOIN r.reservaDetalles rd " +          // una fila por persona
+            "WHERE r.actividad.establecimiento.id = :establecimientoId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados " +
+            "AND r.actividadDia.fechaHoraInicio >= :desde " +
+            "AND r.actividadDia.fechaHoraInicio < :hasta")
+    long contarCuposEnRango(@Param("establecimientoId") UUID establecimientoId,
+                            @Param("estados") List<EstadoReservaNombre> estados,
+                            @Param("desde") LocalDateTime desde,
+                            @Param("hasta") LocalDateTime hasta);
+
+    @Query("SELECT COALESCE(SUM(r.subTotalProductor), 0) FROM Reserva r " +
+            "WHERE r.actividad.establecimiento.id = :establecimientoId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados " +
+            "AND r.actividadDia.fechaHoraInicio >= :desde " +
+            "AND r.actividadDia.fechaHoraInicio < :hasta")
+    BigDecimal sumarSubTotalProductorEnRango(@Param("establecimientoId") UUID establecimientoId,
+                                             @Param("estados") List<EstadoReservaNombre> estados,
+                                             @Param("desde") LocalDateTime desde,
+                                             @Param("hasta") LocalDateTime hasta);
+
+    //Estadísticas: cantidad de reservas del establecimiento en los estados dados, cuyo día de actividad cae dentro del rango
+    @Query("SELECT COUNT(r) FROM Reserva r " +
+            "WHERE r.actividad.establecimiento.id = :establecimientoId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados " +
+            "AND r.actividadDia.fechaHoraInicio >= :desde " +
+            "AND r.actividadDia.fechaHoraInicio < :hasta")
+    long contarReservasEnRango(@Param("establecimientoId") UUID establecimientoId,
+                               @Param("estados") List<EstadoReservaNombre> estados,
+                               @Param("desde") LocalDateTime desde,
+                               @Param("hasta") LocalDateTime hasta);
+
+    //Estadísticas: fecha de inicio del día y subTotalProductor de cada reserva del establecimiento en el rango, para armar la serie del gráfico
+    @Query("SELECT r.actividadDia.fechaHoraInicio, r.subTotalProductor FROM Reserva r " +
+            "WHERE r.actividad.establecimiento.id = :establecimientoId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados " +
+            "AND r.actividadDia.fechaHoraInicio >= :desde " +
+            "AND r.actividadDia.fechaHoraInicio < :hasta")
+    List<Object[]> findFechaYSubTotalProductorEnRango(@Param("establecimientoId") UUID establecimientoId,
+                                                      @Param("estados") List<EstadoReservaNombre> estados,
+                                                      @Param("desde") LocalDateTime desde,
+                                                      @Param("hasta") LocalDateTime hasta);
+
+
+
+    @Query("SELECT YEAR(r.actividadDia.fechaHoraInicio), MONTH(r.actividadDia.fechaHoraInicio), " +
+            "COUNT(r), COALESCE(SUM(r.subTotalProductor), 0) " +
+            "FROM Reserva r " +
+            "WHERE r.actividad.establecimiento.id = :establecimientoId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados " +
+            "AND r.actividadDia.fechaHoraInicio >= :desde " +
+            "AND r.actividadDia.fechaHoraInicio < :hasta " +
+            "GROUP BY YEAR(r.actividadDia.fechaHoraInicio), MONTH(r.actividadDia.fechaHoraInicio)")
+    List<Object[]> contarYSumarPorMesEnRango(@Param("establecimientoId") UUID establecimientoId,
+                                             @Param("estados") List<EstadoReservaNombre> estados,
+                                             @Param("desde") LocalDateTime desde,
+                                             @Param("hasta") LocalDateTime hasta);
+    // Ingresos por actividad
+    @Query("SELECT r.actividad.id, COALESCE(SUM(r.totalReserva), 0) FROM Reserva r " +
+            "WHERE r.actividad.establecimiento.id = :establecimientoId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados " +
+            "AND r.actividadDia.fechaHoraInicio >= :desde " +
+            "AND r.actividadDia.fechaHoraInicio < :hasta " +
+            "GROUP BY r.actividad.id")
+    List<Object[]> sumarIngresosEnRangoPorActividad(@Param("establecimientoId") UUID establecimientoId,
+                                                    @Param("estados") List<EstadoReservaNombre> estados,
+                                                    @Param("desde") LocalDateTime desde,
+                                                    @Param("hasta") LocalDateTime hasta);
+
+    // Cupos reservados (personas) por actividad
+    @Query("SELECT r.actividad.id, COUNT(rd) FROM Reserva r " +
+            "JOIN r.reservaDetalles rd " +          // una fila por persona
+            "WHERE r.actividad.establecimiento.id = :establecimientoId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados " +
+            "AND r.actividadDia.fechaHoraInicio >= :desde " +
+            "AND r.actividadDia.fechaHoraInicio < :hasta " +
+            "GROUP BY r.actividad.id")
+    List<Object[]> contarCuposEnRangoPorActividad(@Param("establecimientoId") UUID establecimientoId,
+                                                  @Param("estados") List<EstadoReservaNombre> estados,
+                                                  @Param("desde") LocalDateTime desde,
+                                                  @Param("hasta") LocalDateTime hasta);
+
 }
