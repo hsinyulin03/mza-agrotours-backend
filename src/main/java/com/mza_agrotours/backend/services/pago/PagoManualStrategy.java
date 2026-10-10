@@ -72,9 +72,9 @@ public class PagoManualStrategy implements EstrategiaPago{
         return new ResultadoConsultaPagoDTO(true, null);
     }
 
-    // No hay sesión de cobro que invalidar
     @Override
     public void cancelarCheckout(Pago pago, LocalDateTime ahora) {
+        // No hay sesión de cobro que invalidar
     }
 
     // Igual que al pagar, se hace de cuenta que el reembolso se realizó inmediatamente

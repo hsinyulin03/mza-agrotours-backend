@@ -14,7 +14,13 @@ public class EstrategiaPagoFactory {
         this.estrategias = implementaciones.stream()
                 .collect(Collectors.toMap(EstrategiaPago::getMetodo, e -> e));
     }
+    /**
+     * @throws IllegalStateException si no hay una estrategia registrada para el método de pago
+     */
     public EstrategiaPago get(MetodoPago metodo) {
-        return estrategias.get(metodo);
+        EstrategiaPago estrategia = estrategias.get(metodo);
+        if (estrategia == null)
+            throw new IllegalStateException("No hay estrategia de pago para el método " + metodo);
+        return estrategia;
     }
 }
