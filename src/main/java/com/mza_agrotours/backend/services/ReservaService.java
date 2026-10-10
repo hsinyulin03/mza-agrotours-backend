@@ -683,7 +683,9 @@ public class ReservaService {
         }
     }
 
+    // El pago es obligatorio: solo cancelarCheckout admite reservas sin pago, y lo chequea antes de llamar acá
     private EstrategiaPago getEstrategiaPago(Pago pago){
+        Objects.requireNonNull(pago, "Se necesita el pago para obtener su estrategia");
         return estrategiaPagoFactory.get(pago.getMetodoPago());
     }
 
