@@ -10,27 +10,27 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 public class PagoExceptionHandler {
 
     @ExceptionHandler(EstadoPagoNotFoundException.class)
-    public ResponseEntity<?> handleEstadoPagoNotFoundException(EstadoPagoNotFoundException ex){
+    public ResponseEntity<ApiResponse<Void>> handleEstadoPagoNotFoundException(EstadoPagoNotFoundException ex){
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("estadoNotFound", ex.getMessage()));
     }
 
     @ExceptionHandler(EstadoReembolsoNotFoundException.class)
-    public ResponseEntity<?> handleEstadoReembolsoNotFoundException(EstadoReembolsoNotFoundException ex){
+    public ResponseEntity<ApiResponse<Void>> handleEstadoReembolsoNotFoundException(EstadoReembolsoNotFoundException ex){
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail("estadoNotFound", ex.getMessage()));
     }
 
     @ExceptionHandler(ReembolsoStateException.class)
-    public ResponseEntity<?> handleReembolsoStateException(ReembolsoStateException ex){
+    public ResponseEntity<ApiResponse<Void>> handleReembolsoStateException(ReembolsoStateException ex){
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("forbiddenState", ex.getMessage()));
     }
 
     @ExceptionHandler(ReembolsoDateException.class)
-    public ResponseEntity<?> handleReembolsoDateException(ReembolsoDateException ex){
+    public ResponseEntity<ApiResponse<Void>> handleReembolsoDateException(ReembolsoDateException ex){
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail("forbiddenDate", ex.getMessage()));
     }
 
     @ExceptionHandler(EstablecimientoSinCuentaMercadoPagoException.class)
-    public ResponseEntity<?> handleEstablecimientoSinCuentaMercadoPagoException(EstablecimientoSinCuentaMercadoPagoException ex){
+    public ResponseEntity<ApiResponse<Void>> handleEstablecimientoSinCuentaMercadoPagoException(EstablecimientoSinCuentaMercadoPagoException ex){
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.fail("establecimientoSinCuentaMP", ex.getMessage()));
     }
 }
