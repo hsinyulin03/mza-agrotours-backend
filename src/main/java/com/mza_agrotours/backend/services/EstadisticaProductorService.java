@@ -192,13 +192,10 @@ public EstadisticasResponse calcularEstadisticas(UUID establecimientoId, Periodo
 
     private List<BarraDTO> barrasSemanales(UUID establecimientoId, LocalDateTime desde, LocalDateTime hasta) {
         List<LocalDateTime[]> intervalos = new ArrayList<>();
-        System.out.println("=== INTERVALOS SEMANALES ===");
         for (int i = 0; i < 4; i++) {
             LocalDateTime inicio = desde.plusWeeks(i);
-            System.out.println("Semana " + (i + 1) + ": " + inicio);
             // La última semana se extiende hasta el final del rango para no dejar días afuera
             LocalDateTime fin = (i == 3) ? hasta : inicio.plusWeeks(1);
-            System.out.println("  - " + inicio + " - " + fin);
             intervalos.add(new LocalDateTime[]{inicio, fin});
         }
 
@@ -253,13 +250,7 @@ public EstadisticasResponse calcularEstadisticas(UUID establecimientoId, Periodo
         return nombre.substring(0, 1).toUpperCase(LOCALE_AR) + nombre.substring(1, 3);
     }
 
-    private static LocalDateTime max(LocalDateTime a, LocalDateTime b) {
-        return a.isAfter(b) ? a : b;
-    }
 
-    private static LocalDateTime min(LocalDateTime a, LocalDateTime b) {
-        return a.isBefore(b) ? a : b;
-    }
 
     /**
      * Calcula los KPIs de ocupación global porcetaje de cupos reservados sobre los cupos ofertados
@@ -335,7 +326,6 @@ public EstadisticasResponse calcularEstadisticas(UUID establecimientoId, Periodo
             case DOCE_M -> hoy.minusMonths(11).withDayOfMonth(1);
             default -> throw new IllegalArgumentException("Período inválido: " + periodoValor);
         };
-        long duracionDias = ChronoUnit.DAYS.between(desde, hoy);
         LocalDate hastaAnterior = desde;
         LocalDate desdeAnterior =switch (periodoValor) {
             case TREINTA_D -> desde.minusDays(30);
