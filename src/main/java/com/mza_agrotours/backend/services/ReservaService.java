@@ -336,13 +336,12 @@ public class ReservaService {
      * La estrategia concilia el pago aprobado con la reserva (en MP, {@link com.mza_agrotours.backend.services.pago.ConciliadorPagoMP}:
      * monto, moneda, vendedor y comisiones). Si concilia, se guarda el ID de la transacción externa, se marca el pago
      * como "Aprobado", la reserva como "Pagada", se le quita la fecha de expiración y se invalida la sesión de cobro
-     * para reducir la chance de un pago duplicado. Si no concilia, la reserva queda pendiente y se loguea como error
-     * para revisión manual. Los errores de comunicación con la pasarela o de backend al procesar una
-     * reserva particular no interrumpen el procesamiento del resto y quedan registrados en el log.
+     * para reducir la chance de un pago duplicado. Si no concilia, el pago se reembolsa
+     * (ver {@link #reembolsarPagoNoConciliable}). Los errores de comunicación con la pasarela o de backend al procesar
+     * una reserva particular no interrumpen el procesamiento del resto y quedan registrados en el log.
      * <p>
-     * TODO (rama de reembolsos): solo se revisan reservas pendientes no expiradas. Un pago aprobado después de que la
-     *  reserva expiró o se canceló (ej. baja de la actividad) nunca se detecta y el visitante pierde el dinero sin reserva.
-     *  Agregar una revisión de reservas expiradas/canceladas con preference de MP que reembolse esos pagos automáticamente.
+     * NOTE: gap conocido, solo se revisan reservas pendientes no expiradas. Un pago aprobado después de que la reserva
+     *  expiró o se canceló (ej. baja de la actividad) no se detecta ni se reembolsa automáticamente.
      */
     @Transactional(readOnly = true)
     public void pagarReservas(){
@@ -354,6 +353,7 @@ public class ReservaService {
 
         List<String> idFallidas = new ArrayList<>(); // Array de las id de reserva que fallaron en pasarse a pagada
         int pagosExitosos = 0; // Cantidad de pagos exitosos
+        int pagosReembolsados = 0; // Cantidad de pagos que no conciliaron y se reembolsaron
 
         for (Reserva r : reservas){
             Pago pago = r.getPago();
@@ -374,13 +374,17 @@ public class ReservaService {
 
                 pagosExitosos++; // Contador de reservas pagadas para el log
             } catch (PagoNoConciliableException e) {
-                // No se confirma: queda pendiente (y se reintenta) hasta que expire. Requiere revisión manual
-                // TODO (rama de reembolsos): si no concilia por monto o moneda, reembolsar automáticamente (token del vendedor,
-                //  X-Idempotency-Key "refund-<paymentId>", registrar el reembolso para no repetirlo y notificar al visitante).
-                //  Si es por vendedor distinto NO reembolsar: solo alertar (indica un problema de vinculación o de datos).
-                //  Para distinguir el motivo, PagoNoConciliableException necesita exponerlo (ej. un enum)
-                log.error("Pago aprobado de la reserva {} que no concilia, requiere revisión manual: {}", r.getId(), e.getMessage());
-                idFallidas.add(r.getId().toString());
+                // NOTE: se reembolsa siempre, incluso si se acreditó a otro vendedor (gap conocido: ese reembolso
+                //  probablemente falle con el token del vendedor y termine "Pedido")
+                log.error("Pago aprobado de la reserva {} que no concilia, se reembolsa: {}", r.getId(), e.getMessage());
+                try {
+                    reembolsarPagoNoConciliable(r, e, ahora);
+                    pagosReembolsados++;
+                } catch (Exception ex) {
+                    // Si falla antes de guardar el reembolso, la reserva sigue pendiente y se reintenta en la próxima ejecución
+                    log.warn("Error de backend reembolsando el pago no conciliado de la reserva {}", r.getId(), ex);
+                    idFallidas.add(r.getId().toString());
+                }
             } catch (PasarelaPagoException e) {
                 log.warn("Error de la pasarela consultando el pago de la reserva {}", r.getId(), e);
                 idFallidas.add(r.getId().toString());
@@ -391,8 +395,32 @@ public class ReservaService {
             }
         }
 
-        log.info("Se pagaron {}/{} reservas pendientes encontradas. Las reservas con cambio fallido fueron {}, con ids: {}",
-                pagosExitosos, reservas.size(), idFallidas.size(), idFallidas);
+        log.info("Se pagaron {}/{} reservas pendientes encontradas y se reembolsaron {} pagos que no conciliaron. Las reservas con cambio fallido fueron {}, con ids: {}",
+                pagosExitosos, reservas.size(), pagosReembolsados, idFallidas.size(), idFallidas);
+    }
+
+    /**
+     * Reembolsa un pago aprobado que no concilia con su reserva, con los mismos tres pasos que una cancelación
+     * para que ningún fallo termine en un doble reembolso: primero se guarda la reserva como "Reembolsada por pago
+     * no válido" y el reembolso "En proceso" sin ID externo, después se pide el reembolso a la pasarela, y por último
+     * se guarda su respuesta. Además se invalida la sesión de cobro para que no se pague de nuevo.
+     *
+     * @param reserva reserva pendiente cuyo pago no concilia
+     * @param e excepción de la conciliación, con el ID y el monto del pago a reembolsar
+     * @param ahora fecha y hora del proceso
+     */
+    private void reembolsarPagoNoConciliable(Reserva reserva, PagoNoConciliableException e, LocalDateTime ahora){
+        Pago pago = reserva.getPago();
+        BigDecimal montoPagado = e.getMontoPagado() != null ? e.getMontoPagado() : pago.getMontoTotal();
+
+        // Paso 1: guardar la reserva y el reembolso, antes de mover dinero
+        Reembolso reembolso = self.registrarPagoNoConciliable(reserva, e.getIdTransaccionExterna(), montoPagado, ahora);
+
+        // Invalidar la sesión de cobro para que no se vuelva a pagar la reserva
+        cancelarCheckout(pago, ahora);
+
+        // Pasos 2 y 3: pedir el reembolso y guardar la respuesta
+        pedirReembolso(reembolso, pago);
     }
 
     /**
@@ -552,24 +580,11 @@ public class ReservaService {
         if (pago.getMetodoPago() == MetodoPago.MANUAL) // El reembolso manual se aprueba instantáneamente y queda completado
             return new IniciarReembolsoDTO(ResultadoCancelacion.REEMBOLSO_REALIZADO);
 
-        // Paso 2: pedir el reembolso a la pasarela
-        ResultadoReembolsoDTO resultado;
-        try {
-            resultado = getEstrategiaPago(pago).reembolsar(pago);
-        } catch (PasarelaPagoException e) {
-            log.warn("No se sabe si se realizó el reembolso {}, lo verificará la tarea programada", reembolso.getId(), e);
-            return new IniciarReembolsoDTO(ResultadoCancelacion.REEMBOLSO_EN_PROCESO); // Se resuelve solo, avisamos cuando sepamos
-        }
+        // Pasos 2 y 3: pedir el reembolso a la pasarela y guardar su respuesta
+        ResultadoReembolsoDTO resultado = pedirReembolso(reembolso, pago);
 
-        // Paso 3: guardar la respuesta de la pasarela
-        try {
-            self.registrarPedidoReembolso(reembolso.getId(), resultado);
-        } catch (Exception e) {
-            log.error("No se pudo guardar la respuesta de MP del reembolso {}, lo verificará la tarea programada", reembolso.getId(), e);
-        }
-
-        if (resultado.aceptado())
-            return new IniciarReembolsoDTO(ResultadoCancelacion.REEMBOLSO_EN_PROCESO); // Avisar que el proceso marcha bien, avisamos cuando sepamos
+        if (resultado == null || resultado.aceptado())
+            return new IniciarReembolsoDTO(ResultadoCancelacion.REEMBOLSO_EN_PROCESO); // Avisar que el proceso marcha bien (o se resuelve solo), avisamos cuando sepamos
         return new IniciarReembolsoDTO(ResultadoCancelacion.REEMBOLSO_MANUAL_PRODUCTOR); // Avisar que hubo un error. Se notificó al propietario
     }
 
@@ -747,7 +762,69 @@ public class ReservaService {
     }
 
     /**
-     * Paso 3 de {@link #handleCancelarReserva}: guarda la respuesta de la pasarela al pedido de reembolso.
+     * Paso 1 de {@link #reembolsarPagoNoConciliable}: registra el pago que no concilia y su reembolso, y avisa al
+     * visitante. El pago queda "Aprobado" con el ID de la transacción (necesario para reembolsar), la reserva
+     * "Reembolsada por pago no válido" (libera el cupo) y el reembolso "En proceso" sin ID externo.
+     *
+     * @return el reembolso creado
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected Reembolso registrarPagoNoConciliable(Reserva reserva, String idTransaccionExterna, BigDecimal montoPagado, LocalDateTime ahora){
+        Pago pago = reserva.getPago();
+        pago.setIdTransaccionExterna(idTransaccionExterna);
+        pago.cambiarEstado(getEstadoPago(EstadoPagoNombre.APROBADO), ahora); // La pasarela lo aprobó; pasa a "Reembolsado" al confirmarse
+
+        reserva.setFechaHoraExpiracion(null);
+        reserva.cambiarEstado(getEstadoReserva(REEMBOLSO_NO_CONCILIACION), ahora);
+
+        Reembolso reembolso = new Reembolso();
+        reembolso.setMontoReembolso(montoPagado);
+        reembolso.setFechaHoraPedido(ahora);
+        reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.EN_PROCESO), ahora);
+        reembolso.setReserva(reserva);
+
+        reservaRepository.save(reserva);
+        reembolsoRepository.save(reembolso);
+
+        notificacionService.crearNotificacion(
+                reserva.getVisitante().getUsuario(),
+                TipoNotificacionNombre.RESERVA_REEMBOLSADA_PAGO_NO_VALIDO,
+                null,
+                RutasNotificacionesFront.detalleReserva(reserva.getId()),
+                reserva.getActividad().getNombre(),
+                reserva.getActividadDia().getFechaHoraInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
+                montoPagado.toPlainString());
+
+        return reembolso;
+    }
+
+    /**
+     * Pide el reembolso a la pasarela y guarda su respuesta (pasos 2 y 3 de {@link #handleCancelarReserva} y
+     * {@link #reembolsarPagoNoConciliable}). Nunca se reintenta el pedido: si no se sabe si la pasarela lo hizo
+     * (error de comunicación o falla al guardar la respuesta), el reembolso queda "En proceso" y
+     * {@link #confirmarReembolsos()} lo verifica.
+     *
+     * @return la respuesta de la pasarela, o null si no se sabe si el reembolso se realizó
+     */
+    private ResultadoReembolsoDTO pedirReembolso(Reembolso reembolso, Pago pago){
+        ResultadoReembolsoDTO resultado;
+        try {
+            resultado = getEstrategiaPago(pago).reembolsar(pago);
+        } catch (PasarelaPagoException e) {
+            log.warn("No se sabe si se realizó el reembolso {}, lo verificará la tarea programada", reembolso.getId(), e);
+            return null;
+        }
+
+        try {
+            self.registrarPedidoReembolso(reembolso.getId(), resultado);
+        } catch (Exception e) {
+            log.error("No se pudo guardar la respuesta de la pasarela del reembolso {}, lo verificará la tarea programada", reembolso.getId(), e);
+        }
+        return resultado;
+    }
+
+    /**
+     * Paso 3 de {@link #pedirReembolso}: guarda la respuesta de la pasarela al pedido de reembolso.
      * Si fue aceptado se guarda su ID externo (sigue "En proceso" hasta que se confirme); si fue rechazado
      * pasa a "Pedido" para que lo haga el productor.
      */
@@ -765,7 +842,8 @@ public class ReservaService {
 
     /**
      * Da por realizado un reembolso: el reembolso pasa a "Reembolsado por productor" con su fecha de reembolso,
-     * el pago a "Reembolsado" y la reserva a "Cancelada con reembolso". No guarda.
+     * el pago a "Reembolsado" y, si es por una cancelación, la reserva a "Cancelada con reembolso". La reserva
+     * de un pago no conciliado ya está en su estado final ("Reembolsada por pago no válido") y no cambia. No guarda.
      *
      * @param reembolso reembolso realizado, con su reserva y pago
      * @param ahora fecha y hora en la que se realizó el reembolso
@@ -776,7 +854,8 @@ public class ReservaService {
         reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.REEMBOLSADO_PRODUCTOR), ahora);
         reembolso.setFechaHoraReembolso(ahora);
         reserva.getPago().cambiarEstado(getEstadoPago(EstadoPagoNombre.REEMBOLSADO), ahora);
-        reserva.cambiarEstado(getEstadoReserva(CANCELADA_CON_REEMBOLSO), ahora);
+        if (reserva.getEstadoActual().getEstadoReserva().getNombre() != REEMBOLSO_NO_CONCILIACION)
+            reserva.cambiarEstado(getEstadoReserva(CANCELADA_CON_REEMBOLSO), ahora);
     }
 
     private Usuario getUsuario(String emailUsuario){

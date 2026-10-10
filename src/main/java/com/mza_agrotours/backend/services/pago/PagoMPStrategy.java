@@ -201,9 +201,8 @@ public class PagoMPStrategy implements EstrategiaPago{
                     .toList();
             if (aprobados.isEmpty()) return ResultadoConsultaPagoDTO.noAprobado();
 
-            // TODO (rama de reembolsos): reembolsar automáticamente los pagos aprobados extra (todos menos el conciliado),
-            //  con el token del vendedor (opcionesMP), X-Idempotency-Key "refund-<paymentId>" y registrando qué pagos se
-            //  reembolsaron para no repetirlo en la próxima corrida. Notificar al visitante. No setear Reembolso.pagoReembolsoSistema
+            // NOTE: gap conocido, los pagos aprobados extra de una misma preference no se reembolsan automáticamente.
+            //  Se ignoran: solo se concilia (o reembolsa, si no concilia) el primero
             if (aprobados.size() > 1)
                 log.warn("La reserva {} tiene {} pagos aprobados en MP {}: se concilia el primero, el resto requiere reembolso manual",
                         reserva.getId(), aprobados.size(), aprobados);

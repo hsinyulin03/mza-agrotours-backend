@@ -29,7 +29,8 @@ public interface EstrategiaPago {
      * @param reserva reserva cuyo pago se consulta
      * @return si fue aprobado y, en tal caso, el ID de la transacción en la pasarela
      * @throws PasarelaPagoException si falla la comunicación con la pasarela
-     * @throws PagoNoConciliableException si hay un pago aprobado que no concilia con la reserva
+     * @throws PagoNoConciliableException si hay un pago aprobado que no concilia con la reserva, con los datos
+     *                                    del pago para reembolsarlo
      */
     ResultadoConsultaPagoDTO consultarPago(Reserva reserva);
 

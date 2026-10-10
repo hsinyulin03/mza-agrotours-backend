@@ -31,7 +31,8 @@ public class ConciliadorPagoMP {
 
     /**
      * @throws PagoNoConciliableException si el pago no está aprobado, no es por el total de la reserva
-     *                                    en pesos o no se acreditó a la cuenta del vendedor que creó la preference
+     *                                    en pesos o no se acreditó a la cuenta del vendedor que creó la preference.
+     *                                    Lleva el ID y el monto del payment para reembolsarlo
      */
     public void conciliar(Reserva reserva, Payment payment) {
         validar(reserva, payment);
@@ -58,21 +59,26 @@ public class ConciliadorPagoMP {
 
     private void validar(Reserva reserva, Payment payment) {
         if (!"approved".equals(payment.getStatus()))
-            throw new PagoNoConciliableException("El pago MP %d no está aprobado (%s)"
+            throw noConcilia(payment, "El pago MP %d no está aprobado (%s)"
                     .formatted(payment.getId(), payment.getStatus()));
 
         if (!MONEDA.equals(payment.getCurrencyId()))
-            throw new PagoNoConciliableException("El pago MP %d es en %s, se esperaba %s"
+            throw noConcilia(payment, "El pago MP %d es en %s, se esperaba %s"
                     .formatted(payment.getId(), payment.getCurrencyId(), MONEDA));
 
         if (payment.getTransactionAmount() == null || payment.getTransactionAmount().compareTo(reserva.getTotalReserva()) != 0)
-            throw new PagoNoConciliableException("El pago MP %d es por %s y la reserva %s por %s"
+            throw noConcilia(payment, "El pago MP %d es por %s y la reserva %s por %s"
                     .formatted(payment.getId(), payment.getTransactionAmount(), reserva.getId(), reserva.getTotalReserva()));
 
         CuentaMercadoPago cuenta = reserva.getPago().getCuentaMercadoPago();
         if (cuenta != null && !Objects.equals(cuenta.getMpUserId(), payment.getCollectorId()))
-            throw new PagoNoConciliableException("El pago MP %d se acreditó al usuario %d y no al vendedor %d"
+            throw noConcilia(payment, "El pago MP %d se acreditó al usuario %d y no al vendedor %d"
                     .formatted(payment.getId(), payment.getCollectorId(), cuenta.getMpUserId()));
+    }
+
+    // Lleva el ID y el monto del payment para poder reembolsarlo
+    private static PagoNoConciliableException noConcilia(Payment payment, String mensaje) {
+        return new PagoNoConciliableException(mensaje, String.valueOf(payment.getId()), payment.getTransactionAmount());
     }
 
     /**

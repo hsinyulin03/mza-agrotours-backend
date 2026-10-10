@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.services;
 
 import com.mercadopago.client.merchantorder.MerchantOrderClient;
 import com.mercadopago.client.payment.PaymentClient;
+import com.mercadopago.client.payment.PaymentRefundClient;
 import com.mercadopago.client.preference.PreferenceClient;
 import com.mercadopago.client.preference.PreferenceRequest;
 import com.mercadopago.core.MPRequestOptions;
@@ -12,17 +13,25 @@ import com.mercadopago.resources.merchantorder.MerchantOrder;
 import com.mercadopago.resources.merchantorder.MerchantOrderPayment;
 import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.payment.PaymentFeeDetail;
+import com.mercadopago.resources.payment.PaymentRefund;
 import com.mza_agrotours.backend.clients.mercadopago.MercadoPagoOAuthClient;
+import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoDTO;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.Visitante;
+import com.mza_agrotours.backend.entities.actividad.Actividad;
+import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.entities.establecimiento.CuentaMercadoPago;
 import com.mza_agrotours.backend.entities.pago.EstadoPago;
+import com.mza_agrotours.backend.entities.pago.EstadoReembolso;
 import com.mza_agrotours.backend.entities.pago.Pago;
+import com.mza_agrotours.backend.entities.pago.Reembolso;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.enums.EstadoPagoNombre;
+import com.mza_agrotours.backend.enums.EstadoReembolsoNombre;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.enums.MetodoPago;
+import com.mza_agrotours.backend.enums.TipoNotificacionNombre;
 import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
 import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
@@ -50,13 +59,15 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 /**
  * Llamadas a Mercado Pago de ReservaService (a través de {@link PagoMPStrategy}) con el split de marketplace:
- * confirmación de pagos por el scheduler (conciliación) y expiración de preferences, siempre con el token de la
- * cuenta del vendedor que creó la preference.
+ * confirmación de pagos por el scheduler (conciliación), reembolso de pagos que no concilian, confirmación de
+ * reembolsos y expiración de preferences, siempre con el token de la cuenta del vendedor que creó la preference.
  * Los clientes del SDK se instancian dentro de los métodos, así que se interceptan con {@code mockConstruction}.
  */
 class ReservaServicePagoMPTest {
@@ -69,6 +80,8 @@ class ReservaServicePagoMPTest {
     private VisitanteRepository visitanteRepository;
     private ReservaService self;
     private ReservaService service;
+    private ReembolsoRepository reembolsoRepository;
+    private NotificacionService notificacionService;
 
     private final EstadoReserva estadoPagada = new EstadoReserva(EstadoReservaNombre.PAGADA);
     private final EstadoReserva estadoExpirada = new EstadoReserva(EstadoReservaNombre.EXPIRADA);
@@ -77,23 +90,32 @@ class ReservaServicePagoMPTest {
     private final Map<String, List<MerchantOrder>> merchantOrdersPorPreference = new HashMap<>();
     private final Map<Long, Payment> paymentsPorId = new HashMap<>();
     private final Set<String> preferencesConError = new HashSet<>();
+    private String estadoRefundEnMp = "approved";   // Estado que devuelve MP al consultar un refund
 
     private MockedConstruction<MerchantOrderClient> merchantOrderClients;
     private MockedConstruction<PaymentClient> paymentClients;
     private MockedConstruction<PreferenceClient> preferenceClients;
+    private MockedConstruction<PaymentRefundClient> refundClients;
 
     @BeforeEach
     void setUp() {
         reservaRepository = mock(ReservaRepository.class);
         usuarioRepository = mock(UsuarioRepository.class);
         visitanteRepository = mock(VisitanteRepository.class);
+        reembolsoRepository = mock(ReembolsoRepository.class);
+        notificacionService = mock(NotificacionService.class);
         EstadoPagoRepository estadoPagoRepository = mock(EstadoPagoRepository.class);
+        EstadoReembolsoRepository estadoReembolsoRepository = mock(EstadoReembolsoRepository.class);
         self = mock(ReservaService.class);
 
+        when(reservaRepository.findEstadoReservaByEstadoReservaNombre(any())).thenAnswer(inv ->
+                Optional.of(new EstadoReserva(inv.<EstadoReservaNombre>getArgument(0))));
         when(reservaRepository.findEstadoReservaByEstadoReservaNombre(EstadoReservaNombre.PAGADA)).thenReturn(Optional.of(estadoPagada));
         when(reservaRepository.findEstadoReservaByEstadoReservaNombre(EstadoReservaNombre.EXPIRADA)).thenReturn(Optional.of(estadoExpirada));
-        when(estadoPagoRepository.findByNombre(EstadoPagoNombre.APROBADO))
-                .thenReturn(Optional.of(new EstadoPago(EstadoPagoNombre.APROBADO, LocalDateTime.now(), null)));
+        when(estadoPagoRepository.findByNombre(any())).thenAnswer(inv ->
+                Optional.of(new EstadoPago(inv.<EstadoPagoNombre>getArgument(0), LocalDateTime.now(), null)));
+        when(estadoReembolsoRepository.findByNombre(any())).thenAnswer(inv ->
+                Optional.of(new EstadoReembolso(LocalDateTime.now(), null, inv.<EstadoReembolsoNombre>getArgument(0))));
 
         // Servicio real: opcionesDe no usa sus dependencias
         CuentaMercadoPagoService cuentaService = new CuentaMercadoPagoService(
@@ -109,8 +131,11 @@ class ReservaServicePagoMPTest {
         service = new ReservaService(reservaRepository, mock(ReservaMapper.class), mock(ActividadRepository.class),
                 mock(ParametrosService.class), usuarioRepository, visitanteRepository,
                 mock(TipoIdentificacionRepository.class), estrategiaPagoFactory, self,
-                estadoPagoRepository, mock(NotificacionService.class), mock(EstadoReembolsoRepository.class),
-                mock(ReembolsoRepository.class));
+                estadoPagoRepository, notificacionService, estadoReembolsoRepository, reembolsoRepository);
+
+        // El paso 1 del reembolso de un pago no conciliado corre en su propia transacción vía self: se ejecuta el real
+        when(self.registrarPagoNoConciliable(any(), any(), any(), any())).thenAnswer(inv -> service.registrarPagoNoConciliable(
+                inv.getArgument(0), inv.getArgument(1), inv.getArgument(2), inv.getArgument(3)));
 
         merchantOrderClients = mockConstruction(MerchantOrderClient.class, (client, contexto) ->
                 when(client.search(any(MPSearchRequest.class), any(MPRequestOptions.class))).thenAnswer(inv -> {
@@ -124,6 +149,13 @@ class ReservaServicePagoMPTest {
         paymentClients = mockConstruction(PaymentClient.class, (client, contexto) ->
                 when(client.get(anyLong(), any(MPRequestOptions.class))).thenAnswer(inv -> paymentsPorId.get(inv.<Long>getArgument(0))));
         preferenceClients = mockConstruction(PreferenceClient.class);
+        refundClients = mockConstruction(PaymentRefundClient.class, (client, contexto) -> {
+            PaymentRefund refund = mock(PaymentRefund.class);
+            when(refund.getId()).thenReturn(555L);
+            when(refund.getStatus()).thenAnswer(inv -> estadoRefundEnMp);
+            when(client.refund(anyLong(), any(MPRequestOptions.class))).thenReturn(refund);
+            when(client.get(anyLong(), anyLong(), any(MPRequestOptions.class))).thenReturn(refund);
+        });
     }
 
     @AfterEach
@@ -131,6 +163,7 @@ class ReservaServicePagoMPTest {
         merchantOrderClients.close();
         paymentClients.close();
         preferenceClients.close();
+        refundClients.close();
     }
 
     // ---------- Datos ----------
@@ -151,8 +184,20 @@ class ReservaServicePagoMPTest {
         pago.setMontoTotal(new BigDecimal("10000.00"));
         pago.cambiarEstado(new EstadoPago(EstadoPagoNombre.PENDIENTE, LocalDateTime.now(), null), LocalDateTime.now());
 
+        // Datos que usa la notificación al visitante
+        Visitante visitante = mock(Visitante.class);
+        when(visitante.getUsuario()).thenReturn(mock(Usuario.class));
+        Actividad actividad = mock(Actividad.class);
+        when(actividad.getNombre()).thenReturn("Cosecha");
+        ActividadDia dia = mock(ActividadDia.class);
+        when(dia.getFechaHoraInicio()).thenReturn(LocalDateTime.now().plusDays(10));
+
         Reserva reserva = new Reserva();
         reserva.setId(UUID.randomUUID());
+        reserva.setVisitante(visitante);
+        reserva.setActividad(actividad);
+        reserva.setActividadDia(dia);
+        reserva.cambiarEstado(new EstadoReserva(EstadoReservaNombre.PENDIENTE), LocalDateTime.now());
         reserva.setTotalReserva(new BigDecimal("10000.00"));
         reserva.setSubTotalComisionPropia(new BigDecimal("1000.00"));
         reserva.setSubTotalProductor(new BigDecimal("9000.00"));
@@ -282,7 +327,7 @@ class ReservaServicePagoMPTest {
     }
 
     @Test
-    void noConfirmaUnPagoQueNoConcilia() throws Exception {
+    void unPagoQueNoConciliaSeReembolsaYLaReservaQuedaReembolsadaPorPagoNoValido() throws Exception {
         Reserva reserva = reservaPendiente("pref-1", cuentaVendedor());
         pendientes(reserva);
         merchantOrder("pref-1", 987L, "approved");
@@ -290,12 +335,40 @@ class ReservaServicePagoMPTest {
 
         service.pagarReservas();
 
-        assertNoConfirmada(reserva);
-        assertTrue(preferenceClients.constructed().isEmpty(), "No se expira la preference de una reserva no confirmada");
+        // No se confirma: la reserva pasa a su estado final y libera el cupo
+        verify(self, never()).cambiarEstadoReservaYGuardar(any(), any(), any());
+        assertEquals(EstadoReservaNombre.REEMBOLSO_NO_CONCILIACION, reserva.getEstadoActual().getEstadoReserva().getNombre());
+        assertNull(reserva.getFechaHoraExpiracion());
+
+        // El pago guarda el payment (necesario para reembolsar) y queda aprobado hasta confirmarse el reembolso
+        assertEquals("987", reserva.getPago().getIdTransaccionExterna());
+        assertEquals(EstadoPagoNombre.APROBADO, reserva.getPago().getEstadoActual().getEstadoPago().getNombre());
+
+        // Se guarda el reembolso "En proceso" por lo realmente pagado, antes de pedirlo
+        ArgumentCaptor<Reembolso> reembolso = ArgumentCaptor.forClass(Reembolso.class);
+        verify(reembolsoRepository).save(reembolso.capture());
+        assertEquals(EstadoReembolsoNombre.EN_PROCESO, reembolso.getValue().getEstadoActual().getEstadoReembolso().getNombre());
+        assertEquals(new BigDecimal("9999.99"), reembolso.getValue().getMontoReembolso());
+        assertSame(reserva, reembolso.getValue().getReserva());
+
+        // Se expira la preference y se pide el reembolso, ambos con el token del vendedor
+        ArgumentCaptor<MPRequestOptions> opcionesExpiracion = ArgumentCaptor.forClass(MPRequestOptions.class);
+        verify(preferenceClients.constructed().get(0)).update(eq("pref-1"), any(PreferenceRequest.class), opcionesExpiracion.capture());
+        assertEquals(TOKEN_VENDEDOR, opcionesExpiracion.getValue().getAccessToken());
+
+        ArgumentCaptor<MPRequestOptions> opcionesReembolso = ArgumentCaptor.forClass(MPRequestOptions.class);
+        verify(refundClients.constructed().get(0)).refund(eq(987L), opcionesReembolso.capture());
+        assertEquals(TOKEN_VENDEDOR, opcionesReembolso.getValue().getAccessToken());
+
+        // Se guarda la respuesta de MP y se avisa al visitante
+        verify(self).registrarPedidoReembolso(any(), argThat(ResultadoReembolsoDTO::aceptado));
+        verify(notificacionService).crearNotificacion(eq(reserva.getVisitante().getUsuario()),
+                eq(TipoNotificacionNombre.RESERVA_REEMBOLSADA_PAGO_NO_VALIDO), isNull(), anyString(),
+                eq("Cosecha"), anyString(), eq("9999.99"));
     }
 
     @Test
-    void noConfirmaUnPagoAcreditadoAOtroVendedor() {
+    void unPagoAcreditadoAOtroVendedorTambienSeReembolsa() throws Exception {
         Reserva reserva = reservaPendiente("pref-1", cuentaVendedor());
         pendientes(reserva);
         merchantOrder("pref-1", 987L, "approved");
@@ -303,7 +376,90 @@ class ReservaServicePagoMPTest {
 
         service.pagarReservas();
 
-        assertNoConfirmada(reserva);
+        verify(self, never()).cambiarEstadoReservaYGuardar(any(), any(), any());
+        assertEquals(EstadoReservaNombre.REEMBOLSO_NO_CONCILIACION, reserva.getEstadoActual().getEstadoReserva().getNombre());
+        verify(refundClients.constructed().get(0)).refund(eq(987L), any(MPRequestOptions.class));
+    }
+
+    @Test
+    void siNoSeSabeSiMpHizoElReembolsoQuedaEnProcesoParaLaTareaProgramada() throws Exception {
+        refundClients.close();
+        refundClients = mockConstruction(PaymentRefundClient.class, (client, contexto) ->
+                when(client.refund(anyLong(), any(MPRequestOptions.class))).thenThrow(new MPException("timeout")));
+
+        Reserva reserva = reservaPendiente("pref-1", cuentaVendedor());
+        pendientes(reserva);
+        merchantOrder("pref-1", 987L, "approved");
+        payment(987L, "9999.99", VENDEDOR);
+
+        service.pagarReservas();
+
+        // La reserva y el reembolso ya quedaron guardados; no se guarda respuesta, confirmarReembolsos lo busca en MP
+        assertEquals(EstadoReservaNombre.REEMBOLSO_NO_CONCILIACION, reserva.getEstadoActual().getEstadoReserva().getNombre());
+        verify(reembolsoRepository).save(any(Reembolso.class));
+        verify(self, never()).registrarPedidoReembolso(any(), any());
+    }
+
+    // ---------- confirmarReembolsos ----------
+
+    /** Reembolso "En proceso" ya pedido a MP (refund 555 del payment 987) de una reserva en el estado indicado. */
+    private Reembolso reembolsoEnProceso(EstadoReservaNombre estadoReserva) {
+        Reserva reserva = reservaPendiente("pref-1", cuentaVendedor());
+        reserva.getPago().setIdTransaccionExterna("987");
+        reserva.getPago().cambiarEstado(new EstadoPago(EstadoPagoNombre.APROBADO, LocalDateTime.now(), null), LocalDateTime.now());
+        reserva.cambiarEstado(new EstadoReserva(estadoReserva), LocalDateTime.now());
+
+        Reembolso reembolso = new Reembolso();
+        reembolso.setReserva(reserva);
+        reembolso.setMontoReembolso(new BigDecimal("9999.99"));
+        reembolso.setFechaHoraPedido(LocalDateTime.now().minusMinutes(10));
+        reembolso.setIdReembolsoExterno("555");
+        reembolso.cambiarEstado(new EstadoReembolso(LocalDateTime.now(), null, EstadoReembolsoNombre.EN_PROCESO), LocalDateTime.now());
+        when(reembolsoRepository.findReembolsosEnProceso()).thenReturn(List.of(reembolso));
+        return reembolso;
+    }
+
+    @Test
+    void alConfirmarseElReembolsoDeUnPagoNoConciliadoLaReservaNoCambia() throws Exception {
+        Reembolso reembolso = reembolsoEnProceso(EstadoReservaNombre.REEMBOLSO_NO_CONCILIACION);
+        estadoRefundEnMp = "approved";
+
+        service.confirmarReembolsos();
+
+        Reserva reserva = reembolso.getReserva();
+        assertEquals(EstadoReembolsoNombre.REEMBOLSADO_PRODUCTOR, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
+        assertEquals(EstadoPagoNombre.REEMBOLSADO, reserva.getPago().getEstadoActual().getEstadoPago().getNombre());
+        assertEquals(EstadoReservaNombre.REEMBOLSO_NO_CONCILIACION, reserva.getEstadoActual().getEstadoReserva().getNombre());
+        verify(self).guardarReembolso(reembolso);
+
+        ArgumentCaptor<MPRequestOptions> opciones = ArgumentCaptor.forClass(MPRequestOptions.class);
+        verify(refundClients.constructed().get(0)).get(eq(987L), eq(555L), opciones.capture());
+        assertEquals(TOKEN_VENDEDOR, opciones.getValue().getAccessToken());
+    }
+
+    @Test
+    void unReembolsoRechazadoDeUnPagoNoConciliadoPasaAPedido() {
+        Reembolso reembolso = reembolsoEnProceso(EstadoReservaNombre.REEMBOLSO_NO_CONCILIACION);
+        estadoRefundEnMp = "rejected";
+
+        service.confirmarReembolsos();
+
+        Reserva reserva = reembolso.getReserva();
+        assertEquals(EstadoReembolsoNombre.PEDIDO, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
+        assertEquals(EstadoPagoNombre.APROBADO, reserva.getPago().getEstadoActual().getEstadoPago().getNombre());
+        assertEquals(EstadoReservaNombre.REEMBOLSO_NO_CONCILIACION, reserva.getEstadoActual().getEstadoReserva().getNombre());
+        verify(self).guardarReembolso(reembolso);
+    }
+
+    @Test
+    void alConfirmarseElReembolsoDeUnaCancelacionLaReservaQuedaCanceladaConReembolso() {
+        Reembolso reembolso = reembolsoEnProceso(EstadoReservaNombre.CANCELADA_REEMBOLSO_PENDIENTE);
+        estadoRefundEnMp = "approved";
+
+        service.confirmarReembolsos();
+
+        assertEquals(EstadoReservaNombre.CANCELADA_CON_REEMBOLSO,
+                reembolso.getReserva().getEstadoActual().getEstadoReserva().getNombre());
     }
 
     @Test
