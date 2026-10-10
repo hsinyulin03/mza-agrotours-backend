@@ -41,7 +41,6 @@ public class Reserva extends BaseEntity {
 
     private LocalDateTime fechaHoraRecordatorio;    // FH en que se envió el recordatorio del día anterior (null = no enviado)
 
-    //TODO relaciones -  Reembolso
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private ReservaEstado estadoActual;
 

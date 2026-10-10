@@ -21,11 +21,11 @@ import java.util.List;
 @NoArgsConstructor
 public class Pago extends BaseEntity {
 
-    // ID de la transacción en el medio de pago. En MP es el ID del payment aprobado: es null hasta que se concilia
-    private String idTransaccionExterna;
-
-    // ID del checkout con el que se cobra. En MP es el ID de la preference de Checkout Pro
+    // ID de la sesión de cobro creada en la pasarela antes de pagar (MP: preference id). Null si el método no usa pasarela
     private String idCheckoutExterno;
+
+    // ID de la transacción real en la pasarela, se completa al conciliarse el pago aprobado (MP: payment id). Null si el método no usa pasarela
+    private String idTransaccionExterna;
 
     @Column(nullable = false)
     private LocalDateTime fechaHoraPago;
@@ -35,6 +35,7 @@ public class Pago extends BaseEntity {
 
     // NOTE Esto no estaba en el DC ni la US, pero lo veo útil para usar estrategia y hacer pagos manuales y por mp
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private MetodoPago metodoPago;
 
     // Cuenta de MP del vendedor con cuyo token se creó la preference. Toda llamada posterior a MP sobre este

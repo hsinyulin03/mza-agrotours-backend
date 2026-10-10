@@ -14,14 +14,19 @@ public class ReservaEstadosScheduler {
         this.reservaService = reservaService;
     }
 
-    @Scheduled(fixedDelay = 60L, timeUnit = TimeUnit.SECONDS)
+    @Scheduled(initialDelay = 10L, fixedDelay = 60L, timeUnit = TimeUnit.SECONDS)
     public void checkReservasExpiradas(){
         reservaService.expirarReservas();
     }
 
-    @Scheduled(fixedDelay = 60L, timeUnit = TimeUnit.SECONDS)
+    @Scheduled(initialDelay = 10L, fixedDelay = 60L, timeUnit = TimeUnit.SECONDS)
     public void checkReservasPagadas(){
         reservaService.pagarReservas();
+    }
+
+    @Scheduled(initialDelay = 10L, fixedDelay = 60L, timeUnit = TimeUnit.SECONDS)
+    public void checkReembolsosConfirmados(){
+        reservaService.confirmarReembolsos();
     }
 
     // El recordatorio se envía a las reservas cuyo día empieza en las próximas 24 h

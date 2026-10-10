@@ -1,10 +1,15 @@
 package com.mza_agrotours.backend.services.pago;
 
+import com.mercadopago.client.payment.PaymentRefundClient;
 import com.mercadopago.client.preference.PreferenceClient;
 import com.mercadopago.client.preference.PreferenceRequest;
 import com.mercadopago.core.MPRequestOptions;
+import com.mercadopago.net.MPResourceList;
+import com.mercadopago.resources.payment.PaymentRefund;
 import com.mercadopago.resources.preference.Preference;
 import com.mza_agrotours.backend.clients.mercadopago.MercadoPagoOAuthClient;
+import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaReembolso;
+import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoDTO;
 import com.mza_agrotours.backend.dtos.reservas.PagoStrategyDTO;
 import com.mza_agrotours.backend.entities.Parametros;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
@@ -34,16 +39,19 @@ import org.mockito.MockedConstruction;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
- * Creación de la preference de Checkout Pro en nombre del vendedor (split de marketplace).
- * El {@link PreferenceClient} se instancia dentro del método, así que se intercepta con {@code mockConstruction}.
+ * Creación de la preference de Checkout Pro y reembolsos en nombre del vendedor (split de marketplace).
+ * Los clientes del SDK se instancian dentro de los métodos, así que se interceptan con {@code mockConstruction}.
  */
 class PagoMPStrategyTest {
 
@@ -70,7 +78,7 @@ class PagoMPStrategyTest {
                 mock(EstablecimientoRepository.class), mock(CuentaMercadoPagoRepository.class),
                 mock(MercadoPagoOAuthClient.class), mock(Cifrador.class));
 
-        strategy = new PagoMPStrategy(pagoRepository, parametrosService, cuentaService);
+        strategy = new PagoMPStrategy(pagoRepository, parametrosService, cuentaService, new ConciliadorPagoMP());
 
         establecimiento = new Establecimiento();
         establecimiento.setId(UUID.randomUUID());
@@ -207,6 +215,90 @@ class PagoMPStrategyTest {
         try (MockedConstruction<PreferenceClient> clientes = preferenceClientQueDevuelve("pref-123")) {
             assertThrows(EstablecimientoSinCuentaMercadoPagoException.class, () -> strategy.procesarPago(reserva));
             assertTrue(clientes.constructed().isEmpty());
+        }
+    }
+
+    // ---------- Reembolsos ----------
+
+    /** Pago aprobado de MP (payment 987) cobrado con la cuenta indicada. */
+    private static Pago pagoAprobado(CuentaMercadoPago cuenta) {
+        Pago pago = new Pago();
+        pago.setId(UUID.randomUUID());
+        pago.setMetodoPago(MetodoPago.MERCADO_PAGO);
+        pago.setIdTransaccionExterna("987");
+        pago.setCuentaMercadoPago(cuenta);
+        return pago;
+    }
+
+    @Test
+    void reembolsaConElTokenDelVendedorYUnaIdempotencyKeyPorPago() throws Exception {
+        Pago pago = pagoAprobado(vincularCuenta(LocalDateTime.now().plusDays(100)));
+        PaymentRefund refund = mock(PaymentRefund.class);
+        when(refund.getId()).thenReturn(555L);
+
+        try (MockedConstruction<PaymentRefundClient> clientes = mockConstruction(PaymentRefundClient.class, (client, contexto) ->
+                when(client.refund(anyLong(), any(MPRequestOptions.class))).thenReturn(refund))) {
+            ResultadoReembolsoDTO resultado = strategy.reembolsar(pago);
+
+            ArgumentCaptor<MPRequestOptions> opciones = ArgumentCaptor.forClass(MPRequestOptions.class);
+            verify(clientes.constructed().get(0)).refund(eq(987L), opciones.capture());
+            assertEquals(TOKEN_VENDEDOR, opciones.getValue().getAccessToken());
+            assertEquals("reembolso-pago-" + pago.getId(), opciones.getValue().getCustomHeaders().get("X-Idempotency-Key"));
+            assertTrue(resultado.aceptado());
+            assertEquals("555", resultado.idReembolsoExterno());
+        }
+    }
+
+    @Test
+    void unPagoAnteriorAlSplitSeReembolsaConElTokenGlobal() throws Exception {
+        Pago pago = pagoAprobado(null);
+        PaymentRefund refund = mock(PaymentRefund.class);
+        when(refund.getId()).thenReturn(555L);
+
+        try (MockedConstruction<PaymentRefundClient> clientes = mockConstruction(PaymentRefundClient.class, (client, contexto) ->
+                when(client.refund(anyLong(), any(MPRequestOptions.class))).thenReturn(refund))) {
+            strategy.reembolsar(pago);
+
+            ArgumentCaptor<MPRequestOptions> opciones = ArgumentCaptor.forClass(MPRequestOptions.class);
+            verify(clientes.constructed().get(0)).refund(eq(987L), opciones.capture());
+            assertNull(opciones.getValue().getAccessToken(), "Sin token propio el SDK usa el de MercadoPagoConfig");
+        }
+    }
+
+    @Test
+    void consultaElReembolsoConElTokenDelVendedor() throws Exception {
+        Pago pago = pagoAprobado(vincularCuenta(LocalDateTime.now().plusDays(100)));
+        PaymentRefund refund = mock(PaymentRefund.class);
+        when(refund.getStatus()).thenReturn("approved");
+
+        try (MockedConstruction<PaymentRefundClient> clientes = mockConstruction(PaymentRefundClient.class, (client, contexto) ->
+                when(client.get(anyLong(), anyLong(), any(MPRequestOptions.class))).thenReturn(refund))) {
+            ResultadoConsultaReembolso resultado = strategy.consultarReembolso(pago, "555");
+
+            ArgumentCaptor<MPRequestOptions> opciones = ArgumentCaptor.forClass(MPRequestOptions.class);
+            verify(clientes.constructed().get(0)).get(eq(987L), eq(555L), opciones.capture());
+            assertEquals(TOKEN_VENDEDOR, opciones.getValue().getAccessToken());
+            assertEquals(ResultadoConsultaReembolso.APROBADO, resultado);
+        }
+    }
+
+    @Test
+    void buscaLosReembolsosConElTokenDelVendedor() throws Exception {
+        Pago pago = pagoAprobado(vincularCuenta(LocalDateTime.now().plusDays(100)));
+        PaymentRefund refund = mock(PaymentRefund.class);
+        when(refund.getId()).thenReturn(555L);
+        @SuppressWarnings("unchecked")
+        MPResourceList<PaymentRefund> refunds = mock(MPResourceList.class);
+        when(refunds.getResults()).thenReturn(List.of(refund));
+
+        try (MockedConstruction<PaymentRefundClient> clientes = mockConstruction(PaymentRefundClient.class, (client, contexto) ->
+                when(client.list(anyLong(), any(MPRequestOptions.class))).thenReturn(refunds))) {
+            Optional<String> idReembolso = strategy.buscarReembolso(pago);
+
+            ArgumentCaptor<MPRequestOptions> opciones = ArgumentCaptor.forClass(MPRequestOptions.class);
+            verify(clientes.constructed().get(0)).list(eq(987L), opciones.capture());
+            assertEquals(TOKEN_VENDEDOR, opciones.getValue().getAccessToken());
+            assertEquals(Optional.of("555"), idReembolso);
         }
     }
 }

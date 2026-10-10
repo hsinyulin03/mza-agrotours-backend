@@ -2,10 +2,7 @@ package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
-import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDTO;
-import com.mza_agrotours.backend.dtos.reservas.IniciarReservaDTO;
-import com.mza_agrotours.backend.dtos.reservas.ListarReservaDTO;
-import com.mza_agrotours.backend.dtos.reservas.RealizarReservaDTO;
+import com.mza_agrotours.backend.dtos.reservas.*;
 import com.mza_agrotours.backend.services.ReservaService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -25,7 +22,7 @@ public class ReservaController {
 
     @GetMapping("/get/{uuid}")
     public ResponseEntity<ApiResponse<ConsultarReservaDTO>> getReserva(
-            @PathVariable UUID uuid,
+            @PathVariable String uuid,
             @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
     ) {
         String email = usuarioAuthDetails.getEmail();
@@ -63,5 +60,27 @@ public class ReservaController {
         String email = usuarioAuthDetails.getEmail();
         service.handleCancelarPago(preferenceId, email);
         return ResponseEntity.ok(ApiResponse.ok(null));
+    }
+
+    @GetMapping("/cancelarReservaCondicion/{reservaId}")
+    public ResponseEntity<ApiResponse<IniciarReembolsoDTO>> cancelarReservaCondicion(
+            @PathVariable String reservaId,
+            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
+    ) {
+        String email = usuarioAuthDetails.getEmail();
+        IniciarReembolsoDTO dtoSalida = service.handleCancelarReservaCondicion(reservaId, email);
+        ApiResponse<IniciarReembolsoDTO> response = ApiResponse.ok(dtoSalida);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/cancelarReserva/{reservaId}")
+    public ResponseEntity<ApiResponse<IniciarReembolsoDTO>> cancelarReserva(
+            @PathVariable String reservaId,
+            @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails
+    ) {
+        String email = usuarioAuthDetails.getEmail();
+        IniciarReembolsoDTO dtoSalida = service.handleCancelarReserva(reservaId, email);
+        ApiResponse<IniciarReembolsoDTO> response = ApiResponse.ok(dtoSalida);
+        return ResponseEntity.ok(response);
     }
 }

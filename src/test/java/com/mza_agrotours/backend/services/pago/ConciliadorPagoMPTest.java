@@ -124,8 +124,12 @@ class ConciliadorPagoMPTest {
 
     @Test
     void rechazaUnPagoPorOtroMonto() {
-        assertThrows(PagoNoConciliableException.class, () ->
+        PagoNoConciliableException e = assertThrows(PagoNoConciliableException.class, () ->
                 conciliador.conciliar(reserva, payment("approved", "ARS", "9999.99", VENDEDOR, List.of())));
+
+        // Lleva lo necesario para reembolsarlo
+        assertEquals("987", e.getIdTransaccionExterna());
+        assertEquals(new BigDecimal("9999.99"), e.getMontoPagado());
     }
 
     @Test

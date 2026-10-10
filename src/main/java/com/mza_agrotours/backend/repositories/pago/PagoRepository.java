@@ -6,15 +6,19 @@ import com.mza_agrotours.backend.entities.pago.Pago;
 import com.mza_agrotours.backend.repositories.BaseEntityRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 import java.util.UUID;
 
+@Repository
 public interface PagoRepository extends BaseEntityRepository<Pago, UUID> {
 
     @Query("SELECT ep FROM EstadoPago ep " +
             "WHERE ep.nombre = :estadoPagoNombre")
     Optional<EstadoPago> findEstadoPagoByEstadoPagoNombre(@Param("estadoPagoNombre") EstadoPagoNombre estadoPagoNombre);
+
+    Optional<Pago> findByIdCheckoutExterno(String idCheckoutExterno);
 
     Optional<Pago> findByIdTransaccionExterna(String idTransaccionExterna);
 }

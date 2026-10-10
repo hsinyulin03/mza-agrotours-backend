@@ -8,7 +8,8 @@ import lombok.Getter;
 public enum EstadoPagoNombre{
     PENDIENTE("Pendiente"),
     APROBADO("Aprobado"),
-    RECHAZADO("Rechazado");
+    RECHAZADO("Rechazado"),
+    REEMBOLSADO("Reembolsado");
 
     private final String estado;    // Nombre lindo para mostrar en el front
 }
