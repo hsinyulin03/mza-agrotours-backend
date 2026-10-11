@@ -44,6 +44,7 @@ public interface ReservaMapper {
     ConsultarReservaDetalleDTO reservaDetalleToDTO(ReservaDetalle reservaDetalle);
 
     @Mapping(target = "idReserva", source = "reserva.id")
+    @Mapping(target = "fechaHoraInicioReserva", source = "reserva.fechaHoraInicio")
     @Mapping(target = "estadoReserva", source = "reserva.estadoActual.estadoReserva.nombre.estado")
     @Mapping(target = "cantPersonas", expression = "java(reserva.getReservaDetalles().size())")
     @Mapping(target = "actividadFechaHoraInicio", source = "reserva.actividadDia.fechaHoraInicio")
