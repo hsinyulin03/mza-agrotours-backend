@@ -1158,12 +1158,10 @@ public class ActividadService {
         Actividad actividad = actividadRepository.findById(idActividad)
                 .orElseThrow(ActividadNotFoundException::new);
 
-        // Que la actividad esté disponible (estado Publicado) y el establecimiento activo
+        // Que la actividad esté disponible (estado Publicado) y el establecimiento admita reservas
         if (actividad.getFechaHoraBaja() != null
                 || actividad.getEstado().getNombre() != EstadoActividadNombre.PUBLICADO
-                || actividad.getEstablecimiento().getEstadoActual()
-                .getEstadoEstablecimiento()
-                .getNombre().equals(EstadoEstablecimientoNombre.SUSPENDIDO))
+                || !actividad.getEstablecimiento().admiteReservas(fhActual))
             throw new ActividadNotActiveException();
 
         // Encontramos los ActividadDia y lo pasamos a DTO

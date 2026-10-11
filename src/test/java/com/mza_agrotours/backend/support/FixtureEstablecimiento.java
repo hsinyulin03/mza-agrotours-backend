@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.support;
 
+import com.mza_agrotours.backend.entities.establecimiento.CuentaMercadoPago;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
@@ -37,5 +38,20 @@ public class FixtureEstablecimiento {
         fixtureProductor.titularDe(establecimiento);
         establecimiento.cambiarEstado(catalogo.estadoEstablecimiento(estadoNombre), "Alta de prueba");
         return this.establecimientoRepository.save(establecimiento);
+    }
+
+    public Establecimiento conCuentaMercadoPago(Establecimiento establecimiento, LocalDateTime vencimientoToken) {
+        CuentaMercadoPago cuenta = new CuentaMercadoPago();
+        cuenta.setVinculadaPor(establecimiento.getTitular());
+        cuenta.setMpUserId(123456L);
+        cuenta.setAccessToken("APP_USR-access");
+        cuenta.setRefreshToken("TG-refresh");
+        cuenta.setFechaHoraExpiracionToken(vencimientoToken);
+        establecimiento.vincularCuentaMercadoPago(cuenta, LocalDateTime.now());
+        return this.establecimientoRepository.save(establecimiento);
+    }
+
+    public Establecimiento establecimientoQueAdmiteReservas() {
+        return conCuentaMercadoPago(establecimientoActivo(), LocalDateTime.now().plusDays(150));
     }
 }

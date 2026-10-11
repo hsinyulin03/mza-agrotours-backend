@@ -7,6 +7,8 @@ import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.productor.Productor;
+import com.mza_agrotours.backend.enums.EstadoCobro;
+import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -109,6 +111,18 @@ public class Establecimiento extends BaseEntity {
         return this.cuentasMercadoPago.stream()
                 .filter(CuentaMercadoPago::isVigente)
                 .findFirst();
+    }
+
+    public EstadoCobro getEstadoCobro(LocalDateTime ahora) {
+        return getCuentaMercadoPagoVigente()
+                .map(c -> c.isTokenVencido(ahora) ? EstadoCobro.TOKEN_VENCIDO : EstadoCobro.HABILITADO)
+                .orElse(EstadoCobro.SIN_CUENTA);
+    }
+
+    // Solo se reserva si el establecimiento está activo y tiene dónde recibir el pago
+    public boolean admiteReservas(LocalDateTime ahora) {
+        return this.estadoActual.getEstadoEstablecimiento().getNombre() == EstadoEstablecimientoNombre.ACTIVO
+                && getEstadoCobro(ahora) == EstadoCobro.HABILITADO;
     }
 
     /**
