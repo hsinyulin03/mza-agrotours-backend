@@ -36,5 +36,7 @@ public class DTOActividadDetalleResponse {
     // Reseñas
     private ResumenReseniasDTO resumenResenias;         // promedio, total y distribución
     private List<ReseniaCardDTO> reseniasRecientes;     // las 3 reseñas más recientes
-    //TODO- Falta mostrar pronóstico y calendario para reservas
+
+    // Calendario para reservas
+    private List<DiaActividadReservaDTO> diasActividad;
 }
