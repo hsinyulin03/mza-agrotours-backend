@@ -123,8 +123,8 @@ public class ReservaService {
 
         Visitante visitante = getVisitante(usuario);
 
-        // Obtenemos las reservas. Si está vacío devolvemos el array vacío
-        List<Reserva> reservas = reservaRepository.findByVisitanteId(visitante.getId());
+        // Obtenemos las reservas (sin las expiradas, que confunden más de lo que informan). Si está vacío devolvemos el array vacío
+        List<Reserva> reservas = reservaRepository.findNoExpiradasByVisitanteId(visitante.getId());
         if (reservas.isEmpty())
             return dtos;
 

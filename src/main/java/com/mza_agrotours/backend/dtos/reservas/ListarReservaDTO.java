@@ -4,8 +4,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record ListarReservaDTO(
-        // Reserva - total, idReserva(?)
-        BigDecimal totalReserva, String idReserva,
+        // Reserva - total, idReserva, fechaHoraInicio
+        BigDecimal totalReserva, String idReserva, LocalDateTime fechaHoraInicioReserva,
 
         // ReservaEstado - estado
         String estadoReserva,

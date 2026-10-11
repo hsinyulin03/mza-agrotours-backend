@@ -58,8 +58,9 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "JOIN FETCH r.actividad " +
             "JOIN FETCH r.actividadDia " +
             "JOIN FETCH r.reservaDetalles " +
-            "WHERE r.visitante.id = :visitanteId")
-    List<Reserva> findByVisitanteId(@Param("visitanteId") UUID visitante);
+            "WHERE r.visitante.id = :visitanteId " +
+            "AND r.estadoActual.estadoReserva.nombre <> com.mza_agrotours.backend.enums.EstadoReservaNombre.EXPIRADA")
+    List<Reserva> findNoExpiradasByVisitanteId(@Param("visitanteId") UUID visitante);
 
     @Query("SELECT DISTINCT r FROM Reserva r " +
             "LEFT JOIN FETCH r.estados " +
