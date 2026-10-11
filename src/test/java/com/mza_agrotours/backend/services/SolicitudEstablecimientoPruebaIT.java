@@ -114,7 +114,6 @@ class SolicitudEstablecimientoPruebaIT extends AbstractIntegrationTest {
         solicitud.setDomicilioLegal("Calle Falsa " + n);
         solicitud.setEmail("finca" + n + "@test.local");
         solicitud.setTelefono("2610000000");
-        solicitud.setCvu(String.format("%022d", n));
         solicitud.setDepartamento(catalogo.unDepartamento());
         solicitud.setUsuario(fixtureUsuario.usuario("solicitante"));
         solicitud.setPruebas(new ArrayList<>(List.of(subirPrueba())));

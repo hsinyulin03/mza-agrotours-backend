@@ -20,7 +20,6 @@ public class SolicitudEstablecimientoDTO {
     private String cuit;
     private String descripcionEstablecimiento;
     private String telefono;
-    private String cvu;
     private String email;
     private String departamento;
     private LocalDateTime fechaHoraAlta;

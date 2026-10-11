@@ -27,11 +27,6 @@ public class DTOUpdEstablecimientoRequest {
     @Email(message = "El email no tiene un formato válido")
     private String email;
 
-    // Operación
-    @NotBlank(message = "El CVU es obligatorio")
-    @Pattern(regexp = "\\d{22}", message = "El CVU debe contener únicamente números y tener exactamente 22 dígitos")
-    private String cvu;
-
     @Valid
     private ArchivoClaimRequest foto;
 

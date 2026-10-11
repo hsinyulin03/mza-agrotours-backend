@@ -50,9 +50,5 @@ public class DTOEstablecimientoAlta {
     @Size(max = 100, message = "El email debe tener como máximo 100 caracteres")
     private String email;
 
-    // Operación
-    @NotBlank(message = "El CVU es obligatorio")
-    @Pattern(regexp = "\\d{22}", message = "El CVU debe contener únicamente números y tener exactamente 22 dígitos")
-    private String cvu;
     private List<UUID> cultivos;
 }

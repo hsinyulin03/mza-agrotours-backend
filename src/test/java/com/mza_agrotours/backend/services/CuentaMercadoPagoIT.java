@@ -22,17 +22,7 @@ class CuentaMercadoPagoIT extends AbstractIntegrationTest {
     @Autowired private CuentaMercadoPagoRepository cuentaMercadoPagoRepository;
 
     private Establecimiento conCuentaVinculada(LocalDateTime vencimientoToken) {
-        Establecimiento establecimiento = fixtureEstablecimiento.establecimientoActivo();
-
-        CuentaMercadoPago cuenta = new CuentaMercadoPago();
-        cuenta.setVinculadaPor(establecimiento.getTitular());
-        cuenta.setMpUserId(123456L);
-        cuenta.setAccessToken("APP_USR-access");
-        cuenta.setRefreshToken("TG-refresh");
-        cuenta.setFechaHoraExpiracionToken(vencimientoToken);
-        establecimiento.vincularCuentaMercadoPago(cuenta, LocalDateTime.now());
-
-        return establecimientoRepository.save(establecimiento);
+        return fixtureEstablecimiento.conCuentaMercadoPago(fixtureEstablecimiento.establecimientoActivo(), vencimientoToken);
     }
 
     @Test

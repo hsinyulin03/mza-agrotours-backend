@@ -128,7 +128,6 @@ class EstablecimientoFotoIT extends AbstractIntegrationTest {
         dto.setDescripcion(establecimiento.getDescripcion());
         dto.setTelefono(establecimiento.getTelefono());
         dto.setEmail(establecimiento.getEmail());
-        dto.setCvu(establecimiento.getCvu());
         dto.setFoto(foto);
         return dto;
     }

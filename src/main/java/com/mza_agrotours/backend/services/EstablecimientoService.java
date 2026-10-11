@@ -132,7 +132,6 @@ public class EstablecimientoService  {
         establecimiento.setDescripcion(dto.getDescripcion());
         establecimiento.setTelefono(dto.getTelefono());
         establecimiento.setEmail(dto.getEmail());
-        establecimiento.setCvu(dto.getCvu());
         sincronizarFoto(dto.getFoto(), establecimiento);
         Establecimiento guardado = establecimientoRepository.save(establecimiento);
 
