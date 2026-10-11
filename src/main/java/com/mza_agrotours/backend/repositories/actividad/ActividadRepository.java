@@ -73,9 +73,11 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
             "AND r.estadoActual.estadoReserva.nombre IN (com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE, com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA) " +
             "LEFT JOIN r.reservaDetalles rd " +
             "WHERE a.id = :uuid " +
-            "AND ad.estadoActual.estado.nombre IN (com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.ACTIVA,com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.REPROGRAMADA)" +
-            "GROUP BY ad.id, ad.cuposMax, ad.fechaHoraInicio, ad.fechaHoraFin")
-    List<DiaActividadReservaDTO> getDiaActividadReservaDTO(@Param("uuid") UUID uuidActividad);
+            "AND ad.estadoActual.estado.nombre IN (com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.ACTIVA,com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.REPROGRAMADA) " +
+            "AND ad.fechaHoraInicio > :desde " +
+            "GROUP BY ad.id, ad.cuposMax, ad.fechaHoraInicio, ad.fechaHoraFin " +
+            "ORDER BY ad.fechaHoraInicio")
+    List<DiaActividadReservaDTO> getDiaActividadReservaDTO(@Param("uuid") UUID uuidActividad, @Param("desde") LocalDateTime desde);
 
     //Filtro de estado de actividad de un establecimiento
     @Query("SELECT NEW com.mza_agrotours.backend.dtos.actividad.DTOFiltro(a.estado.nombre, COUNT(a)) " +
