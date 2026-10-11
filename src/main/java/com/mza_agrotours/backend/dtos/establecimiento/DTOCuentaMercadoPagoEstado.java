@@ -1,5 +1,7 @@
 package com.mza_agrotours.backend.dtos.establecimiento;
 
+import com.mza_agrotours.backend.enums.EstadoCobro;
+
 import java.time.LocalDateTime;
 
 /**
@@ -8,10 +10,11 @@ import java.time.LocalDateTime;
  */
 public record DTOCuentaMercadoPagoEstado(
         boolean vinculada,
+        EstadoCobro estadoCobro,
         LocalDateTime fechaHoraVinculacion,
         LocalDateTime fechaHoraExpiracionToken
 ) {
     public static DTOCuentaMercadoPagoEstado sinVincular() {
-        return new DTOCuentaMercadoPagoEstado(false, null, null);
+        return new DTOCuentaMercadoPagoEstado(false, EstadoCobro.SIN_CUENTA, null, null);
     }
 }

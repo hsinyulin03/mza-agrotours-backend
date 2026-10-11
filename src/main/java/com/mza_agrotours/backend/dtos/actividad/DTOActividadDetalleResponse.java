@@ -38,5 +38,6 @@ public class DTOActividadDetalleResponse {
     private List<ReseniaCardDTO> reseniasRecientes;     // las 3 reseñas más recientes
 
     // Calendario para reservas
+    private boolean admiteReservas;
     private List<DiaActividadReservaDTO> diasActividad;
 }

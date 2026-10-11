@@ -191,6 +191,7 @@ public class ActividadService {
         response.setResumenResenias(calificacionService.obtenerResumenResenias(idActividad));
         response.setReseniasRecientes(calificacionService.obtenerReseniasRecientes(idActividad));
         response.setDiasActividad(actividadRepository.getDiaActividadReservaDTO(idActividad, LocalDateTime.now()));
+        response.setAdmiteReservas(actividad.getEstablecimiento().admiteReservas(LocalDateTime.now()));
         return response;
     }
 
