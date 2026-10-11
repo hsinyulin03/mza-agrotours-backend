@@ -2,8 +2,7 @@ package com.mza_agrotours.backend.repositories;
 
 import com.mza_agrotours.backend.dtos.establecimiento.DTOFiltroCultivoEstablecimiento;
 import com.mza_agrotours.backend.dtos.establecimiento.DTOFiltroDepartamentoEstablecimiento;
-import com.mza_agrotours.backend.dtos.reservas.EstablecimientoPorActividad;
-import com.mza_agrotours.backend.dtos.resumenSistema.EstablecimientoAdminDto;
+import com.mza_agrotours.backend.dtos.PanelSistema.EstablecimientoAdminDto;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
 import org.springframework.data.domain.Page;
@@ -120,7 +119,7 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
     @Query("SELECT COUNT(e) FROM Establecimiento e WHERE e.estadoActual.estadoEstablecimiento.nombre = :nombre AND e.fechaHoraBaja IS NULL")
     long countByEstadoNombre(@Param("nombre") EstadoEstablecimientoNombre nombre);
 
-    @Query("SELECT new com.mza_agrotours.backend.dtos.resumenSistema.EstablecimientoAdminDto(e.id, e.nombre) FROM Establecimiento e WHERE e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.SUSPENDIDO AND e.fechaHoraBaja IS NULL")
+    @Query("SELECT new com.mza_agrotours.backend.dtos.PanelSistema.EstablecimientoAdminDto(e.id, e.nombre) FROM Establecimiento e WHERE e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.SUSPENDIDO AND e.fechaHoraBaja IS NULL")
     List<EstablecimientoAdminDto> listarSuspendidos();
 
     @Query("""

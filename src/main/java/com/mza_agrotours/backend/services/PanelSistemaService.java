@@ -1,6 +1,6 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.dtos.resumenSistema.DTOResumenPanel;
+import com.mza_agrotours.backend.dtos.PanelSistema.DTOResumenPanel;
 import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
 import com.mza_agrotours.backend.enums.TipoPermisoNombre;
 import com.mza_agrotours.backend.repositories.AdministradorSistemasRepository;
