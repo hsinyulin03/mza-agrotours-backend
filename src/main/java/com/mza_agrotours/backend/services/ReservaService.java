@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.config.RutasNotificacionesFront;
+import com.mza_agrotours.backend.dtos.pago.ListarReembolsoAdminDTO;
 import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaPagoDTO;
 import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaReembolso;
 import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoDTO;
@@ -135,6 +136,19 @@ public class ReservaService {
 
         // Armamos el DTO
         return dtos;
+    }
+
+    /**
+     * Lista los reembolsos que el productor no pagó (IMPAGO) y los que terminó pagando un administrador
+     * (REEMBOLSADO_SISTEMA), del que más tiempo lleva en ese estado al más reciente.
+     */
+    @Transactional(readOnly = true)
+    public List<ListarReembolsoAdminDTO> listarReembolsosImpagos(){
+        return reembolsoRepository.findByEstadoActualIn(
+                        List.of(EstadoReembolsoNombre.IMPAGO, EstadoReembolsoNombre.REEMBOLSADO_SISTEMA))
+                .stream()
+                .map(reservaMapper::reembolsoToListarReembolsoAdminDTO)
+                .toList();
     }
 
     /**

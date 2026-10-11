@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.mappers.reserva;
 
+import com.mza_agrotours.backend.dtos.pago.ListarReembolsoAdminDTO;
 import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDTO;
 import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDetalleDTO;
 import com.mza_agrotours.backend.dtos.reservas.ListarReservaDTO;
@@ -7,6 +8,7 @@ import com.mza_agrotours.backend.dtos.reservas.RealizarReservaDetalleDTO;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
+import com.mza_agrotours.backend.entities.pago.Reembolso;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
 import org.mapstruct.Mapper;
@@ -54,4 +56,12 @@ public interface ReservaMapper {
     @Mapping(target = "nombreEstablecimiento", source = "reserva.actividad.establecimiento.razonSocial")
     @Mapping(target = "idActividad", source = "reserva.actividad.id")
     ListarReservaDTO reservaToListarReservaDTO(Reserva reserva);
+
+    // US RESE-09
+    @Mapping(target = "idReembolso", source = "reembolso.id")
+    @Mapping(target = "estado", source = "reembolso.estadoActual.estadoReembolso.nombre")
+    @Mapping(target = "fechaHoraEstado", source = "reembolso.estadoActual.fechaHoraInicio")
+    @Mapping(target = "nombreEstablecimiento", source = "reembolso.reserva.actividad.establecimiento.nombre")
+    @Mapping(target = "nombreProductorLider", source = "reembolso.reserva.actividad.establecimiento.titular.usuario.nombre")
+    ListarReembolsoAdminDTO reembolsoToListarReembolsoAdminDTO(Reembolso reembolso);
 }

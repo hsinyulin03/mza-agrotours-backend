@@ -86,6 +86,13 @@ public class GrupoPermisoSeeder implements CommandLineRunner {
                             "Ver y gestionar las incidencias del sistema",
                             "user-pen",
                             List.of(PermisoCodigo.LEER_INCIDENCIAS, PermisoCodigo.GESTIONAR_INCIDENCIAS)
+                    )),
+            entry("Gestión de reembolsos",
+                    new SeedGrupoPermiso(
+                            TipoPermisoNombre.ADMIN,
+                            "Ver los reembolsos que los productores no pagaron y los pagados por el sistema",
+                            "clipboard-check",
+                            List.of(PermisoCodigo.LEER_REEMBOLSOS)
                     ))
 
     );
