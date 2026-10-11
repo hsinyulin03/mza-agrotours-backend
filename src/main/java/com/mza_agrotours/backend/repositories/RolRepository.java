@@ -10,6 +10,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface RolRepository extends BaseEntityRepository<Rol, UUID> {
+    long countByTipoPermiso_NombreAndFechaHoraBajaIsNull(TipoPermisoNombre tipoPermisoNombre);
+
     boolean existsByNombre(String nombre);
 
     Optional<Rol> findByNombre(String nombre);
