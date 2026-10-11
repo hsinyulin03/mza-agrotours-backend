@@ -19,8 +19,6 @@ public class DTODatosEstablecimiento {
     //Contacto
     private String telefono;
     private String email;
-    //Operacion
-    private String cvu;
     // Cultivos
     private List<DTOCultivoEstablecimientoResponse> cultivos;
 

@@ -7,6 +7,7 @@ import com.mza_agrotours.backend.dtos.establecimiento.DTOCuentaMercadoPagoEstado
 import com.mza_agrotours.backend.entities.establecimiento.CuentaMercadoPago;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.productor.Productor;
+import com.mza_agrotours.backend.enums.EstadoCobro;
 import com.mza_agrotours.backend.exceptions.EstablecimientoNotFoundException;
 import com.mza_agrotours.backend.exceptions.pago.EstablecimientoSinCuentaMercadoPagoException;
 import com.mza_agrotours.backend.exceptions.pago.MercadoPagoOAuthException;
@@ -131,8 +132,10 @@ public class CuentaMercadoPagoService {
 
     @Transactional(readOnly = true)
     public DTOCuentaMercadoPagoEstado obtenerEstado(UUID establecimientoId) {
-        return getEstablecimientoVigente(establecimientoId).getCuentaMercadoPagoVigente()
-                .map(c -> new DTOCuentaMercadoPagoEstado(true, c.getFechaHoraAlta(), c.getFechaHoraExpiracionToken()))
+        Establecimiento establecimiento = getEstablecimientoVigente(establecimientoId);
+        EstadoCobro estadoCobro = establecimiento.getEstadoCobro(LocalDateTime.now());
+        return establecimiento.getCuentaMercadoPagoVigente()
+                .map(c -> new DTOCuentaMercadoPagoEstado(true, estadoCobro, c.getFechaHoraAlta(), c.getFechaHoraExpiracionToken()))
                 .orElseGet(DTOCuentaMercadoPagoEstado::sinVincular);
     }
 

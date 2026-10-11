@@ -176,9 +176,7 @@ public class ReservaService {
                 .orElseThrow(ActividadNotFoundException::new);
         if (actividad.getFechaHoraBaja() != null
                 || actividad.getEstado().getNombre() != EstadoActividadNombre.PUBLICADO
-                || actividad.getEstablecimiento().getEstadoActual()
-                    .getEstadoEstablecimiento()
-                    .getNombre().equals(EstadoEstablecimientoNombre.SUSPENDIDO))
+                || !actividad.getEstablecimiento().admiteReservas(fechaHoraActual))
             throw new ActividadNotActiveException();
 
         // Gettear los ActividadRangoEtario activos

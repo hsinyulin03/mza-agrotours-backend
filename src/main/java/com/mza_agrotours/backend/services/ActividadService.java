@@ -191,6 +191,7 @@ public class ActividadService {
         response.setResumenResenias(calificacionService.obtenerResumenResenias(idActividad));
         response.setReseniasRecientes(calificacionService.obtenerReseniasRecientes(idActividad));
         response.setDiasActividad(actividadRepository.getDiaActividadReservaDTO(idActividad, LocalDateTime.now()));
+        response.setAdmiteReservas(actividad.getEstablecimiento().admiteReservas(LocalDateTime.now()));
         return response;
     }
 
@@ -1158,12 +1159,10 @@ public class ActividadService {
         Actividad actividad = actividadRepository.findById(idActividad)
                 .orElseThrow(ActividadNotFoundException::new);
 
-        // Que la actividad esté disponible (estado Publicado) y el establecimiento activo
+        // Que la actividad esté disponible (estado Publicado) y el establecimiento admita reservas
         if (actividad.getFechaHoraBaja() != null
                 || actividad.getEstado().getNombre() != EstadoActividadNombre.PUBLICADO
-                || actividad.getEstablecimiento().getEstadoActual()
-                .getEstadoEstablecimiento()
-                .getNombre().equals(EstadoEstablecimientoNombre.SUSPENDIDO))
+                || !actividad.getEstablecimiento().admiteReservas(fhActual))
             throw new ActividadNotActiveException();
 
         // Encontramos los ActividadDia y lo pasamos a DTO

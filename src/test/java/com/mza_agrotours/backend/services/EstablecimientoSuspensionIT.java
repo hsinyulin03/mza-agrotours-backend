@@ -63,7 +63,7 @@ class EstablecimientoSuspensionIT extends AbstractIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        this.establecimiento = establecimientos.establecimientoActivo();
+        this.establecimiento = establecimientos.establecimientoQueAdmiteReservas();
         this.ejecutor = usuarios.administrador();
     }
 

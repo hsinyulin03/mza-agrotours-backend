@@ -182,8 +182,7 @@ class ReservaServiceNotificacionesTest {
         when(actividad.getNombre()).thenReturn("Cosecha");
         when(actividad.getFechaHoraBaja()).thenReturn(null);
         when(actividad.getEstado().getNombre()).thenReturn(EstadoActividadNombre.PUBLICADO);
-        when(actividad.getEstablecimiento().getEstadoActual().getEstadoEstablecimiento().getNombre())
-                .thenReturn(EstadoEstablecimientoNombre.ACTIVO);
+        when(actividad.getEstablecimiento().admiteReservas(any())).thenReturn(true);
         when(actividad.getActividadRangoEtarios()).thenReturn(List.of(rango));
         when(actividad.getActividadesDias()).thenReturn(List.of(dia));
 
