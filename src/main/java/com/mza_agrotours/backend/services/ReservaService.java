@@ -14,15 +14,14 @@ import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.pago.EstadoPago;
 import com.mza_agrotours.backend.entities.pago.EstadoReembolso;
-import com.mza_agrotours.backend.entities.pago.Reembolso;
-import com.mza_agrotours.backend.enums.*;
 import com.mza_agrotours.backend.entities.pago.Pago;
+import com.mza_agrotours.backend.entities.pago.Reembolso;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
-import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
-import com.mza_agrotours.backend.enums.EstadoActividadNombre;
-import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
+import com.mza_agrotours.backend.enums.*;
+import com.mza_agrotours.backend.exceptions.AppException;
+import com.mza_agrotours.backend.exceptions.ReservaError;
 import com.mza_agrotours.backend.exceptions.TipoIdentificacionInvalidoException;
 import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadDiaNotFound;
@@ -34,9 +33,12 @@ import com.mza_agrotours.backend.exceptions.reservas.EstadoReservaNotFoundExcept
 import com.mza_agrotours.backend.exceptions.reservas.FechaNacimientoInvalidaException;
 import com.mza_agrotours.backend.exceptions.reservas.ReservaNotFoundException;
 import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
-import com.mza_agrotours.backend.repositories.*;
-import com.mza_agrotours.backend.repositories.pago.EstadoPagoRepository;
+import com.mza_agrotours.backend.repositories.ReservaRepository;
+import com.mza_agrotours.backend.repositories.TipoIdentificacionRepository;
+import com.mza_agrotours.backend.repositories.UsuarioRepository;
+import com.mza_agrotours.backend.repositories.VisitanteRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
+import com.mza_agrotours.backend.repositories.pago.EstadoPagoRepository;
 import com.mza_agrotours.backend.repositories.pago.EstadoReembolsoRepository;
 import com.mza_agrotours.backend.repositories.pago.ReembolsoRepository;
 import com.mza_agrotours.backend.services.notificaciones.NotificacionService;
@@ -53,10 +55,6 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
 import java.util.*;
 
 import static com.mza_agrotours.backend.enums.EstadoReservaNombre.*;
@@ -202,7 +200,7 @@ public class ReservaService {
 
         int cantidadReservas = reservaRepository.getCuposReservadosActividadDia(actividadDia.getId()).intValue();
         if (cantidadReservas + realizarReservaDTO.reservaDetalleList().size() > actividadDia.getCuposMax())
-                throw new ActividadFullException();
+                throw new AppException(ReservaError.ACTIVIDAD_FULL);
 
         // Crear las nuevas ReservaDetalles y asignarle el estado
         List<ReservaDetalle> reservaDetalles = new ArrayList<>();
