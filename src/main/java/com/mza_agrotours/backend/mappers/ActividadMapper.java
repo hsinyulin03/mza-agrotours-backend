@@ -32,6 +32,7 @@ public interface ActividadMapper {
     @Mapping(target = "ubicacion", source = "establecimiento")
     @Mapping(target = "resumenResenias", ignore = true)
     @Mapping(target = "reseniasRecientes", ignore = true)
+    @Mapping(target = "diasActividad", ignore = true)
     DTOActividadDetalleResponse actividadToDTOActividadDetalle(Actividad actividad);
 
     @Mapping(target = "key", source = "archivo.key")

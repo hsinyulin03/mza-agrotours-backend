@@ -190,6 +190,7 @@ public class ActividadService {
         // Sección de reseñas
         response.setResumenResenias(calificacionService.obtenerResumenResenias(idActividad));
         response.setReseniasRecientes(calificacionService.obtenerReseniasRecientes(idActividad));
+        response.setDiasActividad(actividadRepository.getDiaActividadReservaDTO(idActividad, LocalDateTime.now()));
         return response;
     }
 
@@ -1166,7 +1167,7 @@ public class ActividadService {
             throw new ActividadNotActiveException();
 
         // Encontramos los ActividadDia y lo pasamos a DTO
-        List<DiaActividadReservaDTO> diaActividadReservaDTOList = actividadRepository.getDiaActividadReservaDTO(actividad.getId());
+        List<DiaActividadReservaDTO> diaActividadReservaDTOList = actividadRepository.getDiaActividadReservaDTO(actividad.getId(), fhActual);
 
         // ActividadRangoEtario activos
         List<ActividadRangoEtario> areActivos = actividad.getActividadRangoEtarios().stream()
