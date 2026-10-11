@@ -47,9 +47,6 @@ public class SolicitudEstablecimiento extends BaseEntity {
     @Column(nullable = false, length = 16)
     private String telefono;
 
-    @Column(nullable = false, length = 22)
-    private String cvu;
-
     @ManyToOne(optional = false)
     private Departamento departamento;
 

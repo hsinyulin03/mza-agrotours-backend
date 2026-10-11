@@ -113,7 +113,6 @@ class NotificacionScopeIT extends AbstractIntegrationTest {
         req.setDepartamento(catalogo.unDepartamento().getNombre());
         req.setTelefono("2610000000");
         req.setEmail("finca" + n + "@test.local");
-        req.setCvu(String.format("%022d", n));
 
         solicitudEstablecimientoService.crearSolicitudEstablecimiento(req, solicitante.getEmail());
     }

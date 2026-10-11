@@ -49,10 +49,6 @@ public class Establecimiento extends BaseEntity {
     private String email;
     private String ubicacion;
 
-    // TODO quitar CVU: el cobro se hace con la CuentaMercadoPago vinculada por OAuth (requiere cambios en el front)
-    @Column(nullable = false, length = 22)
-    private String cvu;
-
     @ManyToOne
     @JoinColumn(name = "departamento_id", nullable = false)
     private Departamento departamento;

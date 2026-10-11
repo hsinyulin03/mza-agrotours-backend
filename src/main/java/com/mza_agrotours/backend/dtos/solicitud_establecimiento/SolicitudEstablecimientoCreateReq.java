@@ -50,10 +50,6 @@ public class SolicitudEstablecimientoCreateReq {
     @Size(min = 1, max = 100)
     private String email;
 
-    @NotNull
-    @Size(min = 22, max = 22)
-    private String cvu;
-
     @Size(min = 1, max = 10)
     private List<ArchivoClaimRequest> archivos;
 }

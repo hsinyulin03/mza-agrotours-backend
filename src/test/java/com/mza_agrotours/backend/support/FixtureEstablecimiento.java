@@ -31,7 +31,6 @@ public class FixtureEstablecimiento {
         establecimiento.setTelefono("2610000000");
         establecimiento.setEmail("finca" + n + "@test.local");
         establecimiento.setUbicacion("-32.8895,-68.8458");
-        establecimiento.setCvu(String.format("%022d", n));
         establecimiento.setDepartamento(catalogo.unDepartamento());
         establecimiento = this.establecimientoRepository.save(establecimiento);
 
