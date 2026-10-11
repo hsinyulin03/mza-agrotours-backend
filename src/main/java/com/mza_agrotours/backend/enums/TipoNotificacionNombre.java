@@ -34,6 +34,46 @@ public enum TipoNotificacionNombre {
             "Te sumaron a un establecimiento",
             "Ya formás parte del equipo del establecimiento %s.",
             EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
+    RESERVA_INICIADA(
+            ScopeNotificacionNombre.VISITANTE,
+            "Completá el pago de tu reserva",
+            "Iniciaste tu reserva para la actividad %s del %s. Tenés hasta el %s para completar el pago, después la reserva se cancela.",
+            EnumSet.of(CanalNotificacion.PUSH)),
+    RESERVA_PAGADA(
+            ScopeNotificacionNombre.VISITANTE,
+            "Tu reserva está confirmada",
+            "Confirmamos tu reserva para la actividad %s del %s: recibimos tu pago de $%s. ¡Te esperamos!",
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
+    RESERVA_EXPIRADA(
+            ScopeNotificacionNombre.VISITANTE,
+            "Tu reserva expiró",
+            "No recibimos a tiempo el pago de tu reserva para la actividad %s del %s, así que la cancelamos. Podés volver a reservar cuando quieras.",
+            EnumSet.of(CanalNotificacion.PUSH)),
+    RESERVA_CANCELADA_SIN_REEMBOLSO(
+            ScopeNotificacionNombre.VISITANTE,
+            "Cancelaste tu reserva",
+            "Cancelamos tu reserva para la actividad %s del %s. Como la cancelación fue con %s días o menos de anticipación, no corresponde reembolso.",
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
+    RESERVA_CANCELADA_REEMBOLSO_EN_PROCESO(
+            ScopeNotificacionNombre.VISITANTE,
+            "Cancelaste tu reserva",
+            "Cancelamos tu reserva para la actividad %s del %s y pedimos el reembolso de $%s. Te avisaremos cuando se realice.",
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
+    RESERVA_CANCELADA_CON_REEMBOLSO(
+            ScopeNotificacionNombre.VISITANTE,
+            "Cancelaste tu reserva",
+            "Cancelamos tu reserva para la actividad %s del %s y te reembolsamos $%s.",
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
+    REEMBOLSO_REALIZADO(
+            ScopeNotificacionNombre.VISITANTE,
+            "Reembolso realizado",
+            "Realizamos el reembolso de tu reserva para la actividad %s del %s por $%s. Según tu medio de pago, puede demorar unos días en verse reflejado.",
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
+    REEMBOLSO_NO_AUTOMATICO(
+            ScopeNotificacionNombre.VISITANTE,
+            "Tu reembolso se gestionará de forma manual",
+            "No pudimos realizar automáticamente el reembolso de tu reserva para la actividad %s del %s por $%s. Lo vamos a gestionar de forma manual.",
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
     RESERVA_CANCELADA_POR_BAJA_ACTIVIDAD(
             ScopeNotificacionNombre.VISITANTE,
             "Tu reserva fue cancelada",

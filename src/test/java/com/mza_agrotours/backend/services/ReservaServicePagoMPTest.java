@@ -255,14 +255,14 @@ class ReservaServicePagoMPTest {
     private void assertConfirmada(Reserva reserva) {
         assertEquals(EstadoPagoNombre.APROBADO, reserva.getPago().getEstadoActual().getEstadoPago().getNombre());
         assertNull(reserva.getFechaHoraExpiracion());
-        verify(self).cambiarEstadoReservaYGuardar(eq(reserva), eq(estadoPagada), any());
+        verify(self).confirmarPagoReservaYNotificar(eq(reserva), eq(estadoPagada), any());
     }
 
     private void assertNoConfirmada(Reserva reserva) {
         assertEquals(EstadoPagoNombre.PENDIENTE, reserva.getPago().getEstadoActual().getEstadoPago().getNombre());
         assertNull(reserva.getPago().getIdTransaccionExterna());
         assertNotNull(reserva.getFechaHoraExpiracion());
-        verify(self, never()).cambiarEstadoReservaYGuardar(eq(reserva), any(), any());
+        verify(self, never()).confirmarPagoReservaYNotificar(eq(reserva), any(), any());
     }
 
     // ---------- pagarReservas ----------
@@ -336,7 +336,7 @@ class ReservaServicePagoMPTest {
         service.pagarReservas();
 
         // No se confirma: la reserva pasa a su estado final y libera el cupo
-        verify(self, never()).cambiarEstadoReservaYGuardar(any(), any(), any());
+        verify(self, never()).confirmarPagoReservaYNotificar(any(), any(), any());
         assertEquals(EstadoReservaNombre.REEMBOLSO_NO_CONCILIACION, reserva.getEstadoActual().getEstadoReserva().getNombre());
         assertNull(reserva.getFechaHoraExpiracion());
 
@@ -376,7 +376,7 @@ class ReservaServicePagoMPTest {
 
         service.pagarReservas();
 
-        verify(self, never()).cambiarEstadoReservaYGuardar(any(), any(), any());
+        verify(self, never()).confirmarPagoReservaYNotificar(any(), any(), any());
         assertEquals(EstadoReservaNombre.REEMBOLSO_NO_CONCILIACION, reserva.getEstadoActual().getEstadoReserva().getNombre());
         verify(refundClients.constructed().get(0)).refund(eq(987L), any(MPRequestOptions.class));
     }
@@ -430,7 +430,7 @@ class ReservaServicePagoMPTest {
         assertEquals(EstadoReembolsoNombre.REEMBOLSADO_PRODUCTOR, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
         assertEquals(EstadoPagoNombre.REEMBOLSADO, reserva.getPago().getEstadoActual().getEstadoPago().getNombre());
         assertEquals(EstadoReservaNombre.REEMBOLSO_NO_CONCILIACION, reserva.getEstadoActual().getEstadoReserva().getNombre());
-        verify(self).guardarReembolso(reembolso);
+        verify(self).guardarReembolsoYNotificar(reembolso, TipoNotificacionNombre.REEMBOLSO_REALIZADO);
 
         ArgumentCaptor<MPRequestOptions> opciones = ArgumentCaptor.forClass(MPRequestOptions.class);
         verify(refundClients.constructed().get(0)).get(eq(987L), eq(555L), opciones.capture());
@@ -448,7 +448,7 @@ class ReservaServicePagoMPTest {
         assertEquals(EstadoReembolsoNombre.PEDIDO, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
         assertEquals(EstadoPagoNombre.APROBADO, reserva.getPago().getEstadoActual().getEstadoPago().getNombre());
         assertEquals(EstadoReservaNombre.REEMBOLSO_NO_CONCILIACION, reserva.getEstadoActual().getEstadoReserva().getNombre());
-        verify(self).guardarReembolso(reembolso);
+        verify(self).guardarReembolsoYNotificar(reembolso, TipoNotificacionNombre.REEMBOLSO_NO_AUTOMATICO);
     }
 
     @Test
@@ -500,7 +500,7 @@ class ReservaServicePagoMPTest {
         assertEquals("987", reserva.getPago().getIdTransaccionExterna());
         verify(paymentClient()).get(eq(987L), any(MPRequestOptions.class));
         verify(paymentClient(), never()).get(eq(988L), any(MPRequestOptions.class));
-        verify(self, times(1)).cambiarEstadoReservaYGuardar(eq(reserva), any(), any());
+        verify(self, times(1)).confirmarPagoReservaYNotificar(eq(reserva), any(), any());
     }
 
     @Test
@@ -552,6 +552,7 @@ class ReservaServicePagoMPTest {
         service.handleCancelarPago("pref-1", "visitante@test.com");
 
         verify(self).cambiarEstadoReservaYGuardar(eq(reserva), eq(estadoExpirada), any());
+        verifyNoInteractions(notificacionService);  // La expiró el propio visitante: no se le avisa
         ArgumentCaptor<MPRequestOptions> opciones = ArgumentCaptor.forClass(MPRequestOptions.class);
         verify(preferenceClients.constructed().get(0)).update(eq("pref-1"), any(PreferenceRequest.class), opciones.capture());
         assertEquals(TOKEN_VENDEDOR, opciones.getValue().getAccessToken());
