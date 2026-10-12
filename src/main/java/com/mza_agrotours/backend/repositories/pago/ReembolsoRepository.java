@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -21,6 +22,13 @@ public interface ReembolsoRepository extends BaseEntityRepository<Reembolso, UUI
             "JOIN r.estadoActual estado " +
             "WHERE estado.estadoReembolso.nombre = com.mza_agrotours.backend.enums.EstadoReembolsoNombre.EN_PROCESO")
     List<Reembolso> findReembolsosEnProceso();
+
+    // Reembolsos "Pedido" que el productor no pagó antes del límite
+    @Query("SELECT r.id FROM Reembolso r " +
+            "JOIN r.estadoActual estado " +
+            "WHERE estado.estadoReembolso.nombre = com.mza_agrotours.backend.enums.EstadoReembolsoNombre.PEDIDO " +
+            "AND r.fechaHoraPedido <= :limite")
+    List<UUID> findIdsPedidosVencidos(@Param("limite") LocalDateTime limite);
 
     // Los más antiguos primero: son los que más tiempo llevan esperando
     @Query("SELECT r FROM Reembolso r " +
