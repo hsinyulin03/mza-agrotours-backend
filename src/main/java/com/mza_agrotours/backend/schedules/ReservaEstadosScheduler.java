@@ -29,6 +29,12 @@ public class ReservaEstadosScheduler {
         reservaService.confirmarReembolsos();
     }
 
+    // El plazo de impago se mide en días, con revisar una vez por hora alcanza
+    @Scheduled(fixedDelay = 1L, timeUnit = TimeUnit.HOURS)
+    public void checkReembolsosImpagos() {
+        reservaService.marcarReembolsosImpagos();
+    }
+
     // El recordatorio se envía a las reservas cuyo día empieza en las próximas 24 h
     @Scheduled(fixedDelay = 1L, timeUnit = TimeUnit.HOURS)
     public void checkRecordatoriosReservas() {

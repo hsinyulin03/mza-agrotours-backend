@@ -12,6 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +27,18 @@ public interface ReembolsoRepository extends BaseEntityRepository<Reembolso, UUI
             "JOIN r.estadoActual estado " +
             "WHERE estado.estadoReembolso.nombre = com.mza_agrotours.backend.enums.EstadoReembolsoNombre.EN_PROCESO")
     List<Reembolso> findReembolsosEnProceso();
+
+    // Reembolsos "Pedido" que el productor no pagó antes del límite
+    @Query("SELECT r.id FROM Reembolso r " +
+            "JOIN r.estadoActual estado " +
+            "WHERE estado.estadoReembolso.nombre = com.mza_agrotours.backend.enums.EstadoReembolsoNombre.PEDIDO " +
+            "AND r.fechaHoraPedido <= :limite")
+    List<UUID> findIdsPedidosVencidos(@Param("limite") LocalDateTime limite);
+
+    // Bloquea el reembolso para que el scheduler de impagos no pise un reintento del productor
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM Reembolso r WHERE r.id = :id")
+    Optional<Reembolso> findByIdForUpdate(@Param("id") UUID id);
 
     // Reembolsos "Pedido" del establecimiento: los que la pasarela no pudo devolver y tiene que hacer el productor
     @Query(value = "SELECT new com.mza_agrotours.backend.dtos.pago.ReembolsoGetCatalogoDTO(" +

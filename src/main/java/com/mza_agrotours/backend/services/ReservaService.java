@@ -604,6 +604,57 @@ public class ReservaService {
                 reembolsosResueltos, reembolsos.size(), idFallidos.size(), idFallidos);
     }
 
+    /**
+     * Tarea programada que pasa a "Impago" los reembolsos "Pedido" que el productor no pagó dentro de
+     * {@code diasImpagoReserva} días desde que se pidió el reembolso. A partir de ahí lo tiene que pagar un
+     * administrador de sistemas (ver {@link #registrarPagoReembolsoSistema}). La reserva no cambia de estado.
+     * <p>
+     * Si el parámetro no está cargado no se marca ningún reembolso. Los errores al procesar un reembolso particular
+     * no interrumpen el resto y quedan registrados en el log.
+     */
+    @Transactional(readOnly = true)
+    public void marcarReembolsosImpagos(){
+        LocalDateTime ahora = LocalDateTime.now();
+        Integer diasImpagoReserva = parametrosService.getInstance().getDiasImpagoReserva();
+        if (diasImpagoReserva == null){
+            log.warn("No está cargado el parámetro diasImpagoReserva, no se marcan reembolsos impagos");
+            return;
+        }
+
+        List<UUID> idsVencidos = reembolsoRepository.findIdsPedidosVencidos(ahora.minusDays(diasImpagoReserva));
+        if (idsVencidos.isEmpty()) return;
+
+        List<String> idFallidos = new ArrayList<>(); // Array de las id de reembolso que fallaron al procesarse
+        for (UUID reembolsoId : idsVencidos){
+            try {
+                self.marcarReembolsoImpago(reembolsoId, ahora);
+            } catch (Exception e) {
+                log.warn("Error de backend marcando como impago el reembolso {}", reembolsoId, e);
+                idFallidos.add(reembolsoId.toString());
+            }
+        }
+
+        log.info("Se marcaron {}/{} reembolsos pedidos como impagos. Los reembolsos con cambio fallido fueron {}, con ids: {}",
+                idsVencidos.size() - idFallidos.size(), idsVencidos.size(), idFallidos.size(), idFallidos);
+    }
+
+    /**
+     * Pasa un único reembolso a "Impago" en su propia transacción, para que un fallo al guardar uno no revierta
+     * los ya confirmados.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected void marcarReembolsoImpago(UUID reembolsoId, LocalDateTime ahora){
+        // Bloqueado, como en iniciarReintentoReembolso: si el productor lo reintenta a la vez, gana el primero
+        Reembolso reembolso = reembolsoRepository.findByIdForUpdate(reembolsoId).orElseThrow();
+
+        // Relectura defensiva: entre la consulta y esta transacción el reembolso pudo dejar de estar "Pedido"
+        if (reembolso.getEstadoActual().getEstadoReembolso().getNombre() != EstadoReembolsoNombre.PEDIDO)
+            return;
+
+        reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.IMPAGO), ahora);
+        reembolsoRepository.save(reembolso);
+    }
+
     // TODO hay que ver el cancelaciones (de pagos) mediante endpoint "Crear cancelación" de mercado pago
     /**
      * Cancela el pago pendiente de una reserva a pedido del usuario: libera el cupo de la reserva
