@@ -1,18 +1,27 @@
 package com.mza_agrotours.backend.mappers.reserva;
 
+import com.mza_agrotours.backend.dtos.pago.ContactoReembolsoDTO;
+import com.mza_agrotours.backend.dtos.pago.DetalleReembolsoAdminDTO;
 import com.mza_agrotours.backend.dtos.pago.ListarReembolsoAdminDTO;
+import com.mza_agrotours.backend.dtos.pago.PagoReembolsoSistemaDTO;
+import com.mza_agrotours.backend.dtos.pago.PersonaReservaDTO;
 import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDTO;
 import com.mza_agrotours.backend.dtos.reservas.ConsultarReservaDetalleDTO;
 import com.mza_agrotours.backend.dtos.reservas.ListarReservaDTO;
 import com.mza_agrotours.backend.dtos.reservas.RealizarReservaDetalleDTO;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
+import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
+import com.mza_agrotours.backend.entities.pago.Pago;
 import com.mza_agrotours.backend.entities.pago.Reembolso;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+
+import java.util.Comparator;
+import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface ReservaMapper {
@@ -64,4 +73,33 @@ public interface ReservaMapper {
     @Mapping(target = "nombreEstablecimiento", source = "reembolso.reserva.actividad.establecimiento.nombre")
     @Mapping(target = "nombreProductorLider", source = "reembolso.reserva.actividad.establecimiento.titular.usuario.nombre")
     ListarReembolsoAdminDTO reembolsoToListarReembolsoAdminDTO(Reembolso reembolso);
+
+    @Mapping(target = "idReembolso", source = "reembolso.id")
+    @Mapping(target = "estado", source = "reembolso.estadoActual.estadoReembolso.nombre")
+    @Mapping(target = "fechaHoraEstado", source = "reembolso.estadoActual.fechaHoraInicio")
+    @Mapping(target = "nombreEstablecimiento", source = "reembolso.reserva.actividad.establecimiento.nombre")
+    @Mapping(target = "idReserva", source = "reembolso.reserva.id")
+    @Mapping(target = "nombreActividad", source = "reembolso.reserva.actividad.nombre")
+    @Mapping(target = "actividadFechaHoraInicio", source = "reembolso.reserva.actividadDia.fechaHoraInicio")
+    @Mapping(target = "actividadFechaHoraFin", source = "reembolso.reserva.actividadDia.fechaHoraFin")
+    @Mapping(target = "visitante", source = "reembolso.reserva.visitante.usuario")
+    @Mapping(target = "productorLider", source = "reembolso.reserva.actividad.establecimiento.titular.usuario")
+    @Mapping(target = "personas", source = "reembolso.reserva.reservaDetalles")
+    @Mapping(target = "pagoReembolsoSistema", source = "reembolso.pagoReembolsoSistema")
+    DetalleReembolsoAdminDTO reembolsoToDetalleReembolsoAdminDTO(Reembolso reembolso);
+
+    @Mapping(target = "idPago", source = "pago.id")
+    PagoReembolsoSistemaDTO pagoToPagoReembolsoSistemaDTO(Pago pago);
+
+    ContactoReembolsoDTO usuarioToContactoReembolsoDTO(Usuario usuario);
+
+    PersonaReservaDTO reservaDetalleToPersonaReservaDTO(ReservaDetalle reservaDetalle);
+
+    // Las personas van en el orden en que se cargaron en la reserva
+    default List<PersonaReservaDTO> reservaDetallesToPersonasReservaDTO(List<ReservaDetalle> reservaDetalles) {
+        return reservaDetalles.stream()
+                .sorted(Comparator.comparing(ReservaDetalle::getRenglon))
+                .map(this::reservaDetalleToPersonaReservaDTO)
+                .toList();
+    }
 }

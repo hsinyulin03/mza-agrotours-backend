@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.config.RutasNotificacionesFront;
+import com.mza_agrotours.backend.dtos.pago.DetalleReembolsoAdminDTO;
 import com.mza_agrotours.backend.dtos.pago.ListarReembolsoAdminDTO;
 import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaPagoDTO;
 import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaReembolso;
@@ -68,6 +69,10 @@ public class ReservaService {
     private static final Duration ESPERA_REEMBOLSO_SIN_CONFIRMAR = Duration.ofMinutes(3);
 
     private static final DateTimeFormatter FORMATO_FECHA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+    // Reembolsos que tiene que ver el administrador: los que el productor no pagó y los que pagó el sistema
+    private static final List<EstadoReembolsoNombre> ESTADOS_REEMBOLSO_ADMIN =
+            List.of(EstadoReembolsoNombre.IMPAGO, EstadoReembolsoNombre.REEMBOLSADO_SISTEMA);
 
     private final ReservaService self;
     private final ReservaRepository reservaRepository;
@@ -144,11 +149,23 @@ public class ReservaService {
      */
     @Transactional(readOnly = true)
     public List<ListarReembolsoAdminDTO> listarReembolsosImpagos(){
-        return reembolsoRepository.findByEstadoActualIn(
-                        List.of(EstadoReembolsoNombre.IMPAGO, EstadoReembolsoNombre.REEMBOLSADO_SISTEMA))
+        return reembolsoRepository.findByEstadoActualIn(ESTADOS_REEMBOLSO_ADMIN)
                 .stream()
                 .map(reservaMapper::reembolsoToListarReembolsoAdminDTO)
                 .toList();
+    }
+
+    /**
+     * Detalle de un reembolso del listado de impagos, con los datos de la reserva y los contactos del visitante
+     * y del productor líder, para que el administrador pueda resolverlo.
+     * Solo se pueden consultar los reembolsos IMPAGO o REEMBOLSADO_SISTEMA.
+     */
+    @Transactional(readOnly = true)
+    public DetalleReembolsoAdminDTO getDetalleReembolsoAdmin(UUID idReembolso){
+        Reembolso reembolso = reembolsoRepository.findByIdAndEstadoActualIn(idReembolso, ESTADOS_REEMBOLSO_ADMIN)
+                .orElseThrow(ReembolsoNotFoundException::new);
+
+        return reservaMapper.reembolsoToDetalleReembolsoAdminDTO(reembolso);
     }
 
     /**
