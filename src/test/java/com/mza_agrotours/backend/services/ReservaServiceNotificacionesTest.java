@@ -303,7 +303,7 @@ class ReservaServiceNotificacionesTest {
         Reserva reserva = reservaPagada(MetodoPago.MERCADO_PAGO, LocalDateTime.now().plusDays(30));
         Reembolso reembolso = reembolso(reserva);
 
-        service.registrarPedidoReembolso(reembolso.getId(), ResultadoReembolsoDTO.rechazado());
+        service.registrarPedidoReembolso(reembolso.getId(), ResultadoReembolsoDTO.rechazado(), true);
 
         assertEquals(EstadoReembolsoNombre.PEDIDO, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
         verify(notificacionService).crearNotificacion(usuario, TipoNotificacionNombre.REEMBOLSO_NO_AUTOMATICO, null,
@@ -311,11 +311,22 @@ class ReservaServiceNotificacionesTest {
     }
 
     @Test
+    void siLaPasarelaRechazaElReintentoDelProductorNoVuelveAAvisarAlVisitante() {
+        Reserva reserva = reservaPagada(MetodoPago.MERCADO_PAGO, LocalDateTime.now().plusDays(30));
+        Reembolso reembolso = reembolso(reserva);
+
+        service.registrarPedidoReembolso(reembolso.getId(), ResultadoReembolsoDTO.rechazado(), false);
+
+        assertEquals(EstadoReembolsoNombre.PEDIDO, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
+        verifyNoInteractions(notificacionService);
+    }
+
+    @Test
     void siLaPasarelaAceptaElPedidoDeReembolsoNoAvisaHastaQueSeConfirme() {
         Reserva reserva = reservaPagada(MetodoPago.MERCADO_PAGO, LocalDateTime.now().plusDays(30));
         Reembolso reembolso = reembolso(reserva);
 
-        service.registrarPedidoReembolso(reembolso.getId(), new ResultadoReembolsoDTO(true, "555"));
+        service.registrarPedidoReembolso(reembolso.getId(), new ResultadoReembolsoDTO(true, "555"), true);
 
         assertEquals("555", reembolso.getIdReembolsoExterno());
         verifyNoInteractions(notificacionService);

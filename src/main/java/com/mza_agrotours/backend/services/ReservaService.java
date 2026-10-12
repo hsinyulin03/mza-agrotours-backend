@@ -1,9 +1,7 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.config.RutasNotificacionesFront;
-import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaPagoDTO;
-import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaReembolso;
-import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoDTO;
+import com.mza_agrotours.backend.dtos.pago.*;
 import com.mza_agrotours.backend.dtos.reservas.*;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
 import com.mza_agrotours.backend.entities.TipoIdentificacionNombre;
@@ -462,7 +460,8 @@ public class ReservaService {
             try{
                 // Pedido sin respuesta guardada: buscar si la pasarela lo hizo
                 if (r.getIdReembolsoExterno() == null){
-                    if (r.getFechaHoraPedido().isAfter(ahora.minus(ESPERA_REEMBOLSO_SIN_CONFIRMAR))) continue;
+                    // Se mide desde el último intento: si lo reintentó el productor, fechaHoraPedido es la del primero
+                    if (r.getEstadoActual().getFechaHoraInicio().isAfter(ahora.minus(ESPERA_REEMBOLSO_SIN_CONFIRMAR))) continue;
 
                     Optional<String> idExterno = getEstrategiaPago(pago).buscarReembolso(pago);
                     if (idExterno.isEmpty()){
@@ -860,16 +859,24 @@ public class ReservaService {
      * @return la respuesta de la pasarela, o null si no se sabe si el reembolso se realizó
      */
     private ResultadoReembolsoDTO pedirReembolso(Reembolso reembolso, Pago pago){
+        return pedirReembolso(reembolso, pago, "reembolso-pago-" + pago.getId(), true);
+    }
+
+    /**
+     * Como {@link #pedirReembolso(Reembolso, Pago)}, con la clave de idempotencia del intento y si se avisa al
+     * visitante en caso de rechazo (el reintento del productor no lo vuelve a avisar).
+     */
+    private ResultadoReembolsoDTO pedirReembolso(Reembolso reembolso, Pago pago, String claveIdempotencia, boolean notificarRechazo){
         ResultadoReembolsoDTO resultado;
         try {
-            resultado = getEstrategiaPago(pago).reembolsar(pago);
+            resultado = getEstrategiaPago(pago).reembolsar(pago, claveIdempotencia);
         } catch (PasarelaPagoException e) {
             log.warn("No se sabe si se realizó el reembolso {}, lo verificará la tarea programada", reembolso.getId(), e);
             return null;
         }
 
         try {
-            self.registrarPedidoReembolso(reembolso.getId(), resultado);
+            self.registrarPedidoReembolso(reembolso.getId(), resultado, notificarRechazo);
         } catch (Exception e) {
             log.error("No se pudo guardar la respuesta de la pasarela del reembolso {}, lo verificará la tarea programada", reembolso.getId(), e);
         }
@@ -879,21 +886,22 @@ public class ReservaService {
     /**
      * Paso 3 de {@link #pedirReembolso}: guarda la respuesta de la pasarela al pedido de reembolso.
      * Si fue aceptado se guarda su ID externo (sigue "En proceso" hasta que se confirme); si fue rechazado
-     * pasa a "Pedido" para que lo haga el productor y se avisa al visitante.
+     * pasa a "Pedido" para que lo haga el productor y, si se pide, se avisa al visitante.
      * <p>
      * Va en su propia transacción porque {@link #pagarReservas()} lo llama dentro de una de solo lectura, en la
      * que no se guardaría nada.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected void registrarPedidoReembolso(UUID reembolsoId, ResultadoReembolsoDTO resultado){
+    protected void registrarPedidoReembolso(UUID reembolsoId, ResultadoReembolsoDTO resultado, boolean notificarRechazo){
         Reembolso reembolso = reembolsoRepository.findById(reembolsoId).orElseThrow();
 
         if (resultado.aceptado()) {
             reembolso.setIdReembolsoExterno(resultado.idReembolsoExterno());
         } else {
             reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.PEDIDO), LocalDateTime.now()); // TODO: notificar al productor
-            notificarVisitante(reembolso.getReserva(), TipoNotificacionNombre.REEMBOLSO_NO_AUTOMATICO,
-                    reembolso.getMontoReembolso().toPlainString());
+            if (notificarRechazo)
+                notificarVisitante(reembolso.getReserva(), TipoNotificacionNombre.REEMBOLSO_NO_AUTOMATICO,
+                        reembolso.getMontoReembolso().toPlainString());
         }
 
         reembolsoRepository.save(reembolso);

@@ -57,6 +57,7 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -361,7 +362,7 @@ class ReservaServicePagoMPTest {
         assertEquals(TOKEN_VENDEDOR, opcionesReembolso.getValue().getAccessToken());
 
         // Se guarda la respuesta de MP y se avisa al visitante
-        verify(self).registrarPedidoReembolso(any(), argThat(ResultadoReembolsoDTO::aceptado));
+        verify(self).registrarPedidoReembolso(any(), argThat(ResultadoReembolsoDTO::aceptado), eq(true));
         verify(notificacionService).crearNotificacion(eq(reserva.getVisitante().getUsuario()),
                 eq(TipoNotificacionNombre.RESERVA_REEMBOLSADA_PAGO_NO_VALIDO), isNull(), anyString(),
                 eq("Cosecha"), anyString(), eq("9999.99"));
@@ -397,7 +398,7 @@ class ReservaServicePagoMPTest {
         // La reserva y el reembolso ya quedaron guardados; no se guarda respuesta, confirmarReembolsos lo busca en MP
         assertEquals(EstadoReservaNombre.REEMBOLSO_NO_CONCILIACION, reserva.getEstadoActual().getEstadoReserva().getNombre());
         verify(reembolsoRepository).save(any(Reembolso.class));
-        verify(self, never()).registrarPedidoReembolso(any(), any());
+        verify(self, never()).registrarPedidoReembolso(any(), any(), anyBoolean());
     }
 
     // ---------- confirmarReembolsos ----------
@@ -534,6 +535,17 @@ class ReservaServicePagoMPTest {
 
         assertConfirmada(reserva);
         assertEquals("987", reserva.getPago().getIdTransaccionExterna());
+    }
+
+    @Test
+    void unPedidoSinRespuestaReintentadoHacePocoNoSeBuscaTodaviaEnMp() {
+        Reembolso reembolso = reembolsoEnProceso(EstadoReservaNombre.CANCELADA_REEMBOLSO_PENDIENTE);
+        reembolso.setIdReembolsoExterno(null);  // El primer pedido es viejo, pero el intento actual acaba de empezar
+
+        service.confirmarReembolsos();
+
+        assertTrue(refundClients.constructed().isEmpty(), "No se busca en MP un intento que puede seguir en curso");
+        assertEquals(EstadoReembolsoNombre.EN_PROCESO, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
     }
 
     // ---------- handleCancelarPago ----------

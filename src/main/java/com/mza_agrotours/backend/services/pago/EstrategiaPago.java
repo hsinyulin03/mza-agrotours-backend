@@ -48,17 +48,21 @@ public interface EstrategiaPago {
      * no aceptado. Si no se puede saber si se realizó (error de comunicación), se lanza excepción.
      *
      * @param pago pago aprobado a reembolsar
+     * @param claveIdempotencia clave del intento: el mismo pedido repetido con la misma clave no genera dos
+     *                          reembolsos, pero la pasarela le devuelve la respuesta guardada (incluso un rechazo),
+     *                          así que cada intento nuevo necesita una clave distinta
      * @return si fue aceptado y, en tal caso, el ID del reembolso en la pasarela
      * @throws PasarelaPagoException si no se sabe si el reembolso se realizó
      */
-    ResultadoReembolsoDTO reembolsar(Pago pago);
+    ResultadoReembolsoDTO reembolsar(Pago pago, String claveIdempotencia);
 
     /**
-     * Busca en la pasarela un reembolso ya hecho del pago. Sirve para recuperar reembolsos cuyo pedido
-     * quedó sin confirmar (no se guardó la respuesta de {@link #reembolsar(Pago)}).
+     * Busca en la pasarela un reembolso ya hecho o en curso del pago, ignorando los rechazados. Sirve para
+     * recuperar reembolsos cuyo pedido quedó sin confirmar (no se guardó la respuesta de
+     * {@link #reembolsar(Pago, String)}) o que el productor hizo directamente en la pasarela.
      *
      * @param pago pago a revisar
-     * @return el ID del reembolso en la pasarela, vacío si el pago no tiene reembolsos
+     * @return el ID del reembolso en la pasarela, vacío si el pago no tiene reembolsos vigentes
      * @throws PasarelaPagoException si falla la comunicación con la pasarela
      */
     Optional<String> buscarReembolso(Pago pago);
@@ -67,7 +71,7 @@ public interface EstrategiaPago {
      * Consulta a la pasarela el estado de un reembolso ya pedido.
      *
      * @param pago pago reembolsado
-     * @param idReembolsoExterno ID del reembolso en la pasarela, devuelto por {@link #reembolsar(Pago)}
+     * @param idReembolsoExterno ID del reembolso en la pasarela, devuelto por {@link #reembolsar(Pago, String)}
      * @return si el reembolso fue aprobado, rechazado o sigue en proceso
      * @throws PasarelaPagoException si falla la comunicación con la pasarela
      */
