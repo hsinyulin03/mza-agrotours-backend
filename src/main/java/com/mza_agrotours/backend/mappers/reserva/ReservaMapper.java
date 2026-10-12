@@ -13,8 +13,8 @@ import com.mza_agrotours.backend.entities.TipoIdentificacion;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
-import com.mza_agrotours.backend.entities.pago.Pago;
 import com.mza_agrotours.backend.entities.pago.Reembolso;
+import com.mza_agrotours.backend.entities.pago.ReembolsoSistemaPago;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
 import org.mapstruct.Mapper;
@@ -75,6 +75,8 @@ public interface ReservaMapper {
     ListarReembolsoAdminDTO reembolsoToListarReembolsoAdminDTO(Reembolso reembolso);
 
     @Mapping(target = "idReembolso", source = "reembolso.id")
+    @Mapping(target = "fechaHoraPedido", source = "reembolso.fechaHoraPedido")
+    @Mapping(target = "montoReembolso", source = "reembolso.montoReembolso")
     @Mapping(target = "estado", source = "reembolso.estadoActual.estadoReembolso.nombre")
     @Mapping(target = "fechaHoraEstado", source = "reembolso.estadoActual.fechaHoraInicio")
     @Mapping(target = "nombreEstablecimiento", source = "reembolso.reserva.actividad.establecimiento.nombre")
@@ -85,11 +87,16 @@ public interface ReservaMapper {
     @Mapping(target = "visitante", source = "reembolso.reserva.visitante.usuario")
     @Mapping(target = "productorLider", source = "reembolso.reserva.actividad.establecimiento.titular.usuario")
     @Mapping(target = "personas", source = "reembolso.reserva.reservaDetalles")
-    @Mapping(target = "pagoReembolsoSistema", source = "reembolso.pagoReembolsoSistema")
-    DetalleReembolsoAdminDTO reembolsoToDetalleReembolsoAdminDTO(Reembolso reembolso);
+    @Mapping(target = "pagoReembolsoSistema", source = "reembolsoSistemaPago")
+    DetalleReembolsoAdminDTO reembolsoToDetalleReembolsoAdminDTO(Reembolso reembolso, ReembolsoSistemaPago reembolsoSistemaPago);
 
+    // US RESE-10
     @Mapping(target = "idPago", source = "pago.id")
-    PagoReembolsoSistemaDTO pagoToPagoReembolsoSistemaDTO(Pago pago);
+    @Mapping(target = "fechaHoraPago", source = "pago.fechaHoraPago")
+    @Mapping(target = "idPagoExterno", source = "pago.idTransaccionExterna")
+    @Mapping(target = "metodoPago", source = "metodoPagoReal")
+    @Mapping(target = "administrador", source = "cargadoPorAdmin.usuario.nombre")
+    PagoReembolsoSistemaDTO reembolsoSistemaPagoToPagoReembolsoSistemaDTO(ReembolsoSistemaPago reembolsoSistemaPago);
 
     ContactoReembolsoDTO usuarioToContactoReembolsoDTO(Usuario usuario);
 

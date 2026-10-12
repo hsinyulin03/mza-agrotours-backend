@@ -21,6 +21,7 @@ import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
 import com.mza_agrotours.backend.enums.*;
 import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
+import com.mza_agrotours.backend.repositories.AdministradorSistemasRepository;
 import com.mza_agrotours.backend.repositories.ReservaRepository;
 import com.mza_agrotours.backend.repositories.TipoIdentificacionRepository;
 import com.mza_agrotours.backend.repositories.UsuarioRepository;
@@ -29,6 +30,7 @@ import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.pago.EstadoPagoRepository;
 import com.mza_agrotours.backend.repositories.pago.EstadoReembolsoRepository;
 import com.mza_agrotours.backend.repositories.pago.ReembolsoRepository;
+import com.mza_agrotours.backend.repositories.pago.ReembolsoSistemaPagoRepository;
 import com.mza_agrotours.backend.services.notificaciones.NotificacionService;
 import com.mza_agrotours.backend.services.pago.EstrategiaPago;
 import com.mza_agrotours.backend.services.pago.EstrategiaPagoFactory;
@@ -110,7 +112,8 @@ class ReservaServiceNotificacionesTest {
 
         service = new ReservaService(reservaRepository, reservaMapper, actividadRepository, parametrosService,
                 usuarioRepository, visitanteRepository, tipoIdentificacionRepository, estrategiaPagoFactory, self,
-                estadoPagoRepository, notificacionService, estadoReembolsoRepository, reembolsoRepository);
+                estadoPagoRepository, notificacionService, estadoReembolsoRepository, reembolsoRepository,
+                mock(ReembolsoSistemaPagoRepository.class), mock(AdministradorSistemasRepository.class));
     }
 
     // ---------- Datos ----------
