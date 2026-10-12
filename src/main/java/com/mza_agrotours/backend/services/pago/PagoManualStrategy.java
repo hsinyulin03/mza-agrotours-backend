@@ -79,7 +79,7 @@ public class PagoManualStrategy implements EstrategiaPago{
 
     // Igual que al pagar, se hace de cuenta que el reembolso se realizó inmediatamente
     @Override
-    public ResultadoReembolsoDTO reembolsar(Pago pago) {
+    public ResultadoReembolsoDTO reembolsar(Pago pago, String claveIdempotencia) {
         return new ResultadoReembolsoDTO(true, null);
     }
 
