@@ -231,19 +231,19 @@ class PagoMPStrategyTest {
     }
 
     @Test
-    void reembolsaConElTokenDelVendedorYUnaIdempotencyKeyPorPago() throws Exception {
+    void reembolsaConElTokenDelVendedorYLaIdempotencyKeyDelIntento() throws Exception {
         Pago pago = pagoAprobado(vincularCuenta(LocalDateTime.now().plusDays(100)));
         PaymentRefund refund = mock(PaymentRefund.class);
         when(refund.getId()).thenReturn(555L);
 
         try (MockedConstruction<PaymentRefundClient> clientes = mockConstruction(PaymentRefundClient.class, (client, contexto) ->
                 when(client.refund(anyLong(), any(MPRequestOptions.class))).thenReturn(refund))) {
-            ResultadoReembolsoDTO resultado = strategy.reembolsar(pago);
+            ResultadoReembolsoDTO resultado = strategy.reembolsar(pago, "clave-del-intento");
 
             ArgumentCaptor<MPRequestOptions> opciones = ArgumentCaptor.forClass(MPRequestOptions.class);
             verify(clientes.constructed().get(0)).refund(eq(987L), opciones.capture());
             assertEquals(TOKEN_VENDEDOR, opciones.getValue().getAccessToken());
-            assertEquals("reembolso-pago-" + pago.getId(), opciones.getValue().getCustomHeaders().get("X-Idempotency-Key"));
+            assertEquals("clave-del-intento", opciones.getValue().getCustomHeaders().get("X-Idempotency-Key"));
             assertTrue(resultado.aceptado());
             assertEquals("555", resultado.idReembolsoExterno());
         }
@@ -257,7 +257,7 @@ class PagoMPStrategyTest {
 
         try (MockedConstruction<PaymentRefundClient> clientes = mockConstruction(PaymentRefundClient.class, (client, contexto) ->
                 when(client.refund(anyLong(), any(MPRequestOptions.class))).thenReturn(refund))) {
-            strategy.reembolsar(pago);
+            strategy.reembolsar(pago, "clave-del-intento");
 
             ArgumentCaptor<MPRequestOptions> opciones = ArgumentCaptor.forClass(MPRequestOptions.class);
             verify(clientes.constructed().get(0)).refund(eq(987L), opciones.capture());
@@ -299,6 +299,41 @@ class PagoMPStrategyTest {
             verify(clientes.constructed().get(0)).list(eq(987L), opciones.capture());
             assertEquals(TOKEN_VENDEDOR, opciones.getValue().getAccessToken());
             assertEquals(Optional.of("555"), idReembolso);
+        }
+    }
+
+    @Test
+    void alBuscarLosReembolsosIgnoraLosRechazadosYCancelados() throws Exception {
+        Pago pago = pagoAprobado(vincularCuenta(LocalDateTime.now().plusDays(100)));
+        PaymentRefund rechazado = mock(PaymentRefund.class);
+        when(rechazado.getStatus()).thenReturn("rejected");
+        PaymentRefund cancelado = mock(PaymentRefund.class);
+        when(cancelado.getStatus()).thenReturn("cancelled");
+        PaymentRefund aprobado = mock(PaymentRefund.class);
+        when(aprobado.getId()).thenReturn(556L);
+        when(aprobado.getStatus()).thenReturn("approved");
+        @SuppressWarnings("unchecked")
+        MPResourceList<PaymentRefund> refunds = mock(MPResourceList.class);
+        when(refunds.getResults()).thenReturn(List.of(rechazado, cancelado, aprobado));
+
+        try (MockedConstruction<PaymentRefundClient> clientes = mockConstruction(PaymentRefundClient.class, (client, contexto) ->
+                when(client.list(anyLong(), any(MPRequestOptions.class))).thenReturn(refunds))) {
+            assertEquals(Optional.of("556"), strategy.buscarReembolso(pago));
+        }
+    }
+
+    @Test
+    void siSoloHayReembolsosRechazadosNoEncuentraNinguno() throws Exception {
+        Pago pago = pagoAprobado(vincularCuenta(LocalDateTime.now().plusDays(100)));
+        PaymentRefund rechazado = mock(PaymentRefund.class);
+        when(rechazado.getStatus()).thenReturn("rejected");
+        @SuppressWarnings("unchecked")
+        MPResourceList<PaymentRefund> refunds = mock(MPResourceList.class);
+        when(refunds.getResults()).thenReturn(List.of(rechazado));
+
+        try (MockedConstruction<PaymentRefundClient> clientes = mockConstruction(PaymentRefundClient.class, (client, contexto) ->
+                when(client.list(anyLong(), any(MPRequestOptions.class))).thenReturn(refunds))) {
+            assertEquals(Optional.empty(), strategy.buscarReembolso(pago));
         }
     }
 }

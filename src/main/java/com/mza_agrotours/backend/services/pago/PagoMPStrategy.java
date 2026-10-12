@@ -238,12 +238,12 @@ public class PagoMPStrategy implements EstrategiaPago{
     }
 
     /**
-     * Pide el reembolso total del payment aprobado, con el token del vendedor que lo cobró. Usa una idempotency
-     * key por pago para que un doble pedido no genere dos reembolsos. Un error 4xx de MP es un rechazo; un 5xx
+     * Pide el reembolso total del payment aprobado, con el token del vendedor que lo cobró. La clave va como
+     * idempotency key para que un doble pedido no genere dos reembolsos. Un error 4xx de MP es un rechazo; un 5xx
      * o un error de red no garantizan que el reembolso no se haya hecho, así que se lanzan.
      */
     @Override
-    public ResultadoReembolsoDTO reembolsar(Pago pago) {
+    public ResultadoReembolsoDTO reembolsar(Pago pago, String claveIdempotencia) {
         if (pago.getIdTransaccionExterna() == null) {
             log.warn("El pago {} no tiene ID de transacción de MP, no se puede reembolsar", pago.getId());
             return ResultadoReembolsoDTO.rechazado();
@@ -251,7 +251,7 @@ public class PagoMPStrategy implements EstrategiaPago{
 
         MPRequestOptions options = MPRequestOptions.builder()
                 .accessToken(opcionesDe(pago).getAccessToken())
-                .customHeaders(Map.of("X-Idempotency-Key", "reembolso-pago-" + pago.getId()))
+                .customHeaders(Map.of("X-Idempotency-Key", claveIdempotencia))
                 .build();
         try {
             PaymentRefund refund = new PaymentRefundClient()
@@ -268,7 +268,8 @@ public class PagoMPStrategy implements EstrategiaPago{
     }
 
     /**
-     * Lista los refunds del payment. Como solo se hacen reembolsos totales, hay a lo sumo uno.
+     * Lista los refunds del payment y devuelve el primero que no fue rechazado ni cancelado. Como solo se hacen
+     * reembolsos totales, hay a lo sumo uno vigente; puede haber rechazados de intentos anteriores.
      */
     @Override
     public Optional<String> buscarReembolso(Pago pago) {
@@ -276,8 +277,11 @@ public class PagoMPStrategy implements EstrategiaPago{
             List<PaymentRefund> refunds = new PaymentRefundClient()
                     .list(Long.valueOf(pago.getIdTransaccionExterna()), opcionesDe(pago))
                     .getResults();
-            if (refunds == null || refunds.isEmpty()) return Optional.empty();
-            return Optional.of(String.valueOf(refunds.get(0).getId()));
+            if (refunds == null) return Optional.empty();
+            return refunds.stream()
+                    .filter(r -> !"rejected".equals(r.getStatus()) && !"cancelled".equals(r.getStatus()))
+                    .findFirst()
+                    .map(r -> String.valueOf(r.getId()));
         } catch (MPApiException e) {
             throw new PasarelaPagoException("Error de la API de MP listando los refunds: " + e.getApiResponse().getContent(), e);
         } catch (MPException e) {

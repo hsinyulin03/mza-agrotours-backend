@@ -1,12 +1,7 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.config.RutasNotificacionesFront;
-import com.mza_agrotours.backend.dtos.pago.DetalleReembolsoAdminDTO;
-import com.mza_agrotours.backend.dtos.pago.ListarReembolsoAdminDTO;
-import com.mza_agrotours.backend.dtos.pago.RegistrarPagoReembolsoSistemaDTO;
-import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaPagoDTO;
-import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaReembolso;
-import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoDTO;
+import com.mza_agrotours.backend.dtos.pago.*;
 import com.mza_agrotours.backend.dtos.reservas.*;
 import com.mza_agrotours.backend.entities.AdministradorSistemas;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
@@ -55,6 +50,8 @@ import com.mza_agrotours.backend.services.pago.EstrategiaPagoFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,6 +59,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -563,7 +561,8 @@ public class ReservaService {
             try{
                 // Pedido sin respuesta guardada: buscar si la pasarela lo hizo
                 if (r.getIdReembolsoExterno() == null){
-                    if (r.getFechaHoraPedido().isAfter(ahora.minus(ESPERA_REEMBOLSO_SIN_CONFIRMAR))) continue;
+                    // Se mide desde el último intento: si lo reintentó el productor, fechaHoraPedido es la del primero
+                    if (r.getEstadoActual().getFechaHoraInicio().isAfter(ahora.minus(ESPERA_REEMBOLSO_SIN_CONFIRMAR))) continue;
 
                     Optional<String> idExterno = getEstrategiaPago(pago).buscarReembolso(pago);
                     if (idExterno.isEmpty()){
@@ -695,6 +694,76 @@ public class ReservaService {
         if (resultado == null || resultado.aceptado())
             return new IniciarReembolsoDTO(ResultadoCancelacion.REEMBOLSO_EN_PROCESO); // Avisar que el proceso marcha bien (o se resuelve solo), avisamos cuando sepamos
         return new IniciarReembolsoDTO(ResultadoCancelacion.REEMBOLSO_MANUAL_PRODUCTOR); // Avisar que hubo un error. Se notificó al propietario
+    }
+
+    /**
+     * Reembolsos "Pedido" del establecimiento, que la pasarela no pudo devolver y tiene que hacer el productor.
+     */
+    @Transactional(readOnly = true)
+    public Page<ReembolsoGetCatalogoDTO> listarReembolsosPendientes(UUID establecimientoId, Pageable pageable){
+        Page<ReembolsoGetCatalogoDTO> pendientes = reembolsoRepository.findPedidosByEstablecimiento(establecimientoId, pageable);
+        return pendientes;
+    }
+
+    /**
+     * Reintento de un reembolso "Pedido" a pedido del productor.
+     * <p>
+     * Primero se vuelve a poner "En proceso" sin ID externo y después se busca en la pasarela si el reembolso ya
+     * existe (por ejemplo, si el productor lo hizo desde la pasarela): si existe se concilia con él. Si no, se pide
+     * de nuevo con los mismos pasos que {@link #handleCancelarReserva}, con una clave de idempotencia propia del
+     * intento (con la del primer pedido la pasarela devolvería el mismo rechazo). Si no se sabe qué pasó en la
+     * pasarela queda "En proceso" y lo resuelve {@link #confirmarReembolsos()}.
+     *
+     * @throws ReembolsoNotFoundException si el reembolso no existe o no es del establecimiento
+     * @throws ReembolsoNoPendienteException si el reembolso no está "Pedido"
+     */
+    public ResultadoReembolsoProductorDTO reembolsarPorProductor(UUID establecimientoId, UUID reembolsoId){
+        // Paso 1: volver a poner el reembolso "En proceso", antes de mover dinero
+        Reembolso reembolso = self.iniciarReintentoReembolso(establecimientoId, reembolsoId);
+        Pago pago = reembolso.getReserva().getPago();
+
+        Optional<String> idExistente;
+        try {
+            idExistente = getEstrategiaPago(pago).buscarReembolso(pago);
+        } catch (PasarelaPagoException e) {
+            log.warn("No se pudo buscar el reembolso {} en la pasarela, lo verificará la tarea programada", reembolso.getId(), e);
+            return new ResultadoReembolsoProductorDTO(ResultadoReembolsoProductor.EN_PROCESO);
+        }
+
+        if (idExistente.isPresent())
+            return conciliarReembolsoExistente(reembolso, pago, idExistente.get());
+
+        // Pasos 2 y 3: pedir el reembolso a la pasarela y guardar su respuesta
+        long inicioIntento = reembolso.getEstadoActual().getFechaHoraInicio().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        ResultadoReembolsoDTO resultado = pedirReembolso(reembolso, pago, "reembolso-" + reembolso.getId() + "-" + inicioIntento, false);
+
+        if (resultado == null || resultado.aceptado())
+            return new ResultadoReembolsoProductorDTO(ResultadoReembolsoProductor.EN_PROCESO);
+        return new ResultadoReembolsoProductorDTO(ResultadoReembolsoProductor.RECHAZADO);
+    }
+
+    /**
+     * Concilia el reintento del productor con un reembolso que ya existe en la pasarela: si está aprobado se da por
+     * realizado; si no, se guarda su ID externo y lo termina de confirmar {@link #confirmarReembolsos()}.
+     */
+    private ResultadoReembolsoProductorDTO conciliarReembolsoExistente(Reembolso reembolso, Pago pago, String idExterno){
+        ResultadoConsultaReembolso consulta;
+        try {
+            consulta = getEstrategiaPago(pago).consultarReembolso(pago, idExterno);
+        } catch (PasarelaPagoException e) {
+            log.warn("No se pudo consultar el reembolso {} en la pasarela, lo verificará la tarea programada", reembolso.getId(), e);
+            consulta = ResultadoConsultaReembolso.EN_PROCESO;
+        }
+
+        if (consulta == ResultadoConsultaReembolso.APROBADO) {
+            reembolso.setIdReembolsoExterno(idExterno);
+            completarReembolso(reembolso, LocalDateTime.now());
+            self.guardarReembolsoYNotificar(reembolso, TipoNotificacionNombre.REEMBOLSO_REALIZADO);
+            return new ResultadoReembolsoProductorDTO(ResultadoReembolsoProductor.REALIZADO);
+        }
+
+        self.registrarPedidoReembolso(reembolso.getId(), new ResultadoReembolsoDTO(true, idExterno), false);
+        return new ResultadoReembolsoProductorDTO(ResultadoReembolsoProductor.EN_PROCESO);
     }
 
     //Recordatorio: notifica a las reservas pagadas cuyo día empieza en las próximas 24 h (lo llama el scheduler)
@@ -953,6 +1022,29 @@ public class ReservaService {
     }
 
     /**
+     * Paso 1 de {@link #reembolsarPorProductor}: valida que el reembolso sea del establecimiento y esté "Pedido",
+     * le quita el ID externo del intento anterior (si no, la tarea programada consultaría el reembolso rechazado)
+     * y lo vuelve a poner "En proceso". La fecha de pedido no cambia: sigue siendo la del primer pedido.
+     * <p>
+     * El reembolso se bloquea para que un doble click no lance dos intentos.
+     *
+     * @return el reembolso "En proceso", con su reserva y pago
+     */
+    @Transactional
+    protected Reembolso iniciarReintentoReembolso(UUID establecimientoId, UUID reembolsoId){
+        Reembolso reembolso = reembolsoRepository.findByIdAndEstablecimiento(reembolsoId, establecimientoId)
+                .orElseThrow(ReembolsoNotFoundException::new);
+
+        EstadoReembolsoNombre estado = reembolso.getEstadoActual().getEstadoReembolso().getNombre();
+        if (estado != EstadoReembolsoNombre.PEDIDO)
+            throw new ReembolsoNoPendienteException(estado);
+
+        reembolso.setIdReembolsoExterno(null);
+        reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.EN_PROCESO), LocalDateTime.now());
+        return reembolsoRepository.save(reembolso);
+    }
+
+    /**
      * Pide el reembolso a la pasarela y guarda su respuesta (pasos 2 y 3 de {@link #handleCancelarReserva} y
      * {@link #reembolsarPagoNoConciliable}). Nunca se reintenta el pedido: si no se sabe si la pasarela lo hizo
      * (error de comunicación o falla al guardar la respuesta), el reembolso queda "En proceso" y
@@ -961,16 +1053,24 @@ public class ReservaService {
      * @return la respuesta de la pasarela, o null si no se sabe si el reembolso se realizó
      */
     private ResultadoReembolsoDTO pedirReembolso(Reembolso reembolso, Pago pago){
+        return pedirReembolso(reembolso, pago, "reembolso-pago-" + pago.getId(), true);
+    }
+
+    /**
+     * Como {@link #pedirReembolso(Reembolso, Pago)}, con la clave de idempotencia del intento y si se avisa al
+     * visitante en caso de rechazo (el reintento del productor no lo vuelve a avisar).
+     */
+    private ResultadoReembolsoDTO pedirReembolso(Reembolso reembolso, Pago pago, String claveIdempotencia, boolean notificarRechazo){
         ResultadoReembolsoDTO resultado;
         try {
-            resultado = getEstrategiaPago(pago).reembolsar(pago);
+            resultado = getEstrategiaPago(pago).reembolsar(pago, claveIdempotencia);
         } catch (PasarelaPagoException e) {
             log.warn("No se sabe si se realizó el reembolso {}, lo verificará la tarea programada", reembolso.getId(), e);
             return null;
         }
 
         try {
-            self.registrarPedidoReembolso(reembolso.getId(), resultado);
+            self.registrarPedidoReembolso(reembolso.getId(), resultado, notificarRechazo);
         } catch (Exception e) {
             log.error("No se pudo guardar la respuesta de la pasarela del reembolso {}, lo verificará la tarea programada", reembolso.getId(), e);
         }
@@ -980,21 +1080,22 @@ public class ReservaService {
     /**
      * Paso 3 de {@link #pedirReembolso}: guarda la respuesta de la pasarela al pedido de reembolso.
      * Si fue aceptado se guarda su ID externo (sigue "En proceso" hasta que se confirme); si fue rechazado
-     * pasa a "Pedido" para que lo haga el productor y se avisa al visitante.
+     * pasa a "Pedido" para que lo haga el productor y, si se pide, se avisa al visitante.
      * <p>
      * Va en su propia transacción porque {@link #pagarReservas()} lo llama dentro de una de solo lectura, en la
      * que no se guardaría nada.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected void registrarPedidoReembolso(UUID reembolsoId, ResultadoReembolsoDTO resultado){
+    protected void registrarPedidoReembolso(UUID reembolsoId, ResultadoReembolsoDTO resultado, boolean notificarRechazo){
         Reembolso reembolso = reembolsoRepository.findById(reembolsoId).orElseThrow();
 
         if (resultado.aceptado()) {
             reembolso.setIdReembolsoExterno(resultado.idReembolsoExterno());
         } else {
             reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.PEDIDO), LocalDateTime.now()); // TODO: notificar al productor
-            notificarVisitante(reembolso.getReserva(), TipoNotificacionNombre.REEMBOLSO_NO_AUTOMATICO,
-                    reembolso.getMontoReembolso().toPlainString());
+            if (notificarRechazo)
+                notificarVisitante(reembolso.getReserva(), TipoNotificacionNombre.REEMBOLSO_NO_AUTOMATICO,
+                        reembolso.getMontoReembolso().toPlainString());
         }
 
         reembolsoRepository.save(reembolso);
