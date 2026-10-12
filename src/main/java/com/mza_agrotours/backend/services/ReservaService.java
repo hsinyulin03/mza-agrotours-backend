@@ -45,6 +45,8 @@ import com.mza_agrotours.backend.services.pago.EstrategiaPagoFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -593,6 +595,15 @@ public class ReservaService {
         if (resultado == null || resultado.aceptado())
             return new IniciarReembolsoDTO(ResultadoCancelacion.REEMBOLSO_EN_PROCESO); // Avisar que el proceso marcha bien (o se resuelve solo), avisamos cuando sepamos
         return new IniciarReembolsoDTO(ResultadoCancelacion.REEMBOLSO_MANUAL_PRODUCTOR); // Avisar que hubo un error. Se notificó al propietario
+    }
+
+    /**
+     * Reembolsos "Pedido" del establecimiento, que la pasarela no pudo devolver y tiene que hacer el productor.
+     */
+    @Transactional(readOnly = true)
+    public Page<ReembolsoGetCatalogoDTO> listarReembolsosPendientes(UUID establecimientoId, Pageable pageable){
+        Page<ReembolsoGetCatalogoDTO> pendientes = reembolsoRepository.findPedidosByEstablecimiento(establecimientoId, pageable);
+        return pendientes;
     }
 
     //Recordatorio: notifica a las reservas pagadas cuyo día empieza en las próximas 24 h (lo llama el scheduler)
