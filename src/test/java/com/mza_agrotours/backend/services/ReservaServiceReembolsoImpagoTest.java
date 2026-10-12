@@ -65,7 +65,7 @@ class ReservaServiceReembolsoImpagoTest {
         reembolso.setId(UUID.randomUUID());
         reembolso.setFechaHoraPedido(LocalDateTime.now().minusDays(10));
         reembolso.cambiarEstado(new EstadoReembolso(LocalDateTime.now(), null, estado), LocalDateTime.now().minusDays(10));
-        when(reembolsoRepository.findById(reembolso.getId())).thenReturn(Optional.of(reembolso));
+        when(reembolsoRepository.findByIdForUpdate(reembolso.getId())).thenReturn(Optional.of(reembolso));
         return reembolso;
     }
 

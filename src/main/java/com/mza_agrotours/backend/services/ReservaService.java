@@ -644,7 +644,8 @@ public class ReservaService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected void marcarReembolsoImpago(UUID reembolsoId, LocalDateTime ahora){
-        Reembolso reembolso = reembolsoRepository.findById(reembolsoId).orElseThrow();
+        // Bloqueado, como en iniciarReintentoReembolso: si el productor lo reintenta a la vez, gana el primero
+        Reembolso reembolso = reembolsoRepository.findByIdForUpdate(reembolsoId).orElseThrow();
 
         // Relectura defensiva: entre la consulta y esta transacción el reembolso pudo dejar de estar "Pedido"
         if (reembolso.getEstadoActual().getEstadoReembolso().getNombre() != EstadoReembolsoNombre.PEDIDO)

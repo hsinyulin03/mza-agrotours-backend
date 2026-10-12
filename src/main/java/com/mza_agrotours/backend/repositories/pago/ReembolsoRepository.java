@@ -35,6 +35,11 @@ public interface ReembolsoRepository extends BaseEntityRepository<Reembolso, UUI
             "AND r.fechaHoraPedido <= :limite")
     List<UUID> findIdsPedidosVencidos(@Param("limite") LocalDateTime limite);
 
+    // Bloquea el reembolso para que el scheduler de impagos no pise un reintento del productor
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM Reembolso r WHERE r.id = :id")
+    Optional<Reembolso> findByIdForUpdate(@Param("id") UUID id);
+
     // Reembolsos "Pedido" del establecimiento: los que la pasarela no pudo devolver y tiene que hacer el productor
     @Query(value = "SELECT new com.mza_agrotours.backend.dtos.pago.ReembolsoGetCatalogoDTO(" +
             "  r.id, r.fechaHoraPedido, r.montoReembolso, u.nombre, u.email, res.id, SIZE(res.reservaDetalles), a.nombre, ad.fechaHoraInicio) " +
