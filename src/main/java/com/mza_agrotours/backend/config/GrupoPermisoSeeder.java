@@ -73,6 +73,12 @@ public class GrupoPermisoSeeder implements CommandLineRunner {
                             "Altas, bajas y modificación de las actividades del establecimiento",
                             "user-pen",
                             List.of(PermisoCodigo.GESTIONAR_ACTIVIDAD))),
+            entry("Gestión de reembolsos",
+                    new SeedGrupoPermiso(
+                            TipoPermisoNombre.PRODUCTOR,
+                            "Ver y reintentar los reembolsos que Mercado Pago no pudo devolver",
+                            "user-pen",
+                            List.of(PermisoCodigo.GESTIONAR_REEMBOLSOS))),
             entry("Gestión de FAQ",
                     new SeedGrupoPermiso(
                       TipoPermisoNombre.ADMIN,
