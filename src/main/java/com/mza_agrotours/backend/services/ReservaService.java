@@ -54,6 +54,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -606,6 +607,67 @@ public class ReservaService {
         return pendientes;
     }
 
+    /**
+     * Reintento de un reembolso "Pedido" a pedido del productor.
+     * <p>
+     * Primero se vuelve a poner "En proceso" sin ID externo y después se busca en la pasarela si el reembolso ya
+     * existe (por ejemplo, si el productor lo hizo desde la pasarela): si existe se concilia con él. Si no, se pide
+     * de nuevo con los mismos pasos que {@link #handleCancelarReserva}, con una clave de idempotencia propia del
+     * intento (con la del primer pedido la pasarela devolvería el mismo rechazo). Si no se sabe qué pasó en la
+     * pasarela queda "En proceso" y lo resuelve {@link #confirmarReembolsos()}.
+     *
+     * @throws ReembolsoNotFoundException si el reembolso no existe o no es del establecimiento
+     * @throws ReembolsoNoPendienteException si el reembolso no está "Pedido"
+     */
+    public ResultadoReembolsoProductorDTO reembolsarPorProductor(UUID establecimientoId, UUID reembolsoId){
+        // Paso 1: volver a poner el reembolso "En proceso", antes de mover dinero
+        Reembolso reembolso = self.iniciarReintentoReembolso(establecimientoId, reembolsoId);
+        Pago pago = reembolso.getReserva().getPago();
+
+        Optional<String> idExistente;
+        try {
+            idExistente = getEstrategiaPago(pago).buscarReembolso(pago);
+        } catch (PasarelaPagoException e) {
+            log.warn("No se pudo buscar el reembolso {} en la pasarela, lo verificará la tarea programada", reembolso.getId(), e);
+            return new ResultadoReembolsoProductorDTO(ResultadoReembolsoProductor.EN_PROCESO);
+        }
+
+        if (idExistente.isPresent())
+            return conciliarReembolsoExistente(reembolso, pago, idExistente.get());
+
+        // Pasos 2 y 3: pedir el reembolso a la pasarela y guardar su respuesta
+        long inicioIntento = reembolso.getEstadoActual().getFechaHoraInicio().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        ResultadoReembolsoDTO resultado = pedirReembolso(reembolso, pago, "reembolso-" + reembolso.getId() + "-" + inicioIntento, false);
+
+        if (resultado == null || resultado.aceptado())
+            return new ResultadoReembolsoProductorDTO(ResultadoReembolsoProductor.EN_PROCESO);
+        return new ResultadoReembolsoProductorDTO(ResultadoReembolsoProductor.RECHAZADO);
+    }
+
+    /**
+     * Concilia el reintento del productor con un reembolso que ya existe en la pasarela: si está aprobado se da por
+     * realizado; si no, se guarda su ID externo y lo termina de confirmar {@link #confirmarReembolsos()}.
+     */
+    private ResultadoReembolsoProductorDTO conciliarReembolsoExistente(Reembolso reembolso, Pago pago, String idExterno){
+        ResultadoConsultaReembolso consulta;
+        try {
+            consulta = getEstrategiaPago(pago).consultarReembolso(pago, idExterno);
+        } catch (PasarelaPagoException e) {
+            log.warn("No se pudo consultar el reembolso {} en la pasarela, lo verificará la tarea programada", reembolso.getId(), e);
+            consulta = ResultadoConsultaReembolso.EN_PROCESO;
+        }
+
+        if (consulta == ResultadoConsultaReembolso.APROBADO) {
+            reembolso.setIdReembolsoExterno(idExterno);
+            completarReembolso(reembolso, LocalDateTime.now());
+            self.guardarReembolsoYNotificar(reembolso, TipoNotificacionNombre.REEMBOLSO_REALIZADO);
+            return new ResultadoReembolsoProductorDTO(ResultadoReembolsoProductor.REALIZADO);
+        }
+
+        self.registrarPedidoReembolso(reembolso.getId(), new ResultadoReembolsoDTO(true, idExterno), false);
+        return new ResultadoReembolsoProductorDTO(ResultadoReembolsoProductor.EN_PROCESO);
+    }
+
     //Recordatorio: notifica a las reservas pagadas cuyo día empieza en las próximas 24 h (lo llama el scheduler)
     public void enviarRecordatoriosPendientes() {
         LocalDateTime ahora = LocalDateTime.now();
@@ -859,6 +921,29 @@ public class ReservaService {
         notificarVisitante(reserva, TipoNotificacionNombre.RESERVA_REEMBOLSADA_PAGO_NO_VALIDO, montoPagado.toPlainString());
 
         return reembolso;
+    }
+
+    /**
+     * Paso 1 de {@link #reembolsarPorProductor}: valida que el reembolso sea del establecimiento y esté "Pedido",
+     * le quita el ID externo del intento anterior (si no, la tarea programada consultaría el reembolso rechazado)
+     * y lo vuelve a poner "En proceso". La fecha de pedido no cambia: sigue siendo la del primer pedido.
+     * <p>
+     * El reembolso se bloquea para que un doble click no lance dos intentos.
+     *
+     * @return el reembolso "En proceso", con su reserva y pago
+     */
+    @Transactional
+    protected Reembolso iniciarReintentoReembolso(UUID establecimientoId, UUID reembolsoId){
+        Reembolso reembolso = reembolsoRepository.findByIdAndEstablecimiento(reembolsoId, establecimientoId)
+                .orElseThrow(ReembolsoNotFoundException::new);
+
+        EstadoReembolsoNombre estado = reembolso.getEstadoActual().getEstadoReembolso().getNombre();
+        if (estado != EstadoReembolsoNombre.PEDIDO)
+            throw new ReembolsoNoPendienteException(estado);
+
+        reembolso.setIdReembolsoExterno(null);
+        reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.EN_PROCESO), LocalDateTime.now());
+        return reembolsoRepository.save(reembolso);
     }
 
     /**

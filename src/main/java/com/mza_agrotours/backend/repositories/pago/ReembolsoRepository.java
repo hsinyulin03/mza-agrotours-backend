@@ -3,13 +3,16 @@ package com.mza_agrotours.backend.repositories.pago;
 import com.mza_agrotours.backend.dtos.pago.ReembolsoGetCatalogoDTO;
 import com.mza_agrotours.backend.entities.pago.Reembolso;
 import com.mza_agrotours.backend.repositories.BaseEntityRepository;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -38,4 +41,13 @@ public interface ReembolsoRepository extends BaseEntityRepository<Reembolso, UUI
                     "AND r.estadoActual.estadoReembolso.nombre = com.mza_agrotours.backend.enums.EstadoReembolsoNombre.PEDIDO")
     Page<ReembolsoGetCatalogoDTO> findPedidosByEstablecimiento(@Param("establecimientoId") UUID establecimientoId,
                                                                Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM Reembolso r " +
+            "JOIN FETCH r.reserva res " +
+            "JOIN FETCH res.pago " +
+            "WHERE r.id = :reembolsoId " +
+            "AND res.actividad.establecimiento.id = :establecimientoId")
+    Optional<Reembolso> findByIdAndEstablecimiento(@Param("reembolsoId") UUID reembolsoId,
+                                                   @Param("establecimientoId") UUID establecimientoId);
 }

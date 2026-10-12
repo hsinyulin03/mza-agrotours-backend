@@ -6,8 +6,11 @@ import com.mercadopago.client.payment.PaymentRefundClient;
 import com.mercadopago.client.preference.PreferenceClient;
 import com.mercadopago.client.preference.PreferenceRequest;
 import com.mercadopago.core.MPRequestOptions;
+import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
 import com.mercadopago.net.MPElementsResourcesPage;
+import com.mercadopago.net.MPResourceList;
+import com.mercadopago.net.MPResponse;
 import com.mercadopago.net.MPSearchRequest;
 import com.mercadopago.resources.merchantorder.MerchantOrder;
 import com.mercadopago.resources.merchantorder.MerchantOrderPayment;
@@ -16,6 +19,7 @@ import com.mercadopago.resources.payment.PaymentFeeDetail;
 import com.mercadopago.resources.payment.PaymentRefund;
 import com.mza_agrotours.backend.clients.mercadopago.MercadoPagoOAuthClient;
 import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoDTO;
+import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoProductorDTO;
 import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
@@ -31,7 +35,10 @@ import com.mza_agrotours.backend.enums.EstadoPagoNombre;
 import com.mza_agrotours.backend.enums.EstadoReembolsoNombre;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.enums.MetodoPago;
+import com.mza_agrotours.backend.enums.ResultadoReembolsoProductor;
 import com.mza_agrotours.backend.enums.TipoNotificacionNombre;
+import com.mza_agrotours.backend.exceptions.pago.ReembolsoNoPendienteException;
+import com.mza_agrotours.backend.exceptions.pago.ReembolsoNotFoundException;
 import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
 import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
@@ -92,6 +99,8 @@ class ReservaServicePagoMPTest {
     private final Map<Long, Payment> paymentsPorId = new HashMap<>();
     private final Set<String> preferencesConError = new HashSet<>();
     private String estadoRefundEnMp = "approved";   // Estado que devuelve MP al consultar un refund
+    private final List<PaymentRefund> refundsDelPaymentEnMp = new ArrayList<>();  // Lo que lista MP para el payment
+    private boolean mpRechazaElRefund = false;
 
     private MockedConstruction<MerchantOrderClient> merchantOrderClients;
     private MockedConstruction<PaymentClient> paymentClients;
@@ -137,6 +146,8 @@ class ReservaServicePagoMPTest {
         // El paso 1 del reembolso de un pago no conciliado corre en su propia transacción vía self: se ejecuta el real
         when(self.registrarPagoNoConciliable(any(), any(), any(), any())).thenAnswer(inv -> service.registrarPagoNoConciliable(
                 inv.getArgument(0), inv.getArgument(1), inv.getArgument(2), inv.getArgument(3)));
+        when(self.iniciarReintentoReembolso(any(), any())).thenAnswer(inv -> service.iniciarReintentoReembolso(
+                inv.getArgument(0), inv.getArgument(1)));
 
         merchantOrderClients = mockConstruction(MerchantOrderClient.class, (client, contexto) ->
                 when(client.search(any(MPSearchRequest.class), any(MPRequestOptions.class))).thenAnswer(inv -> {
@@ -154,8 +165,15 @@ class ReservaServicePagoMPTest {
             PaymentRefund refund = mock(PaymentRefund.class);
             when(refund.getId()).thenReturn(555L);
             when(refund.getStatus()).thenAnswer(inv -> estadoRefundEnMp);
-            when(client.refund(anyLong(), any(MPRequestOptions.class))).thenReturn(refund);
+            @SuppressWarnings("unchecked")
+            MPResourceList<PaymentRefund> refunds = mock(MPResourceList.class);
+            when(refunds.getResults()).thenAnswer(inv -> refundsDelPaymentEnMp);
+            when(client.refund(anyLong(), any(MPRequestOptions.class))).thenAnswer(inv -> {
+                if (mpRechazaElRefund) throw new MPApiException("Saldo insuficiente", new MPResponse(400, Map.of(), "{}"));
+                return refund;
+            });
             when(client.get(anyLong(), anyLong(), any(MPRequestOptions.class))).thenReturn(refund);
+            when(client.list(anyLong(), any(MPRequestOptions.class))).thenReturn(refunds);
         });
     }
 
@@ -546,6 +564,109 @@ class ReservaServicePagoMPTest {
 
         assertTrue(refundClients.constructed().isEmpty(), "No se busca en MP un intento que puede seguir en curso");
         assertEquals(EstadoReembolsoNombre.EN_PROCESO, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
+    }
+
+    // ---------- reembolsarPorProductor ----------
+
+    private static final UUID ESTABLECIMIENTO = UUID.randomUUID();
+
+    /** Reembolso que MP rechazó (refund 554) y quedó "Pedido" para el productor del establecimiento. */
+    private Reembolso reembolsoPedido() {
+        Reembolso reembolso = reembolsoEnProceso(EstadoReservaNombre.CANCELADA_REEMBOLSO_PENDIENTE);
+        reembolso.setId(UUID.randomUUID());
+        reembolso.setIdReembolsoExterno("554");
+        reembolso.cambiarEstado(new EstadoReembolso(LocalDateTime.now(), null, EstadoReembolsoNombre.PEDIDO), LocalDateTime.now().minusMinutes(5));
+        when(reembolsoRepository.findByIdAndEstablecimiento(reembolso.getId(), ESTABLECIMIENTO)).thenReturn(Optional.of(reembolso));
+        when(reembolsoRepository.save(any(Reembolso.class))).thenAnswer(inv -> inv.getArgument(0));
+        return reembolso;
+    }
+
+    private static PaymentRefund refundEnMp(long id, String status) {
+        PaymentRefund refund = mock(PaymentRefund.class);
+        when(refund.getId()).thenReturn(id);
+        when(refund.getStatus()).thenReturn(status);
+        return refund;
+    }
+
+    @Test
+    void siElProductorYaReembolsoDesdeMpSeConciliaSinPedirOtro() throws Exception {
+        Reembolso reembolso = reembolsoPedido();
+        refundsDelPaymentEnMp.add(refundEnMp(554L, "rejected"));
+        refundsDelPaymentEnMp.add(refundEnMp(556L, "approved"));
+        estadoRefundEnMp = "approved";
+
+        ResultadoReembolsoProductorDTO resultado = service.reembolsarPorProductor(ESTABLECIMIENTO, reembolso.getId());
+
+        assertEquals(ResultadoReembolsoProductor.REALIZADO, resultado.resultado());
+        assertEquals("556", reembolso.getIdReembolsoExterno());
+        assertEquals(EstadoReembolsoNombre.REEMBOLSADO_PRODUCTOR, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
+        assertEquals(EstadoPagoNombre.REEMBOLSADO, reembolso.getReserva().getPago().getEstadoActual().getEstadoPago().getNombre());
+        assertEquals(EstadoReservaNombre.CANCELADA_CON_REEMBOLSO, reembolso.getReserva().getEstadoActual().getEstadoReserva().getNombre());
+        verify(self).guardarReembolsoYNotificar(reembolso, TipoNotificacionNombre.REEMBOLSO_REALIZADO);
+        for (PaymentRefundClient client : refundClients.constructed())
+            verify(client, never()).refund(anyLong(), any(MPRequestOptions.class));
+    }
+
+    @Test
+    void siElReembolsoExistenteSigueEnCursoSeGuardaSuIdParaLaTareaProgramada() {
+        Reembolso reembolso = reembolsoPedido();
+        refundsDelPaymentEnMp.add(refundEnMp(556L, "in_process"));
+        estadoRefundEnMp = "in_process";
+
+        ResultadoReembolsoProductorDTO resultado = service.reembolsarPorProductor(ESTABLECIMIENTO, reembolso.getId());
+
+        assertEquals(ResultadoReembolsoProductor.EN_PROCESO, resultado.resultado());
+        assertEquals(EstadoReembolsoNombre.EN_PROCESO, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
+        verify(self).registrarPedidoReembolso(eq(reembolso.getId()), eq(new ResultadoReembolsoDTO(true, "556")), eq(false));
+    }
+
+    @Test
+    void sinReembolsoEnMpLoPideDeNuevoConUnaClaveDistintaALaDelPrimerPedido() throws Exception {
+        Reembolso reembolso = reembolsoPedido();
+
+        ResultadoReembolsoProductorDTO resultado = service.reembolsarPorProductor(ESTABLECIMIENTO, reembolso.getId());
+
+        assertEquals(ResultadoReembolsoProductor.EN_PROCESO, resultado.resultado());
+        // Queda "En proceso" sin el ID del refund rechazado, así la tarea programada no lo vuelve a consultar
+        assertEquals(EstadoReembolsoNombre.EN_PROCESO, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
+        assertNull(reembolso.getIdReembolsoExterno());
+
+        ArgumentCaptor<MPRequestOptions> opciones = ArgumentCaptor.forClass(MPRequestOptions.class);
+        verify(refundClients.constructed().get(1)).refund(eq(987L), opciones.capture());
+        assertEquals(TOKEN_VENDEDOR, opciones.getValue().getAccessToken());
+        String clave = opciones.getValue().getCustomHeaders().get("X-Idempotency-Key");
+        assertTrue(clave.startsWith("reembolso-" + reembolso.getId() + "-"), clave);
+        verify(self).registrarPedidoReembolso(eq(reembolso.getId()), argThat(ResultadoReembolsoDTO::aceptado), eq(false));
+    }
+
+    @Test
+    void siMpVuelveARechazarElReembolsoSigueRechazadoSinAvisarAlVisitante() {
+        Reembolso reembolso = reembolsoPedido();
+        mpRechazaElRefund = true;
+
+        ResultadoReembolsoProductorDTO resultado = service.reembolsarPorProductor(ESTABLECIMIENTO, reembolso.getId());
+
+        assertEquals(ResultadoReembolsoProductor.RECHAZADO, resultado.resultado());
+        verify(self).registrarPedidoReembolso(eq(reembolso.getId()), eq(ResultadoReembolsoDTO.rechazado()), eq(false));
+    }
+
+    @Test
+    void unReembolsoQueNoEstaPedidoNoSePuedeReintentar() {
+        Reembolso reembolso = reembolsoPedido();
+        reembolso.cambiarEstado(new EstadoReembolso(LocalDateTime.now(), null, EstadoReembolsoNombre.EN_PROCESO), LocalDateTime.now());
+
+        assertThrows(ReembolsoNoPendienteException.class,
+                () -> service.reembolsarPorProductor(ESTABLECIMIENTO, reembolso.getId()));
+        assertTrue(refundClients.constructed().isEmpty());
+    }
+
+    @Test
+    void unReembolsoDeOtroEstablecimientoNoSeEncuentra() {
+        Reembolso reembolso = reembolsoPedido();
+
+        assertThrows(ReembolsoNotFoundException.class,
+                () -> service.reembolsarPorProductor(UUID.randomUUID(), reembolso.getId()));
+        assertTrue(refundClients.constructed().isEmpty());
     }
 
     // ---------- handleCancelarPago ----------
