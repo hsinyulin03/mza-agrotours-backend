@@ -30,4 +30,7 @@ public enum PermisoCodigo {
     LEER_INCIDENCIAS,
     GESTIONAR_INCIDENCIAS,
 
+    // Reembolsos
+    LEER_REEMBOLSOS,
+
 }

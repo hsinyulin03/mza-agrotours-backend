@@ -69,6 +69,10 @@ public class ReservaService {
 
     private static final DateTimeFormatter FORMATO_FECHA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
+    // Reembolsos que tiene que ver el administrador: los que el productor no pagó y los que pagó el sistema
+    private static final List<EstadoReembolsoNombre> ESTADOS_REEMBOLSO_ADMIN =
+            List.of(EstadoReembolsoNombre.IMPAGO, EstadoReembolsoNombre.REEMBOLSADO_SISTEMA);
+
     private final ReservaService self;
     private final ReservaRepository reservaRepository;
     private final ReservaMapper reservaMapper;
@@ -124,8 +128,8 @@ public class ReservaService {
 
         Visitante visitante = getVisitante(usuario);
 
-        // Obtenemos las reservas. Si está vacío devolvemos el array vacío
-        List<Reserva> reservas = reservaRepository.findByVisitanteId(visitante.getId());
+        // Obtenemos las reservas (sin las expiradas, que confunden más de lo que informan). Si está vacío devolvemos el array vacío
+        List<Reserva> reservas = reservaRepository.findNoExpiradasByVisitanteId(visitante.getId());
         if (reservas.isEmpty())
             return dtos;
 
@@ -136,6 +140,31 @@ public class ReservaService {
 
         // Armamos el DTO
         return dtos;
+    }
+
+    /**
+     * Lista los reembolsos que el productor no pagó (IMPAGO) y los que terminó pagando un administrador
+     * (REEMBOLSADO_SISTEMA), del que más tiempo lleva en ese estado al más reciente.
+     */
+    @Transactional(readOnly = true)
+    public List<ListarReembolsoAdminDTO> listarReembolsosImpagos(){
+        return reembolsoRepository.findByEstadoActualIn(ESTADOS_REEMBOLSO_ADMIN)
+                .stream()
+                .map(reservaMapper::reembolsoToListarReembolsoAdminDTO)
+                .toList();
+    }
+
+    /**
+     * Detalle de un reembolso del listado de impagos, con los datos de la reserva y los contactos del visitante
+     * y del productor líder, para que el administrador pueda resolverlo.
+     * Solo se pueden consultar los reembolsos IMPAGO o REEMBOLSADO_SISTEMA.
+     */
+    @Transactional(readOnly = true)
+    public DetalleReembolsoAdminDTO getDetalleReembolsoAdmin(UUID idReembolso){
+        Reembolso reembolso = reembolsoRepository.findByIdAndEstadoActualIn(idReembolso, ESTADOS_REEMBOLSO_ADMIN)
+                .orElseThrow(ReembolsoNotFoundException::new);
+
+        return reservaMapper.reembolsoToDetalleReembolsoAdminDTO(reembolso);
     }
 
     /**
