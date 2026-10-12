@@ -107,6 +107,23 @@ public class RolSeeder implements CommandLineRunner {
             rol.setPermisos(permisos);
             this.rolRepository.save(rol);
         }
+
+        this.sincronizarProductoresLideres();
+    }
+
+    /**
+     * Los roles lideres de productor se crean uno por establecimiento con los permisos de ese momento
+     * ({@code RolService.crearRolProductorLider}), así que al agregar un permiso de productor se les
+     * asigna acá para que lo tomen en el siguiente arranque, igual que el rol lider de administrador.
+     */
+    private void sincronizarProductoresLideres() {
+        TipoPermiso tipoProductor = this.tipoPermisoRepository.findByNombre(TipoPermisoNombre.PRODUCTOR)
+                .orElseThrow(() -> new IllegalStateException("Tipo de permiso no encontrado: " + TipoPermisoNombre.PRODUCTOR));
+        List<Permiso> permisosProductor = this.permisoRepository.findByTipoPermiso(tipoProductor);
+
+        this.rolRepository.findAllByNombreAndEsProtegidoTrueAndTipoPermiso_Nombre(
+                        RolProtegido.PRODUCTOR_LIDER.getNombre(), TipoPermisoNombre.PRODUCTOR)
+                .forEach(rol -> rol.setPermisos(new ArrayList<>(permisosProductor)));
     }
 
     private List<Permiso> resolvePermisos(String rolNombre, SeedRol seed, TipoPermiso tipoPermiso) {

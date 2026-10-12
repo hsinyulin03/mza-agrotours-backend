@@ -27,6 +27,8 @@ public interface RolRepository extends BaseEntityRepository<Rol, UUID> {
 
     Optional<Rol> findByNombreAndFechaHoraBajaIsNull(String nombre);
 
+    List<Rol> findAllByNombreAndEsProtegidoTrueAndTipoPermiso_Nombre(String nombre, TipoPermisoNombre tipoPermisoNombre);
+
     @Query("select r from Rol r " +
             "where r.id = :id " +
             "and r.tipoPermiso.nombre = :tipoPermisoNombre " +
