@@ -31,5 +31,6 @@ public enum PermisoCodigo {
 
     // Reembolsos
     LEER_REEMBOLSOS,
+    GESTIONAR_REEMBOLSOS,
 
 }

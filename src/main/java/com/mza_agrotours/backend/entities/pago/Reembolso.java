@@ -35,13 +35,10 @@ public class Reembolso extends BaseEntity {
     @JoinColumn(name = "reembolso_id")
     private List<ReembolsoEstado> estados= new ArrayList<>();
 
-    @OneToOne
-    private Pago pagoReembolsoSistema;
-
     /**
      * Realiza un cambio de estado de un reembolso. <p></p>
      * Incluye la creación de nuevas instancias, relaciones y cambios en los atributos de las clases involucradas.
-     * No incluye el agregar un pago en caso de ser un reembolso por sistema.
+     * No incluye el agregar un pago en caso de ser un reembolso por sistema (ver {@link ReembolsoSistemaPago}).
      * @param estado Estado al que se quiere cambiar el pago
      * @param tiempoCambio Fecha y hora a la que se realizó el cambio
      */

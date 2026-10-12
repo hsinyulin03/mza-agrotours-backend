@@ -69,7 +69,9 @@ public class PermisoSeeder implements CommandLineRunner {
             entry(PermisoCodigo.GESTIONAR_INCIDENCIAS,
                     new SeedPermiso(TipoPermisoNombre.ADMIN, "Gestionar incidencias", "Revisar incidencias")),
             entry(PermisoCodigo.LEER_REEMBOLSOS,
-                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Lectura de reembolsos", "Ver los reembolsos impagos y los reembolsados por el sistema"))
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Lectura de reembolsos", "Ver los reembolsos impagos y los reembolsados por el sistema")),
+            entry(PermisoCodigo.GESTIONAR_REEMBOLSOS,
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Gestionar reembolsos", "Registrar los pagos de reembolsos impagos hechos por el sistema"))
     );
 
     private final PermisoRepository permisoRepository;

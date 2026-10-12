@@ -92,7 +92,7 @@ public class GrupoPermisoSeeder implements CommandLineRunner {
                             TipoPermisoNombre.ADMIN,
                             "Ver los reembolsos que los productores no pagaron y los pagados por el sistema",
                             "clipboard-check",
-                            List.of(PermisoCodigo.LEER_REEMBOLSOS)
+                            List.of(PermisoCodigo.LEER_REEMBOLSOS, PermisoCodigo.GESTIONAR_REEMBOLSOS)
                     ))
 
     );
