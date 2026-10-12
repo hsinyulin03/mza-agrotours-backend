@@ -78,7 +78,7 @@ public class GrupoPermisoSeeder implements CommandLineRunner {
                             TipoPermisoNombre.PRODUCTOR,
                             "Ver y reintentar los reembolsos que Mercado Pago no pudo devolver",
                             "user-pen",
-                            List.of(PermisoCodigo.GESTIONAR_REEMBOLSOS))),
+                            List.of(PermisoCodigo.GESTIONAR_REEMBOLSOS_PENDIENTES))),
             entry("Gestión de FAQ",
                     new SeedGrupoPermiso(
                       TipoPermisoNombre.ADMIN,
@@ -98,7 +98,7 @@ public class GrupoPermisoSeeder implements CommandLineRunner {
                             TipoPermisoNombre.ADMIN,
                             "Ver los reembolsos que los productores no pagaron y los pagados por el sistema",
                             "clipboard-check",
-                            List.of(PermisoCodigo.LEER_REEMBOLSOS)
+                            List.of(PermisoCodigo.LEER_REEMBOLSOS, PermisoCodigo.GESTIONAR_REEMBOLSOS)
                     ))
 
     );

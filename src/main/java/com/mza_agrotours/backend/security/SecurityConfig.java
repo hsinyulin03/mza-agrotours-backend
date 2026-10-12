@@ -97,6 +97,7 @@ public class SecurityConfig {
                         .requestMatchers("/admin/incidencias/**").hasAuthority(PermisoCodigo.GESTIONAR_INCIDENCIAS.name())
 
                         .requestMatchers(HttpMethod.GET, "/admin/reembolsos/**").hasAuthority(PermisoCodigo.LEER_REEMBOLSOS.name())
+                        .requestMatchers("/admin/reembolsos/**").hasAuthority(PermisoCodigo.GESTIONAR_REEMBOLSOS.name())
 
                         //Permisos
                         .requestMatchers( "/permisos/grupos-permisos/admin").hasAuthority(PermisoCodigo.LEER_ADMIN.name())

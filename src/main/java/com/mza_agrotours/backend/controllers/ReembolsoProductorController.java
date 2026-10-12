@@ -26,7 +26,7 @@ public class ReembolsoProductorController {
 
     //US-RESE-07: Reembolsos que Mercado Pago no pudo devolver y tiene que hacer el productor
     @GetMapping("/pendientes")
-    @PreAuthorize("@estAuth.tienePermiso(authentication, #establecimientoId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_REEMBOLSOS)")
+    @PreAuthorize("@estAuth.tienePermiso(authentication, #establecimientoId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_REEMBOLSOS_PENDIENTES)")
     public ResponseEntity<ApiResponse<Page<ReembolsoGetCatalogoDTO>>> obtenerReembolsosPendientes(
             @PathVariable UUID establecimientoId,
             @PageableDefault(page = 0, size = 10, sort = {"fechaHoraPedido", "id"}, direction = Sort.Direction.ASC) Pageable pageable) {
@@ -36,7 +36,7 @@ public class ReembolsoProductorController {
 
     //US-RESE-07: Reintentar un reembolso pendiente
     @PostMapping("/{reembolsoId}/reembolsar")
-    @PreAuthorize("@estAuth.tienePermiso(authentication, #establecimientoId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_REEMBOLSOS)")
+    @PreAuthorize("@estAuth.tienePermiso(authentication, #establecimientoId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_REEMBOLSOS_PENDIENTES)")
     public ResponseEntity<ApiResponse<ResultadoReembolsoProductorDTO>> reembolsar(
             @PathVariable UUID establecimientoId,
             @PathVariable UUID reembolsoId) {

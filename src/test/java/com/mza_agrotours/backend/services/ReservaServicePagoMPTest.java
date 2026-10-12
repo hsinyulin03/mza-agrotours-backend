@@ -46,6 +46,7 @@ import com.mza_agrotours.backend.repositories.pago.EstadoPagoRepository;
 import com.mza_agrotours.backend.repositories.pago.EstadoReembolsoRepository;
 import com.mza_agrotours.backend.repositories.pago.PagoRepository;
 import com.mza_agrotours.backend.repositories.pago.ReembolsoRepository;
+import com.mza_agrotours.backend.repositories.pago.ReembolsoSistemaPagoRepository;
 import com.mza_agrotours.backend.security.cifrado.Cifrador;
 import com.mza_agrotours.backend.services.notificaciones.NotificacionService;
 import com.mza_agrotours.backend.services.pago.ConciliadorPagoMP;
@@ -141,7 +142,8 @@ class ReservaServicePagoMPTest {
         service = new ReservaService(reservaRepository, mock(ReservaMapper.class), mock(ActividadRepository.class),
                 mock(ParametrosService.class), usuarioRepository, visitanteRepository,
                 mock(TipoIdentificacionRepository.class), estrategiaPagoFactory, self,
-                estadoPagoRepository, notificacionService, estadoReembolsoRepository, reembolsoRepository);
+                estadoPagoRepository, notificacionService, estadoReembolsoRepository, reembolsoRepository,
+                mock(ReembolsoSistemaPagoRepository.class), mock(AdministradorSistemasRepository.class));
 
         // El paso 1 del reembolso de un pago no conciliado corre en su propia transacción vía self: se ejecuta el real
         when(self.registrarPagoNoConciliable(any(), any(), any(), any())).thenAnswer(inv -> service.registrarPagoNoConciliable(

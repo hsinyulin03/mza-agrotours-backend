@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.config.RutasNotificacionesFront;
 import com.mza_agrotours.backend.dtos.pago.*;
 import com.mza_agrotours.backend.dtos.reservas.*;
+import com.mza_agrotours.backend.entities.AdministradorSistemas;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
 import com.mza_agrotours.backend.entities.TipoIdentificacionNombre;
 import com.mza_agrotours.backend.entities.Usuario;
@@ -14,10 +15,12 @@ import com.mza_agrotours.backend.entities.pago.EstadoPago;
 import com.mza_agrotours.backend.entities.pago.EstadoReembolso;
 import com.mza_agrotours.backend.entities.pago.Pago;
 import com.mza_agrotours.backend.entities.pago.Reembolso;
+import com.mza_agrotours.backend.entities.pago.ReembolsoSistemaPago;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
 import com.mza_agrotours.backend.enums.*;
+import com.mza_agrotours.backend.exceptions.AdministradorSistemasError;
 import com.mza_agrotours.backend.exceptions.AppException;
 import com.mza_agrotours.backend.exceptions.ReservaError;
 import com.mza_agrotours.backend.exceptions.TipoIdentificacionInvalidoException;
@@ -31,6 +34,7 @@ import com.mza_agrotours.backend.exceptions.reservas.EstadoReservaNotFoundExcept
 import com.mza_agrotours.backend.exceptions.reservas.FechaNacimientoInvalidaException;
 import com.mza_agrotours.backend.exceptions.reservas.ReservaNotFoundException;
 import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
+import com.mza_agrotours.backend.repositories.AdministradorSistemasRepository;
 import com.mza_agrotours.backend.repositories.ReservaRepository;
 import com.mza_agrotours.backend.repositories.TipoIdentificacionRepository;
 import com.mza_agrotours.backend.repositories.UsuarioRepository;
@@ -39,6 +43,7 @@ import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.pago.EstadoPagoRepository;
 import com.mza_agrotours.backend.repositories.pago.EstadoReembolsoRepository;
 import com.mza_agrotours.backend.repositories.pago.ReembolsoRepository;
+import com.mza_agrotours.backend.repositories.pago.ReembolsoSistemaPagoRepository;
 import com.mza_agrotours.backend.services.notificaciones.NotificacionService;
 import com.mza_agrotours.backend.services.pago.EstrategiaPago;
 import com.mza_agrotours.backend.services.pago.EstrategiaPagoFactory;
@@ -86,8 +91,10 @@ public class ReservaService {
     private final NotificacionService notificacionService;
     private final EstadoReembolsoRepository estadoReembolsoRepository;
     private final ReembolsoRepository reembolsoRepository;
+    private final ReembolsoSistemaPagoRepository reembolsoSistemaPagoRepository;
+    private final AdministradorSistemasRepository administradorSistemasRepository;
 
-    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, ActividadRepository actividadRepository, ParametrosService parametrosService, UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstrategiaPagoFactory estrategiaPagoFactory, @Lazy ReservaService self, EstadoPagoRepository estadoPagoRepository, NotificacionService notificacionService, EstadoReembolsoRepository estadoReembolsoRepository, ReembolsoRepository reembolsoRepository) {
+    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, ActividadRepository actividadRepository, ParametrosService parametrosService, UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstrategiaPagoFactory estrategiaPagoFactory, @Lazy ReservaService self, EstadoPagoRepository estadoPagoRepository, NotificacionService notificacionService, EstadoReembolsoRepository estadoReembolsoRepository, ReembolsoRepository reembolsoRepository, ReembolsoSistemaPagoRepository reembolsoSistemaPagoRepository, AdministradorSistemasRepository administradorSistemasRepository) {
         this.self = self;
         this.reservaRepository = reservaRepository;
         this.reservaMapper = reservaMapper;
@@ -101,6 +108,8 @@ public class ReservaService {
         this.notificacionService = notificacionService;
         this.estadoReembolsoRepository = estadoReembolsoRepository;
         this.reembolsoRepository = reembolsoRepository;
+        this.reembolsoSistemaPagoRepository = reembolsoSistemaPagoRepository;
+        this.administradorSistemasRepository = administradorSistemasRepository;
     }
 
     @Transactional
@@ -164,7 +173,67 @@ public class ReservaService {
         Reembolso reembolso = reembolsoRepository.findByIdAndEstadoActualIn(idReembolso, ESTADOS_REEMBOLSO_ADMIN)
                 .orElseThrow(ReembolsoNotFoundException::new);
 
-        return reservaMapper.reembolsoToDetalleReembolsoAdminDTO(reembolso);
+        // Solo existe si el reembolso ya lo pagó el sistema
+        ReembolsoSistemaPago reembolsoSistemaPago = reembolsoSistemaPagoRepository.findByReembolsoId(idReembolso)
+                .orElse(null);
+
+        return reservaMapper.reembolsoToDetalleReembolsoAdminDTO(reembolso, reembolsoSistemaPago);
+    }
+
+    /**
+     * Registra el pago que hizo un administrador para cubrir un reembolso IMPAGO. Crea un pago manual aprobado por el
+     * monto del reembolso, con la fecha y el ID externo de la transacción, y lo vincula al reembolso junto con el
+     * administrador y el medio de pago real. El reembolso pasa a "Reembolsado por sistema", el pago original a
+     * "Reembolsado" y, si es por una cancelación, la reserva a "Cancelada con reembolso". Avisa al visitante.
+     *
+     * @param idReembolso reembolso a pagar
+     * @param dto datos de la transacción hecha por el administrador
+     * @param emailAdmin email del administrador que la carga
+     * @return el detalle del reembolso ya pagado
+     * @throws AppException si el administrador no existe o no está activo
+     * @throws ReembolsoNotFoundException si el reembolso no existe o no es IMPAGO ni REEMBOLSADO_SISTEMA
+     * @throws ReembolsoNoImpagoException si el reembolso ya fue pagado por el sistema
+     */
+    @Transactional
+    public DetalleReembolsoAdminDTO registrarPagoReembolsoSistema(UUID idReembolso, RegistrarPagoReembolsoSistemaDTO dto, String emailAdmin){
+        LocalDateTime ahora = LocalDateTime.now();
+
+        AdministradorSistemas administrador = administradorSistemasRepository.findByEmailActivo(emailAdmin)
+                .orElseThrow(() -> new AppException(AdministradorSistemasError.NOT_FOUND));
+
+        Reembolso reembolso = reembolsoRepository.findByIdAndEstadoActualIn(idReembolso, ESTADOS_REEMBOLSO_ADMIN)
+                .orElseThrow(ReembolsoNotFoundException::new);
+        EstadoReembolsoNombre estadoReembolso = reembolso.getEstadoActual().getEstadoReembolso().getNombre();
+        if (estadoReembolso != EstadoReembolsoNombre.IMPAGO)
+            throw new ReembolsoNoImpagoException(estadoReembolso);
+
+        // Pago hecho por el administrador, ya aprobado al momento de la transacción
+        Pago pago = new Pago();
+        pago.setFechaHoraPago(dto.fechaHoraPago());
+        pago.setMontoTotal(reembolso.getMontoReembolso());
+        pago.setIdTransaccionExterna(dto.idPagoExterno());
+        pago.setMetodoPago(MetodoPago.MANUAL);
+        pago.cambiarEstado(getEstadoPago(EstadoPagoNombre.APROBADO), dto.fechaHoraPago());
+
+        ReembolsoSistemaPago reembolsoSistemaPago = new ReembolsoSistemaPago();
+        reembolsoSistemaPago.setMetodoPagoReal(dto.metodoPago());
+        reembolsoSistemaPago.setFechaHoraCarga(ahora);
+        reembolsoSistemaPago.setReembolso(reembolso);
+        reembolsoSistemaPago.setPago(pago);
+        reembolsoSistemaPago.setCargadoPorAdmin(administrador);
+
+        reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.REEMBOLSADO_SISTEMA), ahora);
+        reembolso.setFechaHoraReembolso(dto.fechaHoraPago());
+
+        Reserva reserva = reembolso.getReserva();
+        completarReservaReembolsada(reserva, ahora);
+
+        reembolsoSistemaPagoRepository.save(reembolsoSistemaPago);
+        reembolsoRepository.save(reembolso);
+        reservaRepository.save(reserva);
+        notificarVisitante(reserva, TipoNotificacionNombre.REEMBOLSO_REALIZADO, reembolso.getMontoReembolso().toPlainString());
+
+        return reservaMapper.reembolsoToDetalleReembolsoAdminDTO(reembolso, reembolsoSistemaPago);
     }
 
     /**
@@ -1041,10 +1110,20 @@ public class ReservaService {
      * @param ahora fecha y hora en la que se realizó el reembolso
      */
     private void completarReembolso(Reembolso reembolso, LocalDateTime ahora){
-        Reserva reserva = reembolso.getReserva();
-
         reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.REEMBOLSADO_PRODUCTOR), ahora);
         reembolso.setFechaHoraReembolso(ahora);
+        completarReservaReembolsada(reembolso.getReserva(), ahora);
+    }
+
+    /**
+     * Refleja en la reserva un reembolso ya realizado (por el productor o por el sistema): su pago pasa a
+     * "Reembolsado" y, si es por una cancelación, la reserva a "Cancelada con reembolso". La reserva de un pago
+     * no conciliado ya está en su estado final ("Reembolsada por pago no válido") y no cambia. No guarda.
+     *
+     * @param reserva reserva del reembolso, con su pago
+     * @param ahora fecha y hora del cambio
+     */
+    private void completarReservaReembolsada(Reserva reserva, LocalDateTime ahora){
         reserva.getPago().cambiarEstado(getEstadoPago(EstadoPagoNombre.REEMBOLSADO), ahora);
         if (reserva.getEstadoActual().getEstadoReserva().getNombre() != REEMBOLSO_NO_CONCILIACION)
             reserva.cambiarEstado(getEstadoReserva(CANCELADA_CON_REEMBOLSO), ahora);

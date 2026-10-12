@@ -74,7 +74,6 @@ public interface ReembolsoRepository extends BaseEntityRepository<Reembolso, UUI
             "LEFT JOIN FETCH tit.usuario " +
             "JOIN FETCH res.visitante vis " +
             "JOIN FETCH vis.usuario " +
-            "LEFT JOIN FETCH r.pagoReembolsoSistema " +
             "JOIN r.estadoActual estado " +
             "WHERE r.id = :id AND estado.estadoReembolso.nombre IN :estados")
     Optional<Reembolso> findByIdAndEstadoActualIn(@Param("id") UUID id, @Param("estados") Collection<EstadoReembolsoNombre> estados);

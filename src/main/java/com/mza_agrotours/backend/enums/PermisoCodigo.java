@@ -17,7 +17,7 @@ public enum PermisoCodigo {
     LEER_PRODUCTOR,
     LEER_ROLES_PRODUCTOR,
     GESTIONAR_ACTIVIDAD,
-    GESTIONAR_REEMBOLSOS,
+    GESTIONAR_REEMBOLSOS_PENDIENTES,
 
     // Solicitud Establecimiento
     LEER_SOLICITUD_ESTABLECIMIENTO,
@@ -32,5 +32,6 @@ public enum PermisoCodigo {
 
     // Reembolsos
     LEER_REEMBOLSOS,
+    GESTIONAR_REEMBOLSOS,
 
 }

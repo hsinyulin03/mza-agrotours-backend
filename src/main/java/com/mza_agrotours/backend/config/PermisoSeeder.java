@@ -58,8 +58,8 @@ public class PermisoSeeder implements CommandLineRunner {
                     new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Lectura de roles de productores", "Ver los roles de productor del establecimiento")),
             entry(PermisoCodigo.GESTIONAR_ACTIVIDAD,
                     new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Gestionar actividades del establecimiento","Crear, modificar y dar de baja actividades")),
-            entry(PermisoCodigo.GESTIONAR_REEMBOLSOS,
-                    new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Gestionar reembolsos", "Ver los reembolsos pendientes y reintentarlos")),
+            entry(PermisoCodigo.GESTIONAR_REEMBOLSOS_PENDIENTES,
+                    new SeedPermiso(TipoPermisoNombre.PRODUCTOR, "Gestionar reembolsos pendientes", "Ver los reembolsos pendientes y reintentarlos")),
             entry(PermisoCodigo.GESTIONAR_SOLICITUD_ESTABLECIMIENTO,
                     new SeedPermiso(TipoPermisoNombre.ADMIN, "Gestionar solicitudes de establecimientos","Ver solicitudes de establecimiento")),
             entry(PermisoCodigo.LEER_SOLICITUD_ESTABLECIMIENTO,
@@ -71,7 +71,9 @@ public class PermisoSeeder implements CommandLineRunner {
             entry(PermisoCodigo.GESTIONAR_INCIDENCIAS,
                     new SeedPermiso(TipoPermisoNombre.ADMIN, "Gestionar incidencias", "Revisar incidencias")),
             entry(PermisoCodigo.LEER_REEMBOLSOS,
-                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Lectura de reembolsos", "Ver los reembolsos impagos y los reembolsados por el sistema"))
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Lectura de reembolsos", "Ver los reembolsos impagos y los reembolsados por el sistema")),
+            entry(PermisoCodigo.GESTIONAR_REEMBOLSOS,
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Gestionar reembolsos", "Registrar los pagos de reembolsos impagos hechos por el sistema"))
     );
 
     private final PermisoRepository permisoRepository;
