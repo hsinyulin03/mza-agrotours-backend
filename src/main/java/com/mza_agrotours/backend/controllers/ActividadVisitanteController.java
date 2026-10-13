@@ -74,6 +74,12 @@ public class ActividadVisitanteController {
         Page<DTOListadoActividadVisitanteResponse> listado = servicio.explorarActividades(busqueda, cultivosIds, departamentoId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(listado));
     }
+    //Landing: actividades destacadas
+    @GetMapping("/destacadas")
+    public ResponseEntity<ApiResponse<List<DTOListadoActividadVisitanteResponse>>> obtenerActividadesDestacadas() {
+        return ResponseEntity.ok(ApiResponse.ok(servicio.obtenerActividadesDestacadas()));
+    }
+
     //Obtener el filtro de departamentos
     @GetMapping("/departamentos")
     public ResponseEntity<ApiResponse<List<DTOFiltro>>> obtenerFiltroDepartamentos(@RequestParam(required = false) String busqueda,

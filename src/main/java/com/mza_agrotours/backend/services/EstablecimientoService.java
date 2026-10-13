@@ -33,6 +33,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -43,6 +44,8 @@ import java.util.*;
 
 @Service
 public class EstablecimientoService  {
+    private static final int CANTIDAD_DESTACADOS = 6;
+
     @Autowired
     private EstablecimientoRepository establecimientoRepository;
 
@@ -206,15 +209,16 @@ public class EstablecimientoService  {
         Page<Establecimiento> establecimientosPage = establecimientoRepository
                 .obtenerEstablecimientosActivos(texto, cultivosId, departamentoId, pageable);
 
-        return establecimientosPage.map(establecimiento -> {
-            DTOCatalogoEstablecimientoVisitante dto = establecimientoMapper
-                    .establecimientoToDtoConsultarEstableciminetoS(establecimiento);
-            dto.setCultivos(obtenerCultivosConActividadPublicada(establecimiento));
-            dto.setDptoEstablecimiento(establecimientoMapper.departamentoToDto(establecimiento.getDepartamento()));
-            dto.setCantidadActividades(contarActividadesPublicadas(establecimiento));
-            dto.setFoto(mapearFoto(establecimiento.getFoto()));
-            return dto;
-        });
+        return establecimientosPage.map(this::mapearACatalogoVisitante);
+    }
+
+    // Landing: establecimientos destacados. Por ahora, los que admiten reservas
+    public List<DTOCatalogoEstablecimientoVisitante> obtenerEstablecimientosDestacados() {
+        return establecimientoRepository
+                .obtenerEstablecimientosDestacados(LocalDateTime.now(), PageRequest.of(0, CANTIDAD_DESTACADOS))
+                .stream()
+                .map(this::mapearACatalogoVisitante)
+                .toList();
     }
 
     public List<DTOFiltroCultivoEstablecimiento> obtenerFiltroCultivos() {
@@ -314,6 +318,17 @@ public class EstablecimientoService  {
                     return dto;
                 })
                 .toList();
+    }
+
+    // CONSULTA ESTABLECIMIENTOS (catálogo y landing)
+    private DTOCatalogoEstablecimientoVisitante mapearACatalogoVisitante(Establecimiento establecimiento) {
+        DTOCatalogoEstablecimientoVisitante dto = establecimientoMapper
+                .establecimientoToDtoConsultarEstableciminetoS(establecimiento);
+        dto.setCultivos(obtenerCultivosConActividadPublicada(establecimiento));
+        dto.setDptoEstablecimiento(establecimientoMapper.departamentoToDto(establecimiento.getDepartamento()));
+        dto.setCantidadActividades(contarActividadesPublicadas(establecimiento));
+        dto.setFoto(mapearFoto(establecimiento.getFoto()));
+        return dto;
     }
 
     private List<DTOCultivoEstablecimientoResponse> obtenerCultivosConActividadPublicada(

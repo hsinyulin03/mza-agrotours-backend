@@ -58,6 +58,19 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
                                                   @Param("departamentoId") UUID departamentoId,
                                                   Pageable pageable);
 
+    // Landing: actividades publicadas de establecimientos que admiten reservas (ver Establecimiento.admiteReservas)
+    @Query("SELECT a FROM Actividad a " +
+            "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
+            "AND a.fechaHoraBaja IS NULL " +
+            "AND a.establecimiento.fechaHoraBaja IS NULL " +
+            "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO " +
+            "AND EXISTS (SELECT 1 FROM CuentaMercadoPago c " +
+            "WHERE c.establecimiento = a.establecimiento " +
+            "AND c.fechaHoraBaja IS NULL " +
+            "AND c.fechaHoraExpiracionToken > :ahora) " +
+            "ORDER BY a.calificacionPromedio DESC NULLS LAST, a.nombre, a.id")
+    List<Actividad> obtenerActividadesDestacadas(@Param("ahora") LocalDateTime ahora, Pageable pageable);
+
     @Query("SELECT MAX(ad.fechaHoraInicio) FROM Actividad a JOIN a.actividadesDias ad WHERE a.id = :actividadId")
     Optional<LocalDateTime> findUltimaFechaByActividadId(@Param("actividadId") UUID actividadId);
 
