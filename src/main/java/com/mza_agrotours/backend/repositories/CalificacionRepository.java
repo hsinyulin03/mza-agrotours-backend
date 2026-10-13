@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.repositories;
 
+import com.mza_agrotours.backend.dtos.PanelProductor.ReseniaRecienteDTO;
 import com.mza_agrotours.backend.dtos.calificacion.DistribucionPuntajeDTO;
 import com.mza_agrotours.backend.dtos.calificacion.ReseniaCardDTO;
 import com.mza_agrotours.backend.entities.Calificacion;
@@ -45,4 +46,24 @@ public interface CalificacionRepository extends BaseEntityRepository<Calificacio
                                                  @Param("puntaje") Integer puntaje,
                                                  @Param("orden") String orden,
                                                  Pageable pageable);
+
+    @Query("SELECT AVG(c.puntaje) FROM Reserva r JOIN r.calificacion c " +
+            "WHERE r.actividad.establecimiento.id = :establecimientoId")
+    Double promedioPuntajeByEstablecimiento(@Param("establecimientoId") UUID establecimientoId);
+
+    @Query("SELECT COUNT(c) FROM Reserva r JOIN r.calificacion c " +
+            "WHERE r.actividad.establecimiento.id = :establecimientoId")
+    long countByEstablecimiento(@Param("establecimientoId") UUID establecimientoId);
+
+    @Query("SELECT new com.mza_agrotours.backend.dtos.PanelProductor.ReseniaRecienteDTO(" +
+            "  c.puntaje, c.resenia, c.fechaHoraCalificacion, u.nombre, a.nombre) " +
+            "FROM Reserva r " +
+            "JOIN r.calificacion c " +
+            "JOIN r.actividad a " +
+            "JOIN r.visitante v " +
+            "JOIN v.usuario u " +
+            "WHERE a.establecimiento.id = :establecimientoId " +
+            "ORDER BY c.fechaHoraCalificacion DESC, c.id DESC")
+    List<ReseniaRecienteDTO> findUltimasByEstablecimiento(@Param("establecimientoId") UUID establecimientoId,
+                                                          Pageable pageable);
 }
