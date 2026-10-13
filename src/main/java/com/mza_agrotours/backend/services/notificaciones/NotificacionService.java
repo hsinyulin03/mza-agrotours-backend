@@ -15,6 +15,7 @@ import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
 import com.mza_agrotours.backend.mappers.NotificacionMapper;
 import com.mza_agrotours.backend.repositories.AdministradorSistemasRepository;
 import com.mza_agrotours.backend.repositories.NotificacionRepository;
+import com.mza_agrotours.backend.repositories.ProductorRepository;
 import com.mza_agrotours.backend.repositories.ScopeNotificacionRepository;
 import com.mza_agrotours.backend.repositories.TipoNotificacionRepository;
 import com.mza_agrotours.backend.repositories.UsuarioRepository;
@@ -35,6 +36,7 @@ public class NotificacionService {
     private final ScopeNotificacionRepository scopeNotificacionRepository;
     private final UsuarioRepository usuarioRepository;
     private final AdministradorSistemasRepository administradorSistemasRepository;
+    private final ProductorRepository productorRepository;
     private final  NotificacionMapper notificacionMapper;
     private final ApplicationEventPublisher publisher;
 
@@ -43,6 +45,7 @@ public class NotificacionService {
                                ScopeNotificacionRepository scopeNotificacionRepository,
                                UsuarioRepository usuarioRepository,
                                AdministradorSistemasRepository administradorSistemasRepository,
+                               ProductorRepository productorRepository,
                                NotificacionMapper notificacionMapper,
                                ApplicationEventPublisher publisher) {
         this.notificacionRepository = notificacionRepository;
@@ -50,6 +53,7 @@ public class NotificacionService {
         this.scopeNotificacionRepository = scopeNotificacionRepository;
         this.usuarioRepository = usuarioRepository;
         this.administradorSistemasRepository = administradorSistemasRepository;
+        this.productorRepository = productorRepository;
         this.notificacionMapper = notificacionMapper;
         this.publisher = publisher;
     }
@@ -73,6 +77,23 @@ public class NotificacionService {
 
         for (Usuario administrador : this.administradorSistemasRepository.findUsuariosVigentesConPermiso(permiso)) {
             guardarNotificacion(administrador, tipoNotificacion, null, enlace, datos);
+        }
+    }
+
+    /**
+     * Una fila por productor del establecimiento, como {@link #notificarAdministradores}.
+     * Solo reciben los productores vigentes y activos cuyo rol tiene el permiso indicado.
+     */
+    @Transactional
+    public void notificarProductores(Establecimiento establecimiento, PermisoCodigo permiso, TipoNotificacionNombre tipoNotificacionNombre, String enlace, Object... datos) {
+        TipoNotificacion tipoNotificacion = obtenerTipo(tipoNotificacionNombre);
+
+        if (tipoNotificacion.getScopeNotificacion().getNombre() != ScopeNotificacionNombre.ESTABLECIMIENTO) {
+            throw new IllegalArgumentException("El tipo " + tipoNotificacionNombre + " no es de scope ESTABLECIMIENTO");
+        }
+
+        for (Usuario productor : this.productorRepository.findUsuariosVigentesConPermisoEnEstablecimiento(establecimiento.getId(), permiso)) {
+            guardarNotificacion(productor, tipoNotificacion, establecimiento, enlace, datos);
         }
     }
 

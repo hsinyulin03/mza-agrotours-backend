@@ -6,6 +6,7 @@ import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
+import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.pago.EstadoPago;
 import com.mza_agrotours.backend.entities.pago.EstadoReembolso;
 import com.mza_agrotours.backend.entities.pago.Pago;
@@ -56,6 +57,7 @@ class ReservaServiceReembolsoSistemaTest {
 
     private final AdministradorSistemas administrador = new AdministradorSistemas();
     private final Usuario usuarioVisitante = mock(Usuario.class);
+    private final Establecimiento establecimiento = new Establecimiento();
 
     @BeforeEach
     void setUp() {
@@ -65,6 +67,7 @@ class ReservaServiceReembolsoSistemaTest {
         administradorSistemasRepository = mock(AdministradorSistemasRepository.class);
         reservaMapper = mock(ReservaMapper.class);
         notificacionService = mock(NotificacionService.class);
+        establecimiento.setId(UUID.randomUUID());
 
         when(administradorSistemasRepository.findByEmailActivo(EMAIL_ADMIN)).thenReturn(Optional.of(administrador));
 
@@ -92,6 +95,7 @@ class ReservaServiceReembolsoSistemaTest {
         when(visitante.getUsuario()).thenReturn(usuarioVisitante);
         Actividad actividad = mock(Actividad.class);
         when(actividad.getNombre()).thenReturn("Cosecha");
+        when(actividad.getEstablecimiento()).thenReturn(establecimiento);
         ActividadDia dia = mock(ActividadDia.class);
         when(dia.getFechaHoraInicio()).thenReturn(LocalDateTime.now().plusDays(10));
 
@@ -156,6 +160,9 @@ class ReservaServiceReembolsoSistemaTest {
 
         verify(notificacionService).crearNotificacion(eq(usuarioVisitante), eq(TipoNotificacionNombre.REEMBOLSO_REALIZADO),
                 any(), any(), eq("Cosecha"), any(), eq("10000.00"));
+        verify(notificacionService).notificarProductores(eq(establecimiento), eq(PermisoCodigo.GESTIONAR_REEMBOLSOS_PENDIENTES),
+                eq(TipoNotificacionNombre.REEMBOLSO_SISTEMA_PRODUCTOR), eq("/panel/" + establecimiento.getId() + "/reservas"),
+                eq("Cosecha"), any(), eq("10000.00"));
         verify(reservaMapper).reembolsoToDetalleReembolsoAdminDTO(reembolso, vinculo);
     }
 

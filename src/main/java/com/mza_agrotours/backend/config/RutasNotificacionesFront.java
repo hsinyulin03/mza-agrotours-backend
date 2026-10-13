@@ -37,4 +37,16 @@ public class RutasNotificacionesFront {
     public static String panelProductor(){
         return "/panel/actividades";
     }
+
+    public static String reservasEstablecimiento(UUID establecimientoId){
+        return "/panel/" + establecimientoId + "/reservas";
+    }
+
+    public static String reembolsosPendientesEstablecimiento(UUID establecimientoId){
+        return "/panel/" + establecimientoId + "/reembolsos";
+    }
+
+    public static String reembolsoImpagoAdmin(UUID reembolsoId){
+        return "/admin/impagas/" + reembolsoId;
+    }
 }

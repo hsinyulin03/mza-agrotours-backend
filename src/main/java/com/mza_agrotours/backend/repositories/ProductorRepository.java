@@ -30,6 +30,24 @@ public interface ProductorRepository extends BaseEntityRepository<Productor, UUI
             @Param("email") String email,
             @Param("establecimientoId") UUID establecimientoId,
             @Param("permiso") PermisoCodigo permiso);
+
+    /**
+     * Usuarios de los productores vigentes y activos del establecimiento cuyo rol tiene el permiso indicado.
+     * Mismas condiciones que {@link #tienePermisoEnEstablecimiento}, más el usuario sin baja.
+     */
+    @Query("SELECT DISTINCT pr.usuario FROM Productor pr " +
+            "JOIN pr.rol r JOIN r.permisos p " +
+            "WHERE pr.establecimiento.id = :establecimientoId " +
+            "AND pr.establecimiento.fechaHoraBaja IS NULL " +
+            "AND pr.fechaHoraBaja IS NULL " +
+            "AND pr.usuario.fechaHoraBaja IS NULL " +
+            "AND r.fechaHoraBaja IS NULL " +
+            "AND p.codigo = :permiso " +
+            "AND pr.estadoActual.nombre = 'ACTIVO'")
+    List<Usuario> findUsuariosVigentesConPermisoEnEstablecimiento(
+            @Param("establecimientoId") UUID establecimientoId,
+            @Param("permiso") PermisoCodigo permiso);
+
     List<Productor> findByUsuarioAndFechaHoraBajaIsNull(Usuario usuario);
 
     Optional<Productor> findByIdAndFechaHoraBajaIsNull(UUID id);

@@ -130,7 +130,7 @@ public class ProductorService {
         this.notificacionService.crearNotificacion(
                 usuario,
                 TipoNotificacionNombre.PRODUCTOR_AGREGADO,
-                null,
+                establecimiento,
                 RutasNotificacionesFront.panelProductor(),
                 establecimiento.getNombre());
         return this.productorMapper.productorToProductorGetDTO(productor);

@@ -84,6 +84,11 @@ public enum TipoNotificacionNombre {
             "No pudimos validar tu pago",
             "El pago de tu reserva para la actividad %s del %s no coincidió con la reserva, así que la cancelamos y pedimos el reembolso de $%s. Podés volver a reservar cuando quieras.",
             EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
+    REEMBOLSO_A_CARGO_AGROTOURS(
+            ScopeNotificacionNombre.VISITANTE,
+            "Agrotours se encarga de tu reembolso",
+            "El establecimiento no realizó a tiempo el reembolso de tu reserva para la actividad %s del %s por $%s, así que lo vamos a realizar nosotros. Te avisaremos cuando esté hecho.",
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
     RECORDATORIO_RESERVA(
             ScopeNotificacionNombre.VISITANTE,
             "Recordatorio de tu reserva",
@@ -93,7 +98,47 @@ public enum TipoNotificacionNombre {
             ScopeNotificacionNombre.VISITANTE,
             "¿Cómo te fue en la actividad de %s?",
             "Esperamos que hayas disfrutado en la actividad %s en %s el %s. Contanos tu experiencia calificando la actividad, tu opinión ayuda a otros visitantes.",
-            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH));
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
+    RESERVA_CONFIRMADA_PRODUCTOR(
+            ScopeNotificacionNombre.ESTABLECIMIENTO,
+            "Nueva reserva",
+            "Se confirmó una reserva para la actividad %s del %s, para %s persona(s).",
+            EnumSet.of(CanalNotificacion.PUSH)),
+    RESERVA_CANCELADA_PRODUCTOR(
+            ScopeNotificacionNombre.ESTABLECIMIENTO,
+            "Se canceló una reserva",
+            "El visitante canceló su reserva para la actividad %s del %s, para %s persona(s), y se liberaron sus lugares. No corresponde reembolso.",
+            EnumSet.of(CanalNotificacion.PUSH)),
+    RESERVA_CANCELADA_REEMBOLSO_PRODUCTOR(
+            ScopeNotificacionNombre.ESTABLECIMIENTO,
+            "Se canceló una reserva",
+            "El visitante canceló su reserva para la actividad %s del %s, para %s persona(s), y se liberaron sus lugares. Se le reembolsan $%s.",
+            EnumSet.of(CanalNotificacion.PUSH)),
+    REEMBOLSO_REALIZADO_PRODUCTOR(
+            ScopeNotificacionNombre.ESTABLECIMIENTO,
+            "Reembolso realizado",
+            "Se realizó el reembolso de una reserva para la actividad %s del %s por $%s.",
+            EnumSet.of(CanalNotificacion.PUSH)),
+    REEMBOLSO_PENDIENTE_PRODUCTOR(
+            ScopeNotificacionNombre.ESTABLECIMIENTO,
+            "Tenés un reembolso pendiente",
+            "No se pudo realizar automáticamente el reembolso de una reserva para la actividad %s del %s por $%s. Tenés que realizarlo desde la sección de reembolsos pendientes.",
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
+    REEMBOLSO_IMPAGO_PRODUCTOR(
+            ScopeNotificacionNombre.ESTABLECIMIENTO,
+            "Venció el plazo de un reembolso",
+            "No se realizó a tiempo el reembolso de una reserva para la actividad %s del %s por $%s. Lo va a realizar Agrotours y quedará como deuda del establecimiento.",
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
+    REEMBOLSO_SISTEMA_PRODUCTOR(
+            ScopeNotificacionNombre.ESTABLECIMIENTO,
+            "Agrotours realizó un reembolso",
+            "Agrotours realizó el reembolso vencido de una reserva para la actividad %s del %s por $%s.",
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
+    REEMBOLSO_IMPAGO_ADMIN(
+            ScopeNotificacionNombre.ADMINISTRADOR,
+            "Nuevo reembolso impago",
+            "El establecimiento %s no realizó a tiempo el reembolso de $%s de una reserva para la actividad %s del %s. Hay que realizarlo y registrarlo desde el sistema.",
+            EnumSet.of(CanalNotificacion.PUSH));
 
         private final ScopeNotificacionNombre scope;
         private final String titulo;

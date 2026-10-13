@@ -184,7 +184,8 @@ public class ReservaService {
      * Registra el pago que hizo un administrador para cubrir un reembolso IMPAGO. Crea un pago manual aprobado por el
      * monto del reembolso, con la fecha y el ID externo de la transacción, y lo vincula al reembolso junto con el
      * administrador y el medio de pago real. El reembolso pasa a "Reembolsado por sistema", el pago original a
-     * "Reembolsado" y, si es por una cancelación, la reserva a "Cancelada con reembolso". Avisa al visitante.
+     * "Reembolsado" y, si es por una cancelación, la reserva a "Cancelada con reembolso". Avisa al visitante y a
+     * los productores.
      *
      * @param idReembolso reembolso a pagar
      * @param dto datos de la transacción hecha por el administrador
@@ -232,6 +233,7 @@ public class ReservaService {
         reembolsoRepository.save(reembolso);
         reservaRepository.save(reserva);
         notificarVisitante(reserva, TipoNotificacionNombre.REEMBOLSO_REALIZADO, reembolso.getMontoReembolso().toPlainString());
+        notificarProductoresReembolso(reembolso);
 
         return reservaMapper.reembolsoToDetalleReembolsoAdminDTO(reembolso, reembolsoSistemaPago);
     }
@@ -363,10 +365,11 @@ public class ReservaService {
 
         reservaRepository.save(nuevaReserva);
 
-        // Avisar al visitante: la reserva confirmada o el plazo que tiene para pagarla
-        if (pagada)
+        // Avisar al visitante: la reserva confirmada o el plazo que tiene para pagarla. A los productores solo la confirmada
+        if (pagada) {
             notificarVisitante(nuevaReserva, TipoNotificacionNombre.RESERVA_PAGADA, pago.getMontoTotal().toPlainString());
-        else
+            notificarProductoresReservaConfirmada(nuevaReserva);
+        } else
             notificarVisitante(nuevaReserva, TipoNotificacionNombre.RESERVA_INICIADA, plazoPago.format(FORMATO_FECHA_HORA));
 
         // Avisar al frontend de qué pasó
@@ -537,8 +540,8 @@ public class ReservaService {
      * <p>
      * Si fue aprobado, el reembolso pasa a "Reembolsado por productor", el pago a "Reembolsado" y la reserva
      * a "Cancelada con reembolso". Si fue rechazado, el reembolso pasa a "Pedido" para que lo haga el productor
-     * y la reserva queda como está. En ambos casos se avisa al visitante. Si sigue en proceso, se vuelve a consultar
-     * en la próxima ejecución.
+     * y la reserva queda como está. En ambos casos se avisa al visitante y a los productores (ver
+     * {@link #pasarAPedidoYNotificar}). Si sigue en proceso, se vuelve a consultar en la próxima ejecución.
      * <p>
      * Los reembolsos sin ID externo son pedidos cuya respuesta no se pudo guardar, así que no se sabe si la
      * pasarela los hizo. Pasado {@link #ESPERA_REEMBOLSO_SIN_CONFIRMAR} (para no pisar un pedido todavía en curso),
@@ -566,8 +569,7 @@ public class ReservaService {
 
                     Optional<String> idExterno = getEstrategiaPago(pago).buscarReembolso(pago);
                     if (idExterno.isEmpty()){
-                        r.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.PEDIDO), ahora); // TODO: notificar al productor
-                        self.guardarReembolsoYNotificar(r, TipoNotificacionNombre.REEMBOLSO_NO_AUTOMATICO);
+                        pasarAPedidoYNotificar(r, ahora);
                         reembolsosResueltos++;
                         continue;
                     }
@@ -582,10 +584,7 @@ public class ReservaService {
                         completarReembolso(r, ahora);
                         self.guardarReembolsoYNotificar(r, TipoNotificacionNombre.REEMBOLSO_REALIZADO);
                     }
-                    case RECHAZADO -> {
-                        r.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.PEDIDO), ahora); // TODO: notificar al productor
-                        self.guardarReembolsoYNotificar(r, TipoNotificacionNombre.REEMBOLSO_NO_AUTOMATICO);
-                    }
+                    case RECHAZADO -> pasarAPedidoYNotificar(r, ahora);
                     case EN_PROCESO -> { continue; }
                 }
 
@@ -608,6 +607,7 @@ public class ReservaService {
      * Tarea programada que pasa a "Impago" los reembolsos "Pedido" que el productor no pagó dentro de
      * {@code diasImpagoReserva} días desde que se pidió el reembolso. A partir de ahí lo tiene que pagar un
      * administrador de sistemas (ver {@link #registrarPagoReembolsoSistema}). La reserva no cambia de estado.
+     * Se avisa al visitante, a los productores y a los administradores que pueden ver los reembolsos impagos.
      * <p>
      * Si el parámetro no está cargado no se marca ningún reembolso. Los errores al procesar un reembolso particular
      * no interrumpen el resto y quedan registrados en el log.
@@ -653,6 +653,19 @@ public class ReservaService {
 
         reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.IMPAGO), ahora);
         reembolsoRepository.save(reembolso);
+
+        Reserva reserva = reembolso.getReserva();
+        String monto = reembolso.getMontoReembolso().toPlainString();
+        notificarVisitante(reserva, TipoNotificacionNombre.REEMBOLSO_A_CARGO_AGROTOURS, monto);
+        notificarProductoresReembolso(reembolso);
+        notificacionService.notificarAdministradores(
+                PermisoCodigo.LEER_REEMBOLSOS,
+                TipoNotificacionNombre.REEMBOLSO_IMPAGO_ADMIN,
+                RutasNotificacionesFront.reembolsoImpagoAdmin(reembolso.getId()),
+                reserva.getActividad().getEstablecimiento().getNombre(),
+                monto,
+                reserva.getActividad().getNombre(),
+                reserva.getActividadDia().getFechaHoraInicio().format(FORMATO_FECHA_HORA));
     }
 
     // TODO hay que ver el cancelaciones (de pagos) mediante endpoint "Crear cancelación" de mercado pago
@@ -903,17 +916,74 @@ public class ReservaService {
      * @param datos datos del mensaje que siguen a la actividad y la fecha
      */
     private void notificarVisitante(Reserva reserva, TipoNotificacionNombre tipo, Object... datos){
-        Object[] datosMensaje = new Object[datos.length + 2];
-        datosMensaje[0] = reserva.getActividad().getNombre();
-        datosMensaje[1] = reserva.getActividadDia().getFechaHoraInicio().format(FORMATO_FECHA_HORA);
-        System.arraycopy(datos, 0, datosMensaje, 2, datos.length);
-
         notificacionService.crearNotificacion(
                 reserva.getVisitante().getUsuario(),
                 tipo,
                 null,
                 RutasNotificacionesFront.detalleReserva(reserva.getId()),
-                datosMensaje);
+                datosMensajeReserva(reserva, datos));
+    }
+
+    /**
+     * Notifica a los productores del establecimiento de la reserva cuyo rol tiene el permiso indicado. Como en
+     * {@link #notificarVisitante}, los mensajes empiezan con el nombre de la actividad y la fecha y hora del día.
+     *
+     * @param reserva reserva sobre la que se avisa
+     * @param permiso permiso que necesita el productor para recibir el aviso
+     * @param tipo tipo de notificación, de scope ESTABLECIMIENTO
+     * @param enlace link del panel del establecimiento
+     * @param datos datos del mensaje que siguen a la actividad y la fecha
+     */
+    private void notificarProductores(Reserva reserva, PermisoCodigo permiso, TipoNotificacionNombre tipo, String enlace, Object... datos){
+        notificacionService.notificarProductores(
+                reserva.getActividad().getEstablecimiento(),
+                permiso,
+                tipo,
+                enlace,
+                datosMensajeReserva(reserva, datos));
+    }
+
+    /** Avisa a los productores que ven las reservas del día que se confirmó (pagó) una reserva. */
+    private void notificarProductoresReservaConfirmada(Reserva reserva){
+        notificarProductores(reserva, PermisoCodigo.GESTIONAR_ACTIVIDAD, TipoNotificacionNombre.RESERVA_CONFIRMADA_PRODUCTOR,
+                enlaceReservasEstablecimiento(reserva), reserva.getReservaDetalles().size());
+    }
+
+    /**
+     * Avisa a los productores que gestionan los reembolsos del nuevo estado de un reembolso: realizado, pendiente de
+     * hacer por ellos, impago o pagado por el sistema. Los demás estados no se avisan.
+     */
+    private void notificarProductoresReembolso(Reembolso reembolso){
+        TipoNotificacionNombre tipo = switch (reembolso.getEstadoActual().getEstadoReembolso().getNombre()) {
+            case REEMBOLSADO_PRODUCTOR -> TipoNotificacionNombre.REEMBOLSO_REALIZADO_PRODUCTOR;
+            case PEDIDO -> TipoNotificacionNombre.REEMBOLSO_PENDIENTE_PRODUCTOR;
+            case IMPAGO -> TipoNotificacionNombre.REEMBOLSO_IMPAGO_PRODUCTOR;
+            case REEMBOLSADO_SISTEMA -> TipoNotificacionNombre.REEMBOLSO_SISTEMA_PRODUCTOR;
+            default -> null;
+        };
+        if (tipo == null) return;
+
+        Reserva reserva = reembolso.getReserva();
+        // El pendiente lleva a la lista donde se reintenta; el resto a las reservas
+        String enlace = tipo == TipoNotificacionNombre.REEMBOLSO_PENDIENTE_PRODUCTOR
+                ? RutasNotificacionesFront.reembolsosPendientesEstablecimiento(reserva.getActividad().getEstablecimiento().getId())
+                : enlaceReservasEstablecimiento(reserva);
+
+        notificarProductores(reserva, PermisoCodigo.GESTIONAR_REEMBOLSOS_PENDIENTES, tipo, enlace,
+                reembolso.getMontoReembolso().toPlainString());
+    }
+
+    private String enlaceReservasEstablecimiento(Reserva reserva){
+        return RutasNotificacionesFront.reservasEstablecimiento(reserva.getActividad().getEstablecimiento().getId());
+    }
+
+    // Antepone a los datos del mensaje el nombre de la actividad y la fecha y hora del día de la reserva
+    private Object[] datosMensajeReserva(Reserva reserva, Object... datos){
+        Object[] datosMensaje = new Object[datos.length + 2];
+        datosMensaje[0] = reserva.getActividad().getNombre();
+        datosMensaje[1] = reserva.getActividadDia().getFechaHoraInicio().format(FORMATO_FECHA_HORA);
+        System.arraycopy(datos, 0, datosMensaje, 2, datos.length);
+        return datosMensaje;
     }
 
     // TODO: No me gusta mucho que las sesiones de cobro puedan quedar vigentes si hay error, pero por ahora queda así
@@ -966,32 +1036,48 @@ public class ReservaService {
 
     /**
      * Como {@link #cambiarEstadoReservaYGuardar}, para una reserva cuyo pago se confirmó: además avisa al
-     * visitante en la misma transacción, así solo se notifica si el cambio se guardó.
+     * visitante y a los productores en la misma transacción, así solo se notifica si el cambio se guardó.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected void confirmarPagoReservaYNotificar(Reserva r, EstadoReserva estadoPagada, LocalDateTime ahora){
         cambiarEstadoReservaYGuardar(r, estadoPagada, ahora);
         notificarVisitante(r, TipoNotificacionNombre.RESERVA_PAGADA, r.getPago().getMontoTotal().toPlainString());
+        notificarProductoresReservaConfirmada(r);
     }
 
     /**
-     * Guarda un reembolso junto con su reserva (y el pago de ésta) y avisa al visitante, en su propia transacción
-     * para que un fallo al guardar un reembolso no revierta los ya confirmados.
+     * Guarda un reembolso junto con su reserva (y el pago de ésta) y avisa al visitante y a los productores, en su
+     * propia transacción para que un fallo al guardar un reembolso no revierta los ya confirmados.
      *
      * @param reembolso reembolso a guardar
-     * @param aviso tipo de notificación con el nuevo estado del reembolso
+     * @param aviso tipo de notificación al visitante con el nuevo estado del reembolso, o null para no avisarle
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected void guardarReembolsoYNotificar(Reembolso reembolso, TipoNotificacionNombre aviso){
         reservaRepository.save(reembolso.getReserva());
         reembolsoRepository.save(reembolso);
-        notificarVisitante(reembolso.getReserva(), aviso, reembolso.getMontoReembolso().toPlainString());
+        if (aviso != null)
+            notificarVisitante(reembolso.getReserva(), aviso, reembolso.getMontoReembolso().toPlainString());
+        notificarProductoresReembolso(reembolso);
+    }
+
+    /**
+     * Pasa a "Pedido" un reembolso que la pasarela no hizo, lo guarda y avisa a los productores, que lo tienen que
+     * realizar. Al visitante solo se le avisa la primera vez: si ya estuvo "Pedido", es un reintento fallido del
+     * productor y el visitante ya sabe que su reembolso se gestiona de forma manual.
+     */
+    private void pasarAPedidoYNotificar(Reembolso reembolso, LocalDateTime ahora){
+        boolean yaEstuvoPedido = reembolso.getEstados().stream()
+                .anyMatch(e -> e.getEstadoReembolso().getNombre() == EstadoReembolsoNombre.PEDIDO);
+
+        reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.PEDIDO), ahora);
+        self.guardarReembolsoYNotificar(reembolso, yaEstuvoPedido ? null : TipoNotificacionNombre.REEMBOLSO_NO_AUTOMATICO);
     }
 
     /**
      * Paso 1 de {@link #handleCancelarReserva}: valida y cancela la reserva, guarda su reembolso si corresponde y
-     * avisa al visitante. Si es por Mercado Pago, el reembolso queda "En proceso" sin ID externo y la reserva
-     * "Cancelada con reembolso pendiente". Si es manual, el reembolso queda completado.
+     * avisa al visitante y a los productores. Si es por Mercado Pago, el reembolso queda "En proceso" sin ID
+     * externo y la reserva "Cancelada con reembolso pendiente". Si es manual, el reembolso queda completado.
      *
      * @return el reembolso creado, o null si no corresponde reembolso
      */
@@ -1005,14 +1091,14 @@ public class ReservaService {
         // Obtenemos la reserva, si no existe o no es del visitante, error.
         Reserva reserva = getReserva(reservaId, visitante);
 
-        // TODO: notificar al productor
-
         // CASOS DE NO REEMBOLSO
         if (!correspondeReembolso(reserva, ahora)){
             reserva.cambiarEstado(getEstadoReserva(CANCELADA_SIN_REEMBOLSO), ahora);
             reservaRepository.save(reserva);
             notificarVisitante(reserva, TipoNotificacionNombre.RESERVA_CANCELADA_SIN_REEMBOLSO,
                     parametrosService.getInstance().getDiasMinReembolso());
+            notificarProductores(reserva, PermisoCodigo.GESTIONAR_ACTIVIDAD, TipoNotificacionNombre.RESERVA_CANCELADA_PRODUCTOR,
+                    enlaceReservasEstablecimiento(reserva), reserva.getReservaDetalles().size());
             return null;
         }
 
@@ -1039,6 +1125,9 @@ public class ReservaService {
         reservaRepository.save(reserva);
         reembolsoRepository.save(reembolso);
         notificarVisitante(reserva, aviso, reembolso.getMontoReembolso().toPlainString());
+        // Un solo aviso a los productores por la cancelación, aunque el reembolso manual ya quede realizado
+        notificarProductores(reserva, PermisoCodigo.GESTIONAR_ACTIVIDAD, TipoNotificacionNombre.RESERVA_CANCELADA_REEMBOLSO_PRODUCTOR,
+                enlaceReservasEstablecimiento(reserva), reserva.getReservaDetalles().size(), reembolso.getMontoReembolso().toPlainString());
         return reembolso;
     }
 
@@ -1109,7 +1198,8 @@ public class ReservaService {
 
     /**
      * Como {@link #pedirReembolso(Reembolso, Pago)}, con la clave de idempotencia del intento y si se avisa al
-     * visitante en caso de rechazo (el reintento del productor no lo vuelve a avisar).
+     * visitante y a los productores en caso de rechazo (el reintento del productor no avisa: el productor ve el
+     * rechazo en la respuesta y el visitante ya sabe que su reembolso es manual).
      */
     private ResultadoReembolsoDTO pedirReembolso(Reembolso reembolso, Pago pago, String claveIdempotencia, boolean notificarRechazo){
         ResultadoReembolsoDTO resultado;
@@ -1131,7 +1221,7 @@ public class ReservaService {
     /**
      * Paso 3 de {@link #pedirReembolso}: guarda la respuesta de la pasarela al pedido de reembolso.
      * Si fue aceptado se guarda su ID externo (sigue "En proceso" hasta que se confirme); si fue rechazado
-     * pasa a "Pedido" para que lo haga el productor y, si se pide, se avisa al visitante.
+     * pasa a "Pedido" para que lo haga el productor y, si se pide, se avisa al visitante y a los productores.
      * <p>
      * Va en su propia transacción porque {@link #pagarReservas()} lo llama dentro de una de solo lectura, en la
      * que no se guardaría nada.
@@ -1143,10 +1233,12 @@ public class ReservaService {
         if (resultado.aceptado()) {
             reembolso.setIdReembolsoExterno(resultado.idReembolsoExterno());
         } else {
-            reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.PEDIDO), LocalDateTime.now()); // TODO: notificar al productor
-            if (notificarRechazo)
+            reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.PEDIDO), LocalDateTime.now());
+            if (notificarRechazo) {
                 notificarVisitante(reembolso.getReserva(), TipoNotificacionNombre.REEMBOLSO_NO_AUTOMATICO,
                         reembolso.getMontoReembolso().toPlainString());
+                notificarProductoresReembolso(reembolso);
+            }
         }
 
         reembolsoRepository.save(reembolso);
