@@ -90,4 +90,14 @@ public interface ReembolsoRepository extends BaseEntityRepository<Reembolso, UUI
             "JOIN r.estadoActual estado " +
             "WHERE r.id = :id AND estado.estadoReembolso.nombre IN :estados")
     Optional<Reembolso> findByIdAndEstadoActualIn(@Param("id") UUID id, @Param("estados") Collection<EstadoReembolsoNombre> estados);
+
+    @Query("SELECT COUNT(r) FROM Reembolso r " +
+            "WHERE r.reserva.actividad.establecimiento.id = :establecimientoId " +
+            "AND r.estadoActual.estadoReembolso.nombre = com.mza_agrotours.backend.enums.EstadoReembolsoNombre.PEDIDO")
+    long countPedidosByEstablecimiento(@Param("establecimientoId") UUID establecimientoId);
+
+    @Query("SELECT MIN(r.fechaHoraPedido) FROM Reembolso r " +
+            "WHERE r.reserva.actividad.establecimiento.id = :establecimientoId " +
+            "AND r.estadoActual.estadoReembolso.nombre = com.mza_agrotours.backend.enums.EstadoReembolsoNombre.PEDIDO")
+    LocalDateTime findPedidoMasAntiguoByEstablecimiento(@Param("establecimientoId") UUID establecimientoId);
 }

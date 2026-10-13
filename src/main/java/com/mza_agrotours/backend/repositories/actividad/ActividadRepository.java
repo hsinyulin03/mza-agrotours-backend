@@ -261,4 +261,6 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
     List<Object[]> sumarCuposOfertadosEnRangoPorActividad(@Param("establecimientoId") UUID establecimientoId,
                                                           @Param("desde") LocalDateTime desde,
                                                           @Param("hasta") LocalDateTime hasta);
+
+    long countByEstablecimiento_IdAndEstado_NombreAndFechaHoraBajaIsNull(UUID establecimientoId, EstadoActividadNombre estado);
 }

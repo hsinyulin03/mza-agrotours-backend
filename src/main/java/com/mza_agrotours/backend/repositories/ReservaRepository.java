@@ -5,6 +5,7 @@ import com.mza_agrotours.backend.dtos.actividad.DTOReservasBloqueantes;
 import com.mza_agrotours.backend.dtos.actividad.DTOCuposPorDia;
 import com.mza_agrotours.backend.dtos.actividad.DTOMetricasReservasGlobales;
 import com.mza_agrotours.backend.dtos.administrador_sistemas.ConteoPorEstablecimientoDTO;
+import com.mza_agrotours.backend.dtos.PanelProductor.ReservaProximaDTO;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
@@ -278,4 +279,20 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
                                                   @Param("desde") LocalDateTime desde,
                                                   @Param("hasta") LocalDateTime hasta);
 
+
+    @Query("SELECT new com.mza_agrotours.backend.dtos.PanelProductor.ReservaProximaDTO(" +
+            "  r.id, a.id, ad.id, ad.fechaHoraInicio, a.nombre, u.nombre, SIZE(r.reservaDetalles), r.estadoActual.estadoReserva.nombre) " +
+            "FROM Reserva r " +
+            "JOIN r.actividad a " +
+            "JOIN r.actividadDia ad " +
+            "JOIN r.visitante v " +
+            "JOIN v.usuario u " +
+            "WHERE a.establecimiento.id = :establecimientoId " +
+            "AND r.estadoActual.estadoReserva.nombre IN :estados " +
+            "AND ad.fechaHoraInicio >= :desde AND ad.fechaHoraInicio < :hasta " +
+            "ORDER BY ad.fechaHoraInicio ASC, a.nombre ASC")
+    List<ReservaProximaDTO> findProximasDelEstablecimiento(@Param("establecimientoId") UUID establecimientoId,
+                                                           @Param("estados") List<EstadoReservaNombre> estados,
+                                                           @Param("desde") LocalDateTime desde,
+                                                           @Param("hasta") LocalDateTime hasta);
 }

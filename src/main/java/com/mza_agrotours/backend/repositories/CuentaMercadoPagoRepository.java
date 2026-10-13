@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -21,4 +22,6 @@ public interface CuentaMercadoPagoRepository extends BaseEntityRepository<Cuenta
             "AND c.establecimiento.fechaHoraBaja IS NULL " +
             "AND c.fechaHoraExpiracionToken < :limite")
     List<CuentaMercadoPago> findARenovar(@Param("limite") LocalDateTime limite);
+
+    Optional<CuentaMercadoPago> findFirstByEstablecimiento_IdAndFechaHoraBajaIsNull(UUID establecimientoId);
 }
