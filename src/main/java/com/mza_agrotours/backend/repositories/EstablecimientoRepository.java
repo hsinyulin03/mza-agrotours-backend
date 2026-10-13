@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -102,6 +103,22 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
             @Param("departamentoId") UUID departamentoId,
             Pageable pageable
     );
+    // Landing: establecimientos que admiten reservas (ver Establecimiento.admiteReservas)
+    @Query("""
+        SELECT e FROM Establecimiento e
+        JOIN FETCH e.departamento
+        WHERE e.fechaHoraBaja IS NULL
+        AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
+        AND EXISTS (
+            SELECT 1 FROM CuentaMercadoPago c
+            WHERE c.establecimiento = e
+            AND c.fechaHoraBaja IS NULL
+            AND c.fechaHoraExpiracionToken > :ahora
+        )
+        ORDER BY e.fechaHoraAlta DESC, e.id
+    """)
+    List<Establecimiento> obtenerEstablecimientosDestacados(@Param("ahora") LocalDateTime ahora, Pageable pageable);
+
     @Query("""
     SELECT new com.mza_agrotours.backend.dtos.establecimiento.DTOFiltroCultivoEstablecimiento(c.id, c.nombre, COUNT(DISTINCT e))
     FROM Establecimiento e
