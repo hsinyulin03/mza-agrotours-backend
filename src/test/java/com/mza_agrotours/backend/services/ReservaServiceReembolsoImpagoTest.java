@@ -1,10 +1,18 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.entities.Parametros;
+import com.mza_agrotours.backend.entities.Usuario;
+import com.mza_agrotours.backend.entities.Visitante;
+import com.mza_agrotours.backend.entities.actividad.Actividad;
+import com.mza_agrotours.backend.entities.actividad.ActividadDia;
+import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.pago.EstadoReembolso;
 import com.mza_agrotours.backend.entities.pago.Reembolso;
 import com.mza_agrotours.backend.entities.pago.ReembolsoEstado;
+import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.enums.EstadoReembolsoNombre;
+import com.mza_agrotours.backend.enums.PermisoCodigo;
+import com.mza_agrotours.backend.enums.TipoNotificacionNombre;
 import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
 import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
@@ -18,7 +26,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,6 +44,7 @@ import static org.mockito.Mockito.*;
 class ReservaServiceReembolsoImpagoTest {
 
     private ReembolsoRepository reembolsoRepository;
+    private NotificacionService notificacionService;
     private ReservaService self;
     private ReservaService service;
 
@@ -42,6 +53,7 @@ class ReservaServiceReembolsoImpagoTest {
     @BeforeEach
     void setUp() {
         reembolsoRepository = mock(ReembolsoRepository.class);
+        notificacionService = mock(NotificacionService.class);
         self = mock(ReservaService.class);
 
         ParametrosService parametrosService = mock(ParametrosService.class);
@@ -54,15 +66,46 @@ class ReservaServiceReembolsoImpagoTest {
         service = new ReservaService(mock(ReservaRepository.class), mock(ReservaMapper.class), mock(ActividadRepository.class),
                 parametrosService, mock(UsuarioRepository.class), mock(VisitanteRepository.class),
                 mock(TipoIdentificacionRepository.class), mock(EstrategiaPagoFactory.class), self,
-                mock(EstadoPagoRepository.class), mock(NotificacionService.class), estadoReembolsoRepository, reembolsoRepository,
+                mock(EstadoPagoRepository.class), notificacionService, estadoReembolsoRepository, reembolsoRepository,
                 mock(ReembolsoSistemaPagoRepository.class), mock(AdministradorSistemasRepository.class));
     }
 
     // ---------- Datos ----------
 
+    private final Usuario usuarioVisitante = mock(Usuario.class);
+    private final Establecimiento establecimiento = establecimiento();
+    private final LocalDateTime inicioActividad = LocalDateTime.of(2026, 11, 20, 9, 30);
+
+    private static Establecimiento establecimiento() {
+        Establecimiento establecimiento = new Establecimiento();
+        establecimiento.setId(UUID.randomUUID());
+        establecimiento.setNombre("Finca Los Álamos");
+        return establecimiento;
+    }
+
+    /** Reserva de la actividad "Cosecha" del establecimiento, del visitante de prueba. */
+    private Reserva reserva() {
+        Actividad actividad = mock(Actividad.class);
+        when(actividad.getNombre()).thenReturn("Cosecha");
+        when(actividad.getEstablecimiento()).thenReturn(establecimiento);
+        ActividadDia dia = mock(ActividadDia.class);
+        when(dia.getFechaHoraInicio()).thenReturn(inicioActividad);
+        Visitante visitante = mock(Visitante.class);
+        when(visitante.getUsuario()).thenReturn(usuarioVisitante);
+
+        Reserva reserva = new Reserva();
+        reserva.setId(UUID.randomUUID());
+        reserva.setActividad(actividad);
+        reserva.setActividadDia(dia);
+        reserva.setVisitante(visitante);
+        return reserva;
+    }
+
     private Reembolso reembolso(EstadoReembolsoNombre estado) {
         Reembolso reembolso = new Reembolso();
         reembolso.setId(UUID.randomUUID());
+        reembolso.setReserva(reserva());
+        reembolso.setMontoReembolso(new BigDecimal("10000.00"));
         reembolso.setFechaHoraPedido(LocalDateTime.now().minusDays(10));
         reembolso.cambiarEstado(new EstadoReembolso(LocalDateTime.now(), null, estado), LocalDateTime.now().minusDays(10));
         when(reembolsoRepository.findByIdForUpdate(reembolso.getId())).thenReturn(Optional.of(reembolso));
@@ -87,6 +130,25 @@ class ReservaServiceReembolsoImpagoTest {
     }
 
     @Test
+    void pasarAImpagoAvisaAlVisitanteALosProductoresYALosAdministradores() {
+        Reembolso reembolso = reembolso(EstadoReembolsoNombre.PEDIDO);
+        Reserva reserva = reembolso.getReserva();
+        String fecha = inicioActividad.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+
+        service.marcarReembolsoImpago(reembolso.getId(), LocalDateTime.now());
+
+        verify(notificacionService).crearNotificacion(usuarioVisitante, TipoNotificacionNombre.REEMBOLSO_A_CARGO_AGROTOURS, null,
+                "/mis-reservas/" + reserva.getId(), "Cosecha", fecha, "10000.00");
+        verify(notificacionService).notificarProductores(establecimiento, PermisoCodigo.GESTIONAR_REEMBOLSOS_PENDIENTES,
+                TipoNotificacionNombre.REEMBOLSO_IMPAGO_PRODUCTOR, "/panel/" + establecimiento.getId() + "/reservas",
+                "Cosecha", fecha, "10000.00");
+        verify(notificacionService).notificarAdministradores(PermisoCodigo.LEER_REEMBOLSOS,
+                TipoNotificacionNombre.REEMBOLSO_IMPAGO_ADMIN, "/admin/impagas/" + reembolso.getId(),
+                "Finca Los Álamos", "10000.00", "Cosecha", fecha);
+        verifyNoMoreInteractions(notificacionService);
+    }
+
+    @Test
     void unReembolsoQueYaNoEstaPedidoNoCambia() {
         Reembolso reembolso = reembolso(EstadoReembolsoNombre.REEMBOLSADO_PRODUCTOR);
 
@@ -95,6 +157,7 @@ class ReservaServiceReembolsoImpagoTest {
         assertEquals(EstadoReembolsoNombre.REEMBOLSADO_PRODUCTOR, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
         assertEquals(1, reembolso.getEstados().size());
         verify(reembolsoRepository, never()).save(any());
+        verifyNoInteractions(notificacionService);
     }
 
     // ---------- marcarReembolsosImpagos ----------
