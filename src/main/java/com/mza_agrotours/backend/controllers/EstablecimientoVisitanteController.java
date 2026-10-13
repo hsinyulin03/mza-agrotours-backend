@@ -39,6 +39,12 @@ public class EstablecimientoVisitanteController {
 
         return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.ok(catalogo));
     }
+    // Landing: establecimientos destacados
+    @GetMapping("/destacados")
+    public ResponseEntity<ApiResponse<List<DTOCatalogoEstablecimientoVisitante>>> obtenerEstablecimientosDestacados() {
+        return ResponseEntity.ok(ApiResponse.ok(establecimientoService.obtenerEstablecimientosDestacados()));
+    }
+
     @GetMapping("/filtros/cultivos")
     public ResponseEntity<ApiResponse<List<DTOFiltroCultivoEstablecimiento>>> obtenerFiltroCultivos() {
         List<DTOFiltroCultivoEstablecimiento> filtros = establecimientoService.obtenerFiltroCultivos();

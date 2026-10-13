@@ -74,6 +74,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/solicitudes-establecimiento/*/pruebas/*/url").hasAuthority(PermisoCodigo.LEER_SOLICITUD_ESTABLECIMIENTO.name())
 
                         .requestMatchers(HttpMethod.GET,"/establecimientos/catalogo").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/establecimientos/destacados").permitAll()
                         .requestMatchers(HttpMethod.GET,"/establecimientos/filtros/cultivos").permitAll()
                         .requestMatchers(HttpMethod.GET,"/establecimientos/filtros/departamentos").permitAll()
                         .requestMatchers(HttpMethod.GET,"/establecimientos/*/departamentos").permitAll()

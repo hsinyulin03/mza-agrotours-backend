@@ -38,6 +38,7 @@ import com.mza_agrotours.backend.services.outbox.OutboxService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,6 +71,9 @@ public class ActividadService {
     private static final List<EstadoActividadDiaNombre> ESTADOS_ACTIVIDAD_DIA_OCUPADO = List.of(
             EstadoActividadDiaNombre.ACTIVA,
             EstadoActividadDiaNombre.REPROGRAMADA);
+
+    private static final int CANTIDAD_DESTACADOS = 6;
+
     @Autowired
     private ActividadRepository actividadRepository;
 
@@ -245,22 +249,32 @@ public class ActividadService {
         List<UUID> cultivosId = (cultivoIds == null || cultivoIds.isEmpty()) ? null : cultivoIds;
         Page<Actividad> actividadesPage = actividadRepository.explorarActividadesPublicadas(texto, cultivosId, departamentoId, pageable);
 
-        return actividadesPage.map(actividad -> {
+        return actividadesPage.map(this::mapearListadoVisitante);
 
-            DTOListadoActividadVisitanteResponse dto = actividadMapper.actividadToDTOListadoActividadVisitante(actividad);
+    }
 
-            if (actividad.getFotos() != null && !actividad.getFotos().isEmpty()) {
-                Archivo primeraFoto = actividad.getFotos().get(0).getArchivo();
-                DTOFotosResponse fotoDto = new DTOFotosResponse();
-                fotoDto.setKey(primeraFoto.getKey());
-                fotoDto.setNombre(primeraFoto.getNombre());
-                fotoDto.setExtension(primeraFoto.getExtension());
-                fotoDto.setDownloadUrl(archivoService.getDownloadUrl(primeraFoto.getKey()));
-                dto.setFotoPortada(fotoDto);
-            }
-            return dto;
-        });
+    // Landing: actividades destacadas. Por ahora, las publicadas de establecimientos que admiten reservas
+    @Transactional(readOnly = true)
+    public List<DTOListadoActividadVisitanteResponse> obtenerActividadesDestacadas() {
+        return actividadRepository.obtenerActividadesDestacadas(LocalDateTime.now(), PageRequest.of(0, CANTIDAD_DESTACADOS))
+                .stream()
+                .map(this::mapearListadoVisitante)
+                .toList();
+    }
 
+    private DTOListadoActividadVisitanteResponse mapearListadoVisitante(Actividad actividad) {
+        DTOListadoActividadVisitanteResponse dto = actividadMapper.actividadToDTOListadoActividadVisitante(actividad);
+
+        if (actividad.getFotos() != null && !actividad.getFotos().isEmpty()) {
+            Archivo primeraFoto = actividad.getFotos().get(0).getArchivo();
+            DTOFotosResponse fotoDto = new DTOFotosResponse();
+            fotoDto.setKey(primeraFoto.getKey());
+            fotoDto.setNombre(primeraFoto.getNombre());
+            fotoDto.setExtension(primeraFoto.getExtension());
+            fotoDto.setDownloadUrl(archivoService.getDownloadUrl(primeraFoto.getKey()));
+            dto.setFotoPortada(fotoDto);
+        }
+        return dto;
     }
 
     //US-ACT-04: Modificar Actividad
