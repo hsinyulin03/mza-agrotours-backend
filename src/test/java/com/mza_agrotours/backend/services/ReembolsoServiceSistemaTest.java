@@ -17,14 +17,14 @@ import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.enums.*;
 import com.mza_agrotours.backend.exceptions.AppException;
 import com.mza_agrotours.backend.exceptions.pago.ReembolsoNoImpagoException;
-import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
+import com.mza_agrotours.backend.mappers.ReembolsoMapper;
 import com.mza_agrotours.backend.repositories.*;
-import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.pago.EstadoPagoRepository;
 import com.mza_agrotours.backend.repositories.pago.EstadoReembolsoRepository;
 import com.mza_agrotours.backend.repositories.pago.ReembolsoRepository;
 import com.mza_agrotours.backend.repositories.pago.ReembolsoSistemaPagoRepository;
 import com.mza_agrotours.backend.services.notificaciones.NotificacionService;
+import com.mza_agrotours.backend.services.notificaciones.ReservaNotificador;
 import com.mza_agrotours.backend.services.pago.EstrategiaPagoFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,7 +43,7 @@ import static org.mockito.Mockito.*;
 /**
  * Registro por parte de un administrador del pago de un reembolso que el productor no pagó (US-RESE-10).
  */
-class ReservaServiceReembolsoSistemaTest {
+class ReembolsoServiceSistemaTest {
 
     private static final String EMAIL_ADMIN = "admin@test.com";
 
@@ -51,9 +51,9 @@ class ReservaServiceReembolsoSistemaTest {
     private ReembolsoRepository reembolsoRepository;
     private ReembolsoSistemaPagoRepository reembolsoSistemaPagoRepository;
     private AdministradorSistemasRepository administradorSistemasRepository;
-    private ReservaMapper reservaMapper;
+    private ReembolsoMapper reembolsoMapper;
     private NotificacionService notificacionService;
-    private ReservaService service;
+    private ReembolsoService service;
 
     private final AdministradorSistemas administrador = new AdministradorSistemas();
     private final Usuario usuarioVisitante = mock(Usuario.class);
@@ -65,7 +65,7 @@ class ReservaServiceReembolsoSistemaTest {
         reembolsoRepository = mock(ReembolsoRepository.class);
         reembolsoSistemaPagoRepository = mock(ReembolsoSistemaPagoRepository.class);
         administradorSistemasRepository = mock(AdministradorSistemasRepository.class);
-        reservaMapper = mock(ReservaMapper.class);
+        reembolsoMapper = mock(ReembolsoMapper.class);
         notificacionService = mock(NotificacionService.class);
         establecimiento.setId(UUID.randomUUID());
 
@@ -80,11 +80,10 @@ class ReservaServiceReembolsoSistemaTest {
         when(estadoReembolsoRepository.findByNombre(any())).thenAnswer(inv ->
                 Optional.of(new EstadoReembolso(LocalDateTime.now(), null, inv.<EstadoReembolsoNombre>getArgument(0))));
 
-        service = new ReservaService(reservaRepository, reservaMapper, mock(ActividadRepository.class),
-                mock(ParametrosService.class), mock(UsuarioRepository.class), mock(VisitanteRepository.class),
-                mock(TipoIdentificacionRepository.class), mock(EstrategiaPagoFactory.class), mock(ReservaService.class),
-                estadoPagoRepository, notificacionService, estadoReembolsoRepository, reembolsoRepository,
-                reembolsoSistemaPagoRepository, administradorSistemasRepository);
+        service = new ReembolsoService(reembolsoRepository, reembolsoSistemaPagoRepository, estadoPagoRepository,
+                estadoReembolsoRepository, administradorSistemasRepository, reservaRepository, reembolsoMapper,
+                mock(EstrategiaPagoFactory.class), mock(ParametrosService.class),
+                new ReservaNotificador(notificacionService), mock(ReembolsoService.class));
     }
 
     // ---------- Datos ----------
@@ -163,7 +162,7 @@ class ReservaServiceReembolsoSistemaTest {
         verify(notificacionService).notificarProductores(eq(establecimiento), eq(PermisoCodigo.GESTIONAR_REEMBOLSOS_PENDIENTES),
                 eq(TipoNotificacionNombre.REEMBOLSO_SISTEMA_PRODUCTOR), eq("/panel/" + establecimiento.getId() + "/reservas"),
                 eq("Cosecha"), any(), eq("10000.00"));
-        verify(reservaMapper).reembolsoToDetalleReembolsoAdminDTO(reembolso, vinculo);
+        verify(reembolsoMapper).reembolsoToDetalleReembolsoAdminDTO(reembolso, vinculo);
     }
 
     @Test

@@ -3,7 +3,7 @@ package com.mza_agrotours.backend.controllers;
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.pago.ReembolsoGetCatalogoDTO;
 import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoProductorDTO;
-import com.mza_agrotours.backend.services.ReservaService;
+import com.mza_agrotours.backend.services.ReembolsoService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -18,10 +18,10 @@ import java.util.UUID;
 @RequestMapping("/establecimientos/{establecimientoId}/reembolsos")
 public class ReembolsoProductorController {
 
-    private final ReservaService reservaService;
+    private final ReembolsoService reembolsoService;
 
-    public ReembolsoProductorController(ReservaService reservaService) {
-        this.reservaService = reservaService;
+    public ReembolsoProductorController(ReembolsoService reembolsoService) {
+        this.reembolsoService = reembolsoService;
     }
 
     //US-RESE-07: Reembolsos que Mercado Pago no pudo devolver y tiene que hacer el productor
@@ -30,7 +30,7 @@ public class ReembolsoProductorController {
     public ResponseEntity<ApiResponse<Page<ReembolsoGetCatalogoDTO>>> obtenerReembolsosPendientes(
             @PathVariable UUID establecimientoId,
             @PageableDefault(page = 0, size = 10, sort = {"fechaHoraPedido", "id"}, direction = Sort.Direction.ASC) Pageable pageable) {
-        Page<ReembolsoGetCatalogoDTO> pendientes = reservaService.listarReembolsosPendientes(establecimientoId, pageable);
+        Page<ReembolsoGetCatalogoDTO> pendientes = reembolsoService.listarReembolsosPendientes(establecimientoId, pageable);
         return ResponseEntity.ok(ApiResponse.ok(pendientes));
     }
 
@@ -40,7 +40,7 @@ public class ReembolsoProductorController {
     public ResponseEntity<ApiResponse<ResultadoReembolsoProductorDTO>> reembolsar(
             @PathVariable UUID establecimientoId,
             @PathVariable UUID reembolsoId) {
-        ResultadoReembolsoProductorDTO resultado = reservaService.reembolsarPorProductor(establecimientoId, reembolsoId);
+        ResultadoReembolsoProductorDTO resultado = reembolsoService.reembolsarPorProductor(establecimientoId, reembolsoId);
         return ResponseEntity.ok(ApiResponse.ok(resultado));
     }
 }

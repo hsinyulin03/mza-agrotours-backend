@@ -13,14 +13,14 @@ import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.enums.EstadoReembolsoNombre;
 import com.mza_agrotours.backend.enums.PermisoCodigo;
 import com.mza_agrotours.backend.enums.TipoNotificacionNombre;
-import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
+import com.mza_agrotours.backend.mappers.ReembolsoMapper;
 import com.mza_agrotours.backend.repositories.*;
-import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.pago.EstadoPagoRepository;
 import com.mza_agrotours.backend.repositories.pago.EstadoReembolsoRepository;
 import com.mza_agrotours.backend.repositories.pago.ReembolsoRepository;
 import com.mza_agrotours.backend.repositories.pago.ReembolsoSistemaPagoRepository;
 import com.mza_agrotours.backend.services.notificaciones.NotificacionService;
+import com.mza_agrotours.backend.services.notificaciones.ReservaNotificador;
 import com.mza_agrotours.backend.services.pago.EstrategiaPagoFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,12 +41,12 @@ import static org.mockito.Mockito.*;
 /**
  * Paso a "Impago" de los reembolsos "Pedido" que el productor no pagó a tiempo.
  */
-class ReservaServiceReembolsoImpagoTest {
+class ReembolsoServiceImpagoTest {
 
     private ReembolsoRepository reembolsoRepository;
     private NotificacionService notificacionService;
-    private ReservaService self;
-    private ReservaService service;
+    private ReembolsoService self;
+    private ReembolsoService service;
 
     private final Parametros parametros = new Parametros();
 
@@ -54,7 +54,7 @@ class ReservaServiceReembolsoImpagoTest {
     void setUp() {
         reembolsoRepository = mock(ReembolsoRepository.class);
         notificacionService = mock(NotificacionService.class);
-        self = mock(ReservaService.class);
+        self = mock(ReembolsoService.class);
 
         ParametrosService parametrosService = mock(ParametrosService.class);
         when(parametrosService.getInstance()).thenReturn(parametros);
@@ -63,11 +63,10 @@ class ReservaServiceReembolsoImpagoTest {
         when(estadoReembolsoRepository.findByNombre(any())).thenAnswer(inv ->
                 Optional.of(new EstadoReembolso(LocalDateTime.now(), null, inv.<EstadoReembolsoNombre>getArgument(0))));
 
-        service = new ReservaService(mock(ReservaRepository.class), mock(ReservaMapper.class), mock(ActividadRepository.class),
-                parametrosService, mock(UsuarioRepository.class), mock(VisitanteRepository.class),
-                mock(TipoIdentificacionRepository.class), mock(EstrategiaPagoFactory.class), self,
-                mock(EstadoPagoRepository.class), notificacionService, estadoReembolsoRepository, reembolsoRepository,
-                mock(ReembolsoSistemaPagoRepository.class), mock(AdministradorSistemasRepository.class));
+        service = new ReembolsoService(reembolsoRepository, mock(ReembolsoSistemaPagoRepository.class),
+                mock(EstadoPagoRepository.class), estadoReembolsoRepository, mock(AdministradorSistemasRepository.class),
+                mock(ReservaRepository.class), mock(ReembolsoMapper.class), mock(EstrategiaPagoFactory.class),
+                parametrosService, new ReservaNotificador(notificacionService), self);
     }
 
     // ---------- Datos ----------

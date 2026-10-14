@@ -1,14 +1,14 @@
 package com.mza_agrotours.backend.repositories;
 
+import com.mza_agrotours.backend.dtos.PanelProductor.ReservaProximaDTO;
 import com.mza_agrotours.backend.dtos.actividad.DTOConteoReservasPorActividad;
-import com.mza_agrotours.backend.dtos.actividad.DTOReservasBloqueantes;
 import com.mza_agrotours.backend.dtos.actividad.DTOCuposPorDia;
 import com.mza_agrotours.backend.dtos.actividad.DTOMetricasReservasGlobales;
+import com.mza_agrotours.backend.dtos.actividad.DTOReservasBloqueantes;
 import com.mza_agrotours.backend.dtos.administrador_sistemas.ConteoPorEstablecimientoDTO;
-import com.mza_agrotours.backend.dtos.PanelProductor.ReservaProximaDTO;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
-import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
+import com.mza_agrotours.backend.enums.EstadoReservaNombre;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
@@ -127,6 +127,12 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "WHERE r.actividad.id = :actividadId " +
             "AND r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE")
     List<Reserva> findPendientesByActividadId(@Param("actividadId") UUID actividadId);
+
+    @Query("SELECT r FROM Reserva r " +
+            "WHERE r.actividadDia.id = :actividadDiaId " +
+            "AND (r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE OR " +
+            "r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA)")
+    List<Reserva> findNoFinalizadosNiCanceladosByActividadDiaId(@Param("actividadDiaId") UUID actividadDiaId);
 
     @Query("SELECT COUNT(r) > 0 FROM Reserva r " +
             "WHERE r.actividad.id = :actividadId " +

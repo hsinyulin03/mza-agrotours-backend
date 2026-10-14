@@ -3,28 +3,16 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.config.RutasNotificacionesFront;
 import com.mza_agrotours.backend.dtos.pago.*;
 import com.mza_agrotours.backend.dtos.reservas.*;
-import com.mza_agrotours.backend.entities.AdministradorSistemas;
-import com.mza_agrotours.backend.entities.TipoIdentificacion;
-import com.mza_agrotours.backend.entities.TipoIdentificacionNombre;
-import com.mza_agrotours.backend.entities.Usuario;
-import com.mza_agrotours.backend.entities.Visitante;
+import com.mza_agrotours.backend.entities.*;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
-import com.mza_agrotours.backend.entities.pago.EstadoPago;
-import com.mza_agrotours.backend.entities.pago.EstadoReembolso;
-import com.mza_agrotours.backend.entities.pago.Pago;
-import com.mza_agrotours.backend.entities.pago.Reembolso;
-import com.mza_agrotours.backend.entities.pago.ReembolsoSistemaPago;
+import com.mza_agrotours.backend.entities.pago.*;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
 import com.mza_agrotours.backend.enums.*;
-import com.mza_agrotours.backend.exceptions.AdministradorSistemasError;
-import com.mza_agrotours.backend.exceptions.AppException;
-import com.mza_agrotours.backend.exceptions.ReservaError;
-import com.mza_agrotours.backend.exceptions.TipoIdentificacionInvalidoException;
-import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
+import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadDiaNotFound;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
@@ -34,32 +22,22 @@ import com.mza_agrotours.backend.exceptions.reservas.EstadoReservaNotFoundExcept
 import com.mza_agrotours.backend.exceptions.reservas.FechaNacimientoInvalidaException;
 import com.mza_agrotours.backend.exceptions.reservas.ReservaNotFoundException;
 import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
-import com.mza_agrotours.backend.repositories.AdministradorSistemasRepository;
-import com.mza_agrotours.backend.repositories.ReservaRepository;
-import com.mza_agrotours.backend.repositories.TipoIdentificacionRepository;
-import com.mza_agrotours.backend.repositories.UsuarioRepository;
-import com.mza_agrotours.backend.repositories.VisitanteRepository;
+import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.pago.EstadoPagoRepository;
-import com.mza_agrotours.backend.repositories.pago.EstadoReembolsoRepository;
-import com.mza_agrotours.backend.repositories.pago.ReembolsoRepository;
-import com.mza_agrotours.backend.repositories.pago.ReembolsoSistemaPagoRepository;
 import com.mza_agrotours.backend.services.notificaciones.NotificacionService;
+import com.mza_agrotours.backend.services.notificaciones.ReservaNotificador;
 import com.mza_agrotours.backend.services.pago.EstrategiaPago;
 import com.mza_agrotours.backend.services.pago.EstrategiaPagoFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -68,15 +46,6 @@ import static com.mza_agrotours.backend.enums.EstadoReservaNombre.*;
 @Service
 public class ReservaService {
     private static final Logger log = LoggerFactory.getLogger(ReservaService.class);
-
-    // Tiempo desde el pedido de un reembolso sin respuesta guardada hasta que se busca en la pasarela
-    private static final Duration ESPERA_REEMBOLSO_SIN_CONFIRMAR = Duration.ofMinutes(3);
-
-    private static final DateTimeFormatter FORMATO_FECHA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-
-    // Reembolsos que tiene que ver el administrador: los que el productor no pagó y los que pagó el sistema
-    private static final List<EstadoReembolsoNombre> ESTADOS_REEMBOLSO_ADMIN =
-            List.of(EstadoReembolsoNombre.IMPAGO, EstadoReembolsoNombre.REEMBOLSADO_SISTEMA);
 
     private final ReservaService self;
     private final ReservaRepository reservaRepository;
@@ -89,12 +58,10 @@ public class ReservaService {
     private final EstadoPagoRepository estadoPagoRepository;
     private final EstrategiaPagoFactory estrategiaPagoFactory;
     private final NotificacionService notificacionService;
-    private final EstadoReembolsoRepository estadoReembolsoRepository;
-    private final ReembolsoRepository reembolsoRepository;
-    private final ReembolsoSistemaPagoRepository reembolsoSistemaPagoRepository;
-    private final AdministradorSistemasRepository administradorSistemasRepository;
+    private final ReservaNotificador reservaNotificador;
+    private final ReembolsoService reembolsoService;
 
-    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, ActividadRepository actividadRepository, ParametrosService parametrosService, UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstrategiaPagoFactory estrategiaPagoFactory, @Lazy ReservaService self, EstadoPagoRepository estadoPagoRepository, NotificacionService notificacionService, EstadoReembolsoRepository estadoReembolsoRepository, ReembolsoRepository reembolsoRepository, ReembolsoSistemaPagoRepository reembolsoSistemaPagoRepository, AdministradorSistemasRepository administradorSistemasRepository) {
+    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, ActividadRepository actividadRepository, ParametrosService parametrosService, UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstrategiaPagoFactory estrategiaPagoFactory, @Lazy ReservaService self, EstadoPagoRepository estadoPagoRepository, NotificacionService notificacionService, ReservaNotificador reservaNotificador, ReembolsoService reembolsoService) {
         this.self = self;
         this.reservaRepository = reservaRepository;
         this.reservaMapper = reservaMapper;
@@ -106,10 +73,8 @@ public class ReservaService {
         this.estadoPagoRepository = estadoPagoRepository;
         this.estrategiaPagoFactory = estrategiaPagoFactory;
         this.notificacionService = notificacionService;
-        this.estadoReembolsoRepository = estadoReembolsoRepository;
-        this.reembolsoRepository = reembolsoRepository;
-        this.reembolsoSistemaPagoRepository = reembolsoSistemaPagoRepository;
-        this.administradorSistemasRepository = administradorSistemasRepository;
+        this.reservaNotificador = reservaNotificador;
+        this.reembolsoService = reembolsoService;
     }
 
     @Transactional
@@ -149,93 +114,6 @@ public class ReservaService {
 
         // Armamos el DTO
         return dtos;
-    }
-
-    /**
-     * Lista los reembolsos que el productor no pagó (IMPAGO) y los que terminó pagando un administrador
-     * (REEMBOLSADO_SISTEMA), del que más tiempo lleva en ese estado al más reciente.
-     */
-    @Transactional(readOnly = true)
-    public List<ListarReembolsoAdminDTO> listarReembolsosImpagos(){
-        return reembolsoRepository.findByEstadoActualIn(ESTADOS_REEMBOLSO_ADMIN)
-                .stream()
-                .map(reservaMapper::reembolsoToListarReembolsoAdminDTO)
-                .toList();
-    }
-
-    /**
-     * Detalle de un reembolso del listado de impagos, con los datos de la reserva y los contactos del visitante
-     * y del productor líder, para que el administrador pueda resolverlo.
-     * Solo se pueden consultar los reembolsos IMPAGO o REEMBOLSADO_SISTEMA.
-     */
-    @Transactional(readOnly = true)
-    public DetalleReembolsoAdminDTO getDetalleReembolsoAdmin(UUID idReembolso){
-        Reembolso reembolso = reembolsoRepository.findByIdAndEstadoActualIn(idReembolso, ESTADOS_REEMBOLSO_ADMIN)
-                .orElseThrow(ReembolsoNotFoundException::new);
-
-        // Solo existe si el reembolso ya lo pagó el sistema
-        ReembolsoSistemaPago reembolsoSistemaPago = reembolsoSistemaPagoRepository.findByReembolsoId(idReembolso)
-                .orElse(null);
-
-        return reservaMapper.reembolsoToDetalleReembolsoAdminDTO(reembolso, reembolsoSistemaPago);
-    }
-
-    /**
-     * Registra el pago que hizo un administrador para cubrir un reembolso IMPAGO. Crea un pago manual aprobado por el
-     * monto del reembolso, con la fecha y el ID externo de la transacción, y lo vincula al reembolso junto con el
-     * administrador y el medio de pago real. El reembolso pasa a "Reembolsado por sistema", el pago original a
-     * "Reembolsado" y, si es por una cancelación, la reserva a "Cancelada con reembolso". Avisa al visitante y a
-     * los productores.
-     *
-     * @param idReembolso reembolso a pagar
-     * @param dto datos de la transacción hecha por el administrador
-     * @param emailAdmin email del administrador que la carga
-     * @return el detalle del reembolso ya pagado
-     * @throws AppException si el administrador no existe o no está activo
-     * @throws ReembolsoNotFoundException si el reembolso no existe o no es IMPAGO ni REEMBOLSADO_SISTEMA
-     * @throws ReembolsoNoImpagoException si el reembolso ya fue pagado por el sistema
-     */
-    @Transactional
-    public DetalleReembolsoAdminDTO registrarPagoReembolsoSistema(UUID idReembolso, RegistrarPagoReembolsoSistemaDTO dto, String emailAdmin){
-        LocalDateTime ahora = LocalDateTime.now();
-
-        AdministradorSistemas administrador = administradorSistemasRepository.findByEmailActivo(emailAdmin)
-                .orElseThrow(() -> new AppException(AdministradorSistemasError.NOT_FOUND));
-
-        Reembolso reembolso = reembolsoRepository.findByIdAndEstadoActualIn(idReembolso, ESTADOS_REEMBOLSO_ADMIN)
-                .orElseThrow(ReembolsoNotFoundException::new);
-        EstadoReembolsoNombre estadoReembolso = reembolso.getEstadoActual().getEstadoReembolso().getNombre();
-        if (estadoReembolso != EstadoReembolsoNombre.IMPAGO)
-            throw new ReembolsoNoImpagoException(estadoReembolso);
-
-        // Pago hecho por el administrador, ya aprobado al momento de la transacción
-        Pago pago = new Pago();
-        pago.setFechaHoraPago(dto.fechaHoraPago());
-        pago.setMontoTotal(reembolso.getMontoReembolso());
-        pago.setIdTransaccionExterna(dto.idPagoExterno());
-        pago.setMetodoPago(MetodoPago.MANUAL);
-        pago.cambiarEstado(getEstadoPago(EstadoPagoNombre.APROBADO), dto.fechaHoraPago());
-
-        ReembolsoSistemaPago reembolsoSistemaPago = new ReembolsoSistemaPago();
-        reembolsoSistemaPago.setMetodoPagoReal(dto.metodoPago());
-        reembolsoSistemaPago.setFechaHoraCarga(ahora);
-        reembolsoSistemaPago.setReembolso(reembolso);
-        reembolsoSistemaPago.setPago(pago);
-        reembolsoSistemaPago.setCargadoPorAdmin(administrador);
-
-        reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.REEMBOLSADO_SISTEMA), ahora);
-        reembolso.setFechaHoraReembolso(dto.fechaHoraPago());
-
-        Reserva reserva = reembolso.getReserva();
-        completarReservaReembolsada(reserva, ahora);
-
-        reembolsoSistemaPagoRepository.save(reembolsoSistemaPago);
-        reembolsoRepository.save(reembolso);
-        reservaRepository.save(reserva);
-        notificarVisitante(reserva, TipoNotificacionNombre.REEMBOLSO_REALIZADO, reembolso.getMontoReembolso().toPlainString());
-        notificarProductoresReembolso(reembolso);
-
-        return reservaMapper.reembolsoToDetalleReembolsoAdminDTO(reembolso, reembolsoSistemaPago);
     }
 
     /**
@@ -367,10 +245,10 @@ public class ReservaService {
 
         // Avisar al visitante: la reserva confirmada o el plazo que tiene para pagarla. A los productores solo la confirmada
         if (pagada) {
-            notificarVisitante(nuevaReserva, TipoNotificacionNombre.RESERVA_PAGADA, pago.getMontoTotal().toPlainString());
-            notificarProductoresReservaConfirmada(nuevaReserva);
+            reservaNotificador.notificarVisitante(nuevaReserva, TipoNotificacionNombre.RESERVA_PAGADA, pago.getMontoTotal().toPlainString());
+            reservaNotificador.notificarProductoresReservaConfirmada(nuevaReserva);
         } else
-            notificarVisitante(nuevaReserva, TipoNotificacionNombre.RESERVA_INICIADA, plazoPago.format(FORMATO_FECHA_HORA));
+            reservaNotificador.notificarVisitante(nuevaReserva, TipoNotificacionNombre.RESERVA_INICIADA, plazoPago.format(ReservaNotificador.FORMATO_FECHA_HORA));
 
         // Avisar al frontend de qué pasó
         return new IniciarReservaDTO(reservaMapper.reservaToConsultarReservaDTO(nuevaReserva), preferenceID);
@@ -529,143 +407,7 @@ public class ReservaService {
         cancelarCheckout(pago, ahora);
 
         // Pasos 2 y 3: pedir el reembolso y guardar la respuesta
-        pedirReembolso(reembolso, pago);
-    }
-
-    /**
-     * Workaround al todavía no tener notificaciones webhook de las pasarelas.
-     * <p>
-     * Tarea programada que busca todos los reembolsos "En proceso" y consulta, mediante la estrategia del
-     * método de pago de cada uno, si la pasarela ya lo resolvió.
-     * <p>
-     * Si fue aprobado, el reembolso pasa a "Reembolsado por productor", el pago a "Reembolsado" y la reserva
-     * a "Cancelada con reembolso". Si fue rechazado, el reembolso pasa a "Pedido" para que lo haga el productor
-     * y la reserva queda como está. En ambos casos se avisa al visitante y a los productores (ver
-     * {@link #pasarAPedidoYNotificar}). Si sigue en proceso, se vuelve a consultar en la próxima ejecución.
-     * <p>
-     * Los reembolsos sin ID externo son pedidos cuya respuesta no se pudo guardar, así que no se sabe si la
-     * pasarela los hizo. Pasado {@link #ESPERA_REEMBOLSO_SIN_CONFIRMAR} (para no pisar un pedido todavía en curso),
-     * se busca el reembolso en la pasarela: si existe se sigue con él, si no pasa a "Pedido". Nunca se vuelve
-     * a pedir el reembolso, para no hacerlo dos veces.
-     * <p>
-     * Los errores al procesar un reembolso particular no interrumpen el resto y quedan registrados en el log.
-     */
-    @Transactional(readOnly = true)
-    public void confirmarReembolsos(){
-        LocalDateTime ahora = LocalDateTime.now();
-        List<Reembolso> reembolsos = reembolsoRepository.findReembolsosEnProceso();
-
-        List<String> idFallidos = new ArrayList<>(); // Array de las id de reembolso que fallaron al procesarse
-        int reembolsosResueltos = 0; // Cantidad de reembolsos aprobados o rechazados
-
-        for (Reembolso r : reembolsos){
-            Pago pago = r.getReserva().getPago();
-
-            try{
-                // Pedido sin respuesta guardada: buscar si la pasarela lo hizo
-                if (r.getIdReembolsoExterno() == null){
-                    // Se mide desde el último intento: si lo reintentó el productor, fechaHoraPedido es la del primero
-                    if (r.getEstadoActual().getFechaHoraInicio().isAfter(ahora.minus(ESPERA_REEMBOLSO_SIN_CONFIRMAR))) continue;
-
-                    Optional<String> idExterno = getEstrategiaPago(pago).buscarReembolso(pago);
-                    if (idExterno.isEmpty()){
-                        pasarAPedidoYNotificar(r, ahora);
-                        reembolsosResueltos++;
-                        continue;
-                    }
-                    // Si sigue en proceso no se guarda el ID, se vuelve a buscar en la próxima ejecución
-                    r.setIdReembolsoExterno(idExterno.get());
-                }
-
-                ResultadoConsultaReembolso resultado = getEstrategiaPago(pago).consultarReembolso(pago, r.getIdReembolsoExterno());
-
-                switch (resultado){
-                    case APROBADO -> {
-                        completarReembolso(r, ahora);
-                        self.guardarReembolsoYNotificar(r, TipoNotificacionNombre.REEMBOLSO_REALIZADO);
-                    }
-                    case RECHAZADO -> pasarAPedidoYNotificar(r, ahora);
-                    case EN_PROCESO -> { continue; }
-                }
-
-                reembolsosResueltos++;
-            } catch (PasarelaPagoException e) {
-                log.warn("Error de la pasarela consultando el reembolso {}", r.getId(), e);
-                idFallidos.add(r.getId().toString());
-            }
-            catch (Exception e) {
-                log.warn("Error de backend confirmando el reembolso {}", r.getId(), e);
-                idFallidos.add(r.getId().toString());
-            }
-        }
-
-        log.info("Se resolvieron {}/{} reembolsos en proceso. Los reembolsos con cambio fallido fueron {}, con ids: {}",
-                reembolsosResueltos, reembolsos.size(), idFallidos.size(), idFallidos);
-    }
-
-    /**
-     * Tarea programada que pasa a "Impago" los reembolsos "Pedido" que el productor no pagó dentro de
-     * {@code diasImpagoReserva} días desde que se pidió el reembolso. A partir de ahí lo tiene que pagar un
-     * administrador de sistemas (ver {@link #registrarPagoReembolsoSistema}). La reserva no cambia de estado.
-     * Se avisa al visitante, a los productores y a los administradores que pueden ver los reembolsos impagos.
-     * <p>
-     * Si el parámetro no está cargado no se marca ningún reembolso. Los errores al procesar un reembolso particular
-     * no interrumpen el resto y quedan registrados en el log.
-     */
-    @Transactional(readOnly = true)
-    public void marcarReembolsosImpagos(){
-        LocalDateTime ahora = LocalDateTime.now();
-        Integer diasImpagoReserva = parametrosService.getInstance().getDiasImpagoReserva();
-        if (diasImpagoReserva == null){
-            log.warn("No está cargado el parámetro diasImpagoReserva, no se marcan reembolsos impagos");
-            return;
-        }
-
-        List<UUID> idsVencidos = reembolsoRepository.findIdsPedidosVencidos(ahora.minusDays(diasImpagoReserva));
-        if (idsVencidos.isEmpty()) return;
-
-        List<String> idFallidos = new ArrayList<>(); // Array de las id de reembolso que fallaron al procesarse
-        for (UUID reembolsoId : idsVencidos){
-            try {
-                self.marcarReembolsoImpago(reembolsoId, ahora);
-            } catch (Exception e) {
-                log.warn("Error de backend marcando como impago el reembolso {}", reembolsoId, e);
-                idFallidos.add(reembolsoId.toString());
-            }
-        }
-
-        log.info("Se marcaron {}/{} reembolsos pedidos como impagos. Los reembolsos con cambio fallido fueron {}, con ids: {}",
-                idsVencidos.size() - idFallidos.size(), idsVencidos.size(), idFallidos.size(), idFallidos);
-    }
-
-    /**
-     * Pasa un único reembolso a "Impago" en su propia transacción, para que un fallo al guardar uno no revierta
-     * los ya confirmados.
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected void marcarReembolsoImpago(UUID reembolsoId, LocalDateTime ahora){
-        // Bloqueado, como en iniciarReintentoReembolso: si el productor lo reintenta a la vez, gana el primero
-        Reembolso reembolso = reembolsoRepository.findByIdForUpdate(reembolsoId).orElseThrow();
-
-        // Relectura defensiva: entre la consulta y esta transacción el reembolso pudo dejar de estar "Pedido"
-        if (reembolso.getEstadoActual().getEstadoReembolso().getNombre() != EstadoReembolsoNombre.PEDIDO)
-            return;
-
-        reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.IMPAGO), ahora);
-        reembolsoRepository.save(reembolso);
-
-        Reserva reserva = reembolso.getReserva();
-        String monto = reembolso.getMontoReembolso().toPlainString();
-        notificarVisitante(reserva, TipoNotificacionNombre.REEMBOLSO_A_CARGO_AGROTOURS, monto);
-        notificarProductoresReembolso(reembolso);
-        notificacionService.notificarAdministradores(
-                PermisoCodigo.LEER_REEMBOLSOS,
-                TipoNotificacionNombre.REEMBOLSO_IMPAGO_ADMIN,
-                RutasNotificacionesFront.reembolsoImpagoAdmin(reembolso.getId()),
-                reserva.getActividad().getEstablecimiento().getNombre(),
-                monto,
-                reserva.getActividad().getNombre(),
-                reserva.getActividadDia().getFechaHoraInicio().format(FORMATO_FECHA_HORA));
+        reembolsoService.pedirReembolso(reembolso, pago);
     }
 
     // TODO hay que ver el cancelaciones (de pagos) mediante endpoint "Crear cancelación" de mercado pago
@@ -710,9 +452,32 @@ public class ReservaService {
             r.setFechaHoraExpiracion(null);
             r.cambiarEstado(cancelada, ahora);
             cancelarCheckout(r.getPago(), ahora);
-            notificarVisitante(r, TipoNotificacionNombre.RESERVA_CANCELADA_POR_BAJA_ACTIVIDAD);
+            reservaNotificador.notificarVisitante(r, TipoNotificacionNombre.RESERVA_CANCELADA_POR_BAJA_ACTIVIDAD);
         }
         log.info("Se cancelaron {} reservas pendientes por baja de la actividad {}", pendientes.size(), actividad.getId());
+    }
+
+    @Transactional
+    public void cancelarReservasPorBajaDeActividadDia(ActividadDia actividadDia, LocalDateTime ahora) {
+        List<Reserva> reservasNoFinalizadasNiCanceladas = this.reservaRepository.findNoFinalizadosNiCanceladosByActividadDiaId(actividadDia.getId());
+        if (reservasNoFinalizadasNiCanceladas.isEmpty()) return;
+        EstadoReserva canceladaSinReembolso = getEstadoReserva(EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO);
+        EstadoReserva canceladaConReembolso = getEstadoReserva(EstadoReservaNombre.CANCELADA_CON_REEMBOLSO);
+        EstadoReserva canceladaConReemsolboPendiente = getEstadoReserva(CANCELADA_REEMBOLSO_PENDIENTE);
+
+        for (Reserva reserva : reservasNoFinalizadasNiCanceladas) {
+            EstadoReservaNombre estadoReservaNombre = reserva.getEstadoActual().getEstadoReserva().getNombre();
+
+            if (estadoReservaNombre.equals(PENDIENTE)) {
+                reserva.cambiarEstado(canceladaSinReembolso, ahora);
+                continue;
+            }
+
+            Reembolso reembolso = reembolsoService.crearReembolsoEnProceso(reserva, reserva.getPago().getMontoTotal(), ahora);
+            ResultadoReembolsoDTO resultado = reembolsoService.pedirReembolso(reembolso, reserva.getPago());
+
+
+        }
     }
 
     @Transactional(readOnly = true)
@@ -738,7 +503,7 @@ public class ReservaService {
      * reembolso: primero se guarda la cancelación y el reembolso "En proceso" sin ID externo, después se pide
      * el reembolso a la pasarela, y por último se guarda su respuesta. Nunca se reintenta el pedido: si MP lo
      * rechaza, el reembolso pasa a "Pedido" para que lo haga el productor. Si no se sabe si MP lo hizo (error de
-     * red o falla al guardar la respuesta), queda "En proceso" sin ID externo y {@link #confirmarReembolsos()}
+     * red o falla al guardar la respuesta), queda "En proceso" sin ID externo y {@link ReembolsoService#confirmarReembolsos()}
      * lo verifica contra MP.
      */
     public IniciarReembolsoDTO handleCancelarReserva(String reservaId, String emailUsuario){
@@ -753,81 +518,11 @@ public class ReservaService {
             return new IniciarReembolsoDTO(ResultadoCancelacion.REEMBOLSO_REALIZADO);
 
         // Pasos 2 y 3: pedir el reembolso a la pasarela y guardar su respuesta
-        ResultadoReembolsoDTO resultado = pedirReembolso(reembolso, pago);
+        ResultadoReembolsoDTO resultado = reembolsoService.pedirReembolso(reembolso, pago);
 
         if (resultado == null || resultado.aceptado())
             return new IniciarReembolsoDTO(ResultadoCancelacion.REEMBOLSO_EN_PROCESO); // Avisar que el proceso marcha bien (o se resuelve solo), avisamos cuando sepamos
         return new IniciarReembolsoDTO(ResultadoCancelacion.REEMBOLSO_MANUAL_PRODUCTOR); // Avisar que hubo un error. Se notificó al propietario
-    }
-
-    /**
-     * Reembolsos "Pedido" del establecimiento, que la pasarela no pudo devolver y tiene que hacer el productor.
-     */
-    @Transactional(readOnly = true)
-    public Page<ReembolsoGetCatalogoDTO> listarReembolsosPendientes(UUID establecimientoId, Pageable pageable){
-        Page<ReembolsoGetCatalogoDTO> pendientes = reembolsoRepository.findPedidosByEstablecimiento(establecimientoId, pageable);
-        return pendientes;
-    }
-
-    /**
-     * Reintento de un reembolso "Pedido" a pedido del productor.
-     * <p>
-     * Primero se vuelve a poner "En proceso" sin ID externo y después se busca en la pasarela si el reembolso ya
-     * existe (por ejemplo, si el productor lo hizo desde la pasarela): si existe se concilia con él. Si no, se pide
-     * de nuevo con los mismos pasos que {@link #handleCancelarReserva}, con una clave de idempotencia propia del
-     * intento (con la del primer pedido la pasarela devolvería el mismo rechazo). Si no se sabe qué pasó en la
-     * pasarela queda "En proceso" y lo resuelve {@link #confirmarReembolsos()}.
-     *
-     * @throws ReembolsoNotFoundException si el reembolso no existe o no es del establecimiento
-     * @throws ReembolsoNoPendienteException si el reembolso no está "Pedido"
-     */
-    public ResultadoReembolsoProductorDTO reembolsarPorProductor(UUID establecimientoId, UUID reembolsoId){
-        // Paso 1: volver a poner el reembolso "En proceso", antes de mover dinero
-        Reembolso reembolso = self.iniciarReintentoReembolso(establecimientoId, reembolsoId);
-        Pago pago = reembolso.getReserva().getPago();
-
-        Optional<String> idExistente;
-        try {
-            idExistente = getEstrategiaPago(pago).buscarReembolso(pago);
-        } catch (PasarelaPagoException e) {
-            log.warn("No se pudo buscar el reembolso {} en la pasarela, lo verificará la tarea programada", reembolso.getId(), e);
-            return new ResultadoReembolsoProductorDTO(ResultadoReembolsoProductor.EN_PROCESO);
-        }
-
-        if (idExistente.isPresent())
-            return conciliarReembolsoExistente(reembolso, pago, idExistente.get());
-
-        // Pasos 2 y 3: pedir el reembolso a la pasarela y guardar su respuesta
-        long inicioIntento = reembolso.getEstadoActual().getFechaHoraInicio().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-        ResultadoReembolsoDTO resultado = pedirReembolso(reembolso, pago, "reembolso-" + reembolso.getId() + "-" + inicioIntento, false);
-
-        if (resultado == null || resultado.aceptado())
-            return new ResultadoReembolsoProductorDTO(ResultadoReembolsoProductor.EN_PROCESO);
-        return new ResultadoReembolsoProductorDTO(ResultadoReembolsoProductor.RECHAZADO);
-    }
-
-    /**
-     * Concilia el reintento del productor con un reembolso que ya existe en la pasarela: si está aprobado se da por
-     * realizado; si no, se guarda su ID externo y lo termina de confirmar {@link #confirmarReembolsos()}.
-     */
-    private ResultadoReembolsoProductorDTO conciliarReembolsoExistente(Reembolso reembolso, Pago pago, String idExterno){
-        ResultadoConsultaReembolso consulta;
-        try {
-            consulta = getEstrategiaPago(pago).consultarReembolso(pago, idExterno);
-        } catch (PasarelaPagoException e) {
-            log.warn("No se pudo consultar el reembolso {} en la pasarela, lo verificará la tarea programada", reembolso.getId(), e);
-            consulta = ResultadoConsultaReembolso.EN_PROCESO;
-        }
-
-        if (consulta == ResultadoConsultaReembolso.APROBADO) {
-            reembolso.setIdReembolsoExterno(idExterno);
-            completarReembolso(reembolso, LocalDateTime.now());
-            self.guardarReembolsoYNotificar(reembolso, TipoNotificacionNombre.REEMBOLSO_REALIZADO);
-            return new ResultadoReembolsoProductorDTO(ResultadoReembolsoProductor.REALIZADO);
-        }
-
-        self.registrarPedidoReembolso(reembolso.getId(), new ResultadoReembolsoDTO(true, idExterno), false);
-        return new ResultadoReembolsoProductorDTO(ResultadoReembolsoProductor.EN_PROCESO);
     }
 
     //Recordatorio: notifica a las reservas pagadas cuyo día empieza en las próximas 24 h (lo llama el scheduler)
@@ -907,85 +602,6 @@ public class ReservaService {
 
     }
 
-    /**
-     * Notifica al visitante dueño de la reserva, con el link al detalle de la reserva. Los mensajes de los tipos
-     * de reserva empiezan con el nombre de la actividad y la fecha y hora del día, que se completan acá.
-     *
-     * @param reserva reserva sobre la que se avisa
-     * @param tipo tipo de notificación
-     * @param datos datos del mensaje que siguen a la actividad y la fecha
-     */
-    private void notificarVisitante(Reserva reserva, TipoNotificacionNombre tipo, Object... datos){
-        notificacionService.crearNotificacion(
-                reserva.getVisitante().getUsuario(),
-                tipo,
-                null,
-                RutasNotificacionesFront.detalleReserva(reserva.getId()),
-                datosMensajeReserva(reserva, datos));
-    }
-
-    /**
-     * Notifica a los productores del establecimiento de la reserva cuyo rol tiene el permiso indicado. Como en
-     * {@link #notificarVisitante}, los mensajes empiezan con el nombre de la actividad y la fecha y hora del día.
-     *
-     * @param reserva reserva sobre la que se avisa
-     * @param permiso permiso que necesita el productor para recibir el aviso
-     * @param tipo tipo de notificación, de scope ESTABLECIMIENTO
-     * @param enlace link del panel del establecimiento
-     * @param datos datos del mensaje que siguen a la actividad y la fecha
-     */
-    private void notificarProductores(Reserva reserva, PermisoCodigo permiso, TipoNotificacionNombre tipo, String enlace, Object... datos){
-        notificacionService.notificarProductores(
-                reserva.getActividad().getEstablecimiento(),
-                permiso,
-                tipo,
-                enlace,
-                datosMensajeReserva(reserva, datos));
-    }
-
-    /** Avisa a los productores que ven las reservas del día que se confirmó (pagó) una reserva. */
-    private void notificarProductoresReservaConfirmada(Reserva reserva){
-        notificarProductores(reserva, PermisoCodigo.GESTIONAR_ACTIVIDAD, TipoNotificacionNombre.RESERVA_CONFIRMADA_PRODUCTOR,
-                enlaceReservasEstablecimiento(reserva), reserva.getReservaDetalles().size());
-    }
-
-    /**
-     * Avisa a los productores que gestionan los reembolsos del nuevo estado de un reembolso: realizado, pendiente de
-     * hacer por ellos, impago o pagado por el sistema. Los demás estados no se avisan.
-     */
-    private void notificarProductoresReembolso(Reembolso reembolso){
-        TipoNotificacionNombre tipo = switch (reembolso.getEstadoActual().getEstadoReembolso().getNombre()) {
-            case REEMBOLSADO_PRODUCTOR -> TipoNotificacionNombre.REEMBOLSO_REALIZADO_PRODUCTOR;
-            case PEDIDO -> TipoNotificacionNombre.REEMBOLSO_PENDIENTE_PRODUCTOR;
-            case IMPAGO -> TipoNotificacionNombre.REEMBOLSO_IMPAGO_PRODUCTOR;
-            case REEMBOLSADO_SISTEMA -> TipoNotificacionNombre.REEMBOLSO_SISTEMA_PRODUCTOR;
-            default -> null;
-        };
-        if (tipo == null) return;
-
-        Reserva reserva = reembolso.getReserva();
-        // El pendiente lleva a la lista donde se reintenta; el resto a las reservas
-        String enlace = tipo == TipoNotificacionNombre.REEMBOLSO_PENDIENTE_PRODUCTOR
-                ? RutasNotificacionesFront.reembolsosPendientesEstablecimiento(reserva.getActividad().getEstablecimiento().getId())
-                : enlaceReservasEstablecimiento(reserva);
-
-        notificarProductores(reserva, PermisoCodigo.GESTIONAR_REEMBOLSOS_PENDIENTES, tipo, enlace,
-                reembolso.getMontoReembolso().toPlainString());
-    }
-
-    private String enlaceReservasEstablecimiento(Reserva reserva){
-        return RutasNotificacionesFront.reservasEstablecimiento(reserva.getActividad().getEstablecimiento().getId());
-    }
-
-    // Antepone a los datos del mensaje el nombre de la actividad y la fecha y hora del día de la reserva
-    private Object[] datosMensajeReserva(Reserva reserva, Object... datos){
-        Object[] datosMensaje = new Object[datos.length + 2];
-        datosMensaje[0] = reserva.getActividad().getNombre();
-        datosMensaje[1] = reserva.getActividadDia().getFechaHoraInicio().format(FORMATO_FECHA_HORA);
-        System.arraycopy(datos, 0, datosMensaje, 2, datos.length);
-        return datosMensaje;
-    }
-
     // TODO: No me gusta mucho que las sesiones de cobro puedan quedar vigentes si hay error, pero por ahora queda así
     /**
      * Invalida la sesión de cobro del pago mediante la estrategia de su método de pago, para que ya no
@@ -1031,7 +647,7 @@ public class ReservaService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected void expirarReservaYNotificar(Reserva r, EstadoReserva estadoExpirada, LocalDateTime ahora){
         cambiarEstadoReservaYGuardar(r, estadoExpirada, ahora);
-        notificarVisitante(r, TipoNotificacionNombre.RESERVA_EXPIRADA);
+        reservaNotificador.notificarVisitante(r, TipoNotificacionNombre.RESERVA_EXPIRADA);
     }
 
     /**
@@ -1041,37 +657,8 @@ public class ReservaService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected void confirmarPagoReservaYNotificar(Reserva r, EstadoReserva estadoPagada, LocalDateTime ahora){
         cambiarEstadoReservaYGuardar(r, estadoPagada, ahora);
-        notificarVisitante(r, TipoNotificacionNombre.RESERVA_PAGADA, r.getPago().getMontoTotal().toPlainString());
-        notificarProductoresReservaConfirmada(r);
-    }
-
-    /**
-     * Guarda un reembolso junto con su reserva (y el pago de ésta) y avisa al visitante y a los productores, en su
-     * propia transacción para que un fallo al guardar un reembolso no revierta los ya confirmados.
-     *
-     * @param reembolso reembolso a guardar
-     * @param aviso tipo de notificación al visitante con el nuevo estado del reembolso, o null para no avisarle
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected void guardarReembolsoYNotificar(Reembolso reembolso, TipoNotificacionNombre aviso){
-        reservaRepository.save(reembolso.getReserva());
-        reembolsoRepository.save(reembolso);
-        if (aviso != null)
-            notificarVisitante(reembolso.getReserva(), aviso, reembolso.getMontoReembolso().toPlainString());
-        notificarProductoresReembolso(reembolso);
-    }
-
-    /**
-     * Pasa a "Pedido" un reembolso que la pasarela no hizo, lo guarda y avisa a los productores, que lo tienen que
-     * realizar. Al visitante solo se le avisa la primera vez: si ya estuvo "Pedido", es un reintento fallido del
-     * productor y el visitante ya sabe que su reembolso se gestiona de forma manual.
-     */
-    private void pasarAPedidoYNotificar(Reembolso reembolso, LocalDateTime ahora){
-        boolean yaEstuvoPedido = reembolso.getEstados().stream()
-                .anyMatch(e -> e.getEstadoReembolso().getNombre() == EstadoReembolsoNombre.PEDIDO);
-
-        reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.PEDIDO), ahora);
-        self.guardarReembolsoYNotificar(reembolso, yaEstuvoPedido ? null : TipoNotificacionNombre.REEMBOLSO_NO_AUTOMATICO);
+        reservaNotificador.notificarVisitante(r, TipoNotificacionNombre.RESERVA_PAGADA, r.getPago().getMontoTotal().toPlainString());
+        reservaNotificador.notificarProductoresReservaConfirmada(r);
     }
 
     /**
@@ -1095,26 +682,22 @@ public class ReservaService {
         if (!correspondeReembolso(reserva, ahora)){
             reserva.cambiarEstado(getEstadoReserva(CANCELADA_SIN_REEMBOLSO), ahora);
             reservaRepository.save(reserva);
-            notificarVisitante(reserva, TipoNotificacionNombre.RESERVA_CANCELADA_SIN_REEMBOLSO,
+            reservaNotificador.notificarVisitante(reserva, TipoNotificacionNombre.RESERVA_CANCELADA_SIN_REEMBOLSO,
                     parametrosService.getInstance().getDiasMinReembolso());
-            notificarProductores(reserva, PermisoCodigo.GESTIONAR_ACTIVIDAD, TipoNotificacionNombre.RESERVA_CANCELADA_PRODUCTOR,
-                    enlaceReservasEstablecimiento(reserva), reserva.getReservaDetalles().size());
+            reservaNotificador.notificarProductores(reserva, PermisoCodigo.GESTIONAR_ACTIVIDAD, TipoNotificacionNombre.RESERVA_CANCELADA_PRODUCTOR,
+                    reservaNotificador.enlaceReservasEstablecimiento(reserva), reserva.getReservaDetalles().size());
             return null;
         }
 
         // CASOS DE REEMBOLSO
         Pago pago = reserva.getPago();
 
-        Reembolso reembolso = new Reembolso();
-        reembolso.setMontoReembolso(pago.getMontoTotal());
-        reembolso.setFechaHoraPedido(ahora);
-        reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.EN_PROCESO), ahora);
-        reembolso.setReserva(reserva);
+        Reembolso reembolso = reembolsoService.crearReembolsoEnProceso(reserva, pago.getMontoTotal(), ahora);
 
         TipoNotificacionNombre aviso;
         if (pago.getMetodoPago() == MetodoPago.MANUAL){
             // Pago manual, reembolso manual: se da por realizado en el momento
-            completarReembolso(reembolso, ahora);
+            reembolsoService.completarReembolso(reembolso, ahora);
             aviso = TipoNotificacionNombre.RESERVA_CANCELADA_CON_REEMBOLSO;
         } else {
             // Queda pendiente hasta que se confirme el reembolso en la pasarela
@@ -1123,11 +706,10 @@ public class ReservaService {
         }
 
         reservaRepository.save(reserva);
-        reembolsoRepository.save(reembolso);
-        notificarVisitante(reserva, aviso, reembolso.getMontoReembolso().toPlainString());
+        reservaNotificador.notificarVisitante(reserva, aviso, reembolso.getMontoReembolso().toPlainString());
         // Un solo aviso a los productores por la cancelación, aunque el reembolso manual ya quede realizado
-        notificarProductores(reserva, PermisoCodigo.GESTIONAR_ACTIVIDAD, TipoNotificacionNombre.RESERVA_CANCELADA_REEMBOLSO_PRODUCTOR,
-                enlaceReservasEstablecimiento(reserva), reserva.getReservaDetalles().size(), reembolso.getMontoReembolso().toPlainString());
+        reservaNotificador.notificarProductores(reserva, PermisoCodigo.GESTIONAR_ACTIVIDAD, TipoNotificacionNombre.RESERVA_CANCELADA_REEMBOLSO_PRODUCTOR,
+                reservaNotificador.enlaceReservasEstablecimiento(reserva), reserva.getReservaDetalles().size(), reembolso.getMontoReembolso().toPlainString());
         return reembolso;
     }
 
@@ -1147,129 +729,12 @@ public class ReservaService {
         reserva.setFechaHoraExpiracion(null);
         reserva.cambiarEstado(getEstadoReserva(REEMBOLSO_NO_CONCILIACION), ahora);
 
-        Reembolso reembolso = new Reembolso();
-        reembolso.setMontoReembolso(montoPagado);
-        reembolso.setFechaHoraPedido(ahora);
-        reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.EN_PROCESO), ahora);
-        reembolso.setReserva(reserva);
-
         reservaRepository.save(reserva);
-        reembolsoRepository.save(reembolso);
+        Reembolso reembolso = reembolsoService.crearReembolsoEnProceso(reserva, montoPagado, ahora);
 
-        notificarVisitante(reserva, TipoNotificacionNombre.RESERVA_REEMBOLSADA_PAGO_NO_VALIDO, montoPagado.toPlainString());
+        reservaNotificador.notificarVisitante(reserva, TipoNotificacionNombre.RESERVA_REEMBOLSADA_PAGO_NO_VALIDO, montoPagado.toPlainString());
 
         return reembolso;
-    }
-
-    /**
-     * Paso 1 de {@link #reembolsarPorProductor}: valida que el reembolso sea del establecimiento y esté "Pedido",
-     * le quita el ID externo del intento anterior (si no, la tarea programada consultaría el reembolso rechazado)
-     * y lo vuelve a poner "En proceso". La fecha de pedido no cambia: sigue siendo la del primer pedido.
-     * <p>
-     * El reembolso se bloquea para que un doble click no lance dos intentos.
-     *
-     * @return el reembolso "En proceso", con su reserva y pago
-     */
-    @Transactional
-    protected Reembolso iniciarReintentoReembolso(UUID establecimientoId, UUID reembolsoId){
-        Reembolso reembolso = reembolsoRepository.findByIdAndEstablecimiento(reembolsoId, establecimientoId)
-                .orElseThrow(ReembolsoNotFoundException::new);
-
-        EstadoReembolsoNombre estado = reembolso.getEstadoActual().getEstadoReembolso().getNombre();
-        if (estado != EstadoReembolsoNombre.PEDIDO)
-            throw new ReembolsoNoPendienteException(estado);
-
-        reembolso.setIdReembolsoExterno(null);
-        reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.EN_PROCESO), LocalDateTime.now());
-        return reembolsoRepository.save(reembolso);
-    }
-
-    /**
-     * Pide el reembolso a la pasarela y guarda su respuesta (pasos 2 y 3 de {@link #handleCancelarReserva} y
-     * {@link #reembolsarPagoNoConciliable}). Nunca se reintenta el pedido: si no se sabe si la pasarela lo hizo
-     * (error de comunicación o falla al guardar la respuesta), el reembolso queda "En proceso" y
-     * {@link #confirmarReembolsos()} lo verifica.
-     *
-     * @return la respuesta de la pasarela, o null si no se sabe si el reembolso se realizó
-     */
-    private ResultadoReembolsoDTO pedirReembolso(Reembolso reembolso, Pago pago){
-        return pedirReembolso(reembolso, pago, "reembolso-pago-" + pago.getId(), true);
-    }
-
-    /**
-     * Como {@link #pedirReembolso(Reembolso, Pago)}, con la clave de idempotencia del intento y si se avisa al
-     * visitante y a los productores en caso de rechazo (el reintento del productor no avisa: el productor ve el
-     * rechazo en la respuesta y el visitante ya sabe que su reembolso es manual).
-     */
-    private ResultadoReembolsoDTO pedirReembolso(Reembolso reembolso, Pago pago, String claveIdempotencia, boolean notificarRechazo){
-        ResultadoReembolsoDTO resultado;
-        try {
-            resultado = getEstrategiaPago(pago).reembolsar(pago, claveIdempotencia);
-        } catch (PasarelaPagoException e) {
-            log.warn("No se sabe si se realizó el reembolso {}, lo verificará la tarea programada", reembolso.getId(), e);
-            return null;
-        }
-
-        try {
-            self.registrarPedidoReembolso(reembolso.getId(), resultado, notificarRechazo);
-        } catch (Exception e) {
-            log.error("No se pudo guardar la respuesta de la pasarela del reembolso {}, lo verificará la tarea programada", reembolso.getId(), e);
-        }
-        return resultado;
-    }
-
-    /**
-     * Paso 3 de {@link #pedirReembolso}: guarda la respuesta de la pasarela al pedido de reembolso.
-     * Si fue aceptado se guarda su ID externo (sigue "En proceso" hasta que se confirme); si fue rechazado
-     * pasa a "Pedido" para que lo haga el productor y, si se pide, se avisa al visitante y a los productores.
-     * <p>
-     * Va en su propia transacción porque {@link #pagarReservas()} lo llama dentro de una de solo lectura, en la
-     * que no se guardaría nada.
-     */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected void registrarPedidoReembolso(UUID reembolsoId, ResultadoReembolsoDTO resultado, boolean notificarRechazo){
-        Reembolso reembolso = reembolsoRepository.findById(reembolsoId).orElseThrow();
-
-        if (resultado.aceptado()) {
-            reembolso.setIdReembolsoExterno(resultado.idReembolsoExterno());
-        } else {
-            reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.PEDIDO), LocalDateTime.now());
-            if (notificarRechazo) {
-                notificarVisitante(reembolso.getReserva(), TipoNotificacionNombre.REEMBOLSO_NO_AUTOMATICO,
-                        reembolso.getMontoReembolso().toPlainString());
-                notificarProductoresReembolso(reembolso);
-            }
-        }
-
-        reembolsoRepository.save(reembolso);
-    }
-
-    /**
-     * Da por realizado un reembolso: el reembolso pasa a "Reembolsado por productor" con su fecha de reembolso,
-     * el pago a "Reembolsado" y, si es por una cancelación, la reserva a "Cancelada con reembolso". La reserva
-     * de un pago no conciliado ya está en su estado final ("Reembolsada por pago no válido") y no cambia. No guarda.
-     *
-     * @param reembolso reembolso realizado, con su reserva y pago
-     * @param ahora fecha y hora en la que se realizó el reembolso
-     */
-    private void completarReembolso(Reembolso reembolso, LocalDateTime ahora){
-        reembolso.cambiarEstado(getEstadoReembolso(EstadoReembolsoNombre.REEMBOLSADO_PRODUCTOR), ahora);
-        reembolso.setFechaHoraReembolso(ahora);
-        completarReservaReembolsada(reembolso.getReserva(), ahora);
-    }
-
-    /**
-     * Refleja en la reserva un reembolso ya realizado (por el productor o por el sistema): su pago pasa a
-     * "Reembolsado" y, si es por una cancelación, la reserva a "Cancelada con reembolso". La reserva de un pago
-     * no conciliado ya está en su estado final ("Reembolsada por pago no válido") y no cambia. No guarda.
-     *
-     * @param reserva reserva del reembolso, con su pago
-     * @param ahora fecha y hora del cambio
-     */
-    private void completarReservaReembolsada(Reserva reserva, LocalDateTime ahora){
-        reserva.getPago().cambiarEstado(getEstadoPago(EstadoPagoNombre.REEMBOLSADO), ahora);
-        if (reserva.getEstadoActual().getEstadoReserva().getNombre() != REEMBOLSO_NO_CONCILIACION)
-            reserva.cambiarEstado(getEstadoReserva(CANCELADA_CON_REEMBOLSO), ahora);
     }
 
     private Usuario getUsuario(String emailUsuario){
@@ -1332,10 +797,5 @@ public class ReservaService {
         boolean reprogramada = actividadDia.getEstadoActual().getEstado().getNombre() == EstadoActividadDiaNombre.REPROGRAMADA;
 
         return faltanDiasSuficientes || reprogramada;
-    }
-
-    private EstadoReembolso getEstadoReembolso(EstadoReembolsoNombre estadoReembolsoNombre){
-        return estadoReembolsoRepository.findByNombre(estadoReembolsoNombre)
-                .orElseThrow(() -> new EstadoReembolsoNotFoundException(estadoReembolsoNombre));
     }
 }

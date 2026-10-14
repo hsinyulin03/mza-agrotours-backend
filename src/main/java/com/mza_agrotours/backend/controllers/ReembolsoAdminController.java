@@ -5,7 +5,7 @@ import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
 import com.mza_agrotours.backend.dtos.pago.DetalleReembolsoAdminDTO;
 import com.mza_agrotours.backend.dtos.pago.ListarReembolsoAdminDTO;
 import com.mza_agrotours.backend.dtos.pago.RegistrarPagoReembolsoSistemaDTO;
-import com.mza_agrotours.backend.services.ReservaService;
+import com.mza_agrotours.backend.services.ReembolsoService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,20 +17,20 @@ import java.util.UUID;
 @RequestMapping("/admin/reembolsos")
 @RestController
 public class ReembolsoAdminController {
-    private final ReservaService reservaService;
+    private final ReembolsoService reembolsoService;
 
-    public ReembolsoAdminController(ReservaService reservaService) {
-        this.reservaService = reservaService;
+    public ReembolsoAdminController(ReembolsoService reembolsoService) {
+        this.reembolsoService = reembolsoService;
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<ListarReembolsoAdminDTO>>> listarReembolsosImpagos() {
-        return ResponseEntity.ok(ApiResponse.ok(this.reservaService.listarReembolsosImpagos()));
+        return ResponseEntity.ok(ApiResponse.ok(this.reembolsoService.listarReembolsosImpagos()));
     }
 
     @GetMapping("/{idReembolso}")
     public ResponseEntity<ApiResponse<DetalleReembolsoAdminDTO>> getDetalleReembolso(@PathVariable UUID idReembolso) {
-        return ResponseEntity.ok(ApiResponse.ok(this.reservaService.getDetalleReembolsoAdmin(idReembolso)));
+        return ResponseEntity.ok(ApiResponse.ok(this.reembolsoService.getDetalleReembolsoAdmin(idReembolso)));
     }
 
     @PostMapping("/{idReembolso}/pago-sistema")
@@ -38,6 +38,6 @@ public class ReembolsoAdminController {
             @AuthenticationPrincipal UsuarioAuthDetails usuarioAuthDetails,
             @PathVariable UUID idReembolso,
             @Valid @RequestBody RegistrarPagoReembolsoSistemaDTO dto) {
-        return ResponseEntity.ok(ApiResponse.ok(this.reservaService.registrarPagoReembolsoSistema(idReembolso, dto, usuarioAuthDetails.getEmail())));
+        return ResponseEntity.ok(ApiResponse.ok(this.reembolsoService.registrarPagoReembolsoSistema(idReembolso, dto, usuarioAuthDetails.getEmail())));
     }
 }
