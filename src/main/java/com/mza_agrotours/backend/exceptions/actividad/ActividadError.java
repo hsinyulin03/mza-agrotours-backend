@@ -38,7 +38,9 @@ public enum ActividadError implements ErrorCode {
     HORARIO_INVALIDO("A.horarioInvalido", HttpStatus.BAD_REQUEST,
             "La hora de fin debe ser posterior a la hora de inicio."),
     CALENDARIO_ANIO_INVALIDO("A.calendarioAnioInvalido", HttpStatus.BAD_REQUEST,
-            "El año consultado está fuera del rango permitido.");
+            "El año consultado está fuera del rango permitido."),
+    DIA_FINALIZADO("A.diaFinalizado", HttpStatus.FORBIDDEN,
+            "El día seleccionado ya ha sido finalizado.");
 
     private final String code;
     private final HttpStatus httpStatus;
