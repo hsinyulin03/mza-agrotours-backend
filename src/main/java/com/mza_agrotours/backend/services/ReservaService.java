@@ -1,18 +1,26 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.config.RutasNotificacionesFront;
-import com.mza_agrotours.backend.dtos.pago.*;
+import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaPagoDTO;
 import com.mza_agrotours.backend.dtos.reservas.*;
-import com.mza_agrotours.backend.entities.*;
+import com.mza_agrotours.backend.entities.TipoIdentificacion;
+import com.mza_agrotours.backend.entities.TipoIdentificacionNombre;
+import com.mza_agrotours.backend.entities.Usuario;
+import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
 import com.mza_agrotours.backend.entities.actividad.ActividadRangoEtario;
-import com.mza_agrotours.backend.entities.pago.*;
+import com.mza_agrotours.backend.entities.pago.EstadoPago;
+import com.mza_agrotours.backend.entities.pago.Pago;
+import com.mza_agrotours.backend.entities.pago.Reembolso;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
 import com.mza_agrotours.backend.enums.*;
-import com.mza_agrotours.backend.exceptions.*;
+import com.mza_agrotours.backend.exceptions.AppException;
+import com.mza_agrotours.backend.exceptions.ReservaError;
+import com.mza_agrotours.backend.exceptions.TipoIdentificacionInvalidoException;
+import com.mza_agrotours.backend.exceptions.UsuarioNotFound;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadDiaNotFound;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
@@ -22,7 +30,10 @@ import com.mza_agrotours.backend.exceptions.reservas.EstadoReservaNotFoundExcept
 import com.mza_agrotours.backend.exceptions.reservas.FechaNacimientoInvalidaException;
 import com.mza_agrotours.backend.exceptions.reservas.ReservaNotFoundException;
 import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
-import com.mza_agrotours.backend.repositories.*;
+import com.mza_agrotours.backend.repositories.ReservaRepository;
+import com.mza_agrotours.backend.repositories.TipoIdentificacionRepository;
+import com.mza_agrotours.backend.repositories.UsuarioRepository;
+import com.mza_agrotours.backend.repositories.VisitanteRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.pago.EstadoPagoRepository;
 import com.mza_agrotours.backend.services.notificaciones.NotificacionService;
@@ -61,7 +72,19 @@ public class ReservaService {
     private final ReservaNotificador reservaNotificador;
     private final ReembolsoService reembolsoService;
 
-    public ReservaService(ReservaRepository reservaRepository, ReservaMapper reservaMapper, ActividadRepository actividadRepository, ParametrosService parametrosService, UsuarioRepository usuarioRepository, VisitanteRepository visitanteRepository, TipoIdentificacionRepository tipoIdentificacionRepository, EstrategiaPagoFactory estrategiaPagoFactory, @Lazy ReservaService self, EstadoPagoRepository estadoPagoRepository, NotificacionService notificacionService, ReservaNotificador reservaNotificador, ReembolsoService reembolsoService) {
+    public ReservaService(ReservaRepository reservaRepository,
+                          ReservaMapper reservaMapper,
+                          ActividadRepository actividadRepository,
+                          ParametrosService parametrosService,
+                          UsuarioRepository usuarioRepository,
+                          VisitanteRepository visitanteRepository,
+                          TipoIdentificacionRepository tipoIdentificacionRepository,
+                          EstrategiaPagoFactory estrategiaPagoFactory,
+                          @Lazy ReservaService self,
+                          EstadoPagoRepository estadoPagoRepository,
+                          NotificacionService notificacionService,
+                          ReservaNotificador reservaNotificador,
+                          ReembolsoService reembolsoService) {
         this.self = self;
         this.reservaRepository = reservaRepository;
         this.reservaMapper = reservaMapper;
@@ -407,7 +430,7 @@ public class ReservaService {
         cancelarCheckout(pago, ahora);
 
         // Pasos 2 y 3: pedir el reembolso y guardar la respuesta
-        reembolsoService.pedirReembolso(reembolso, pago);
+        reembolsoService.pedirReembolso(reembolso);
     }
 
     // TODO hay que ver el cancelaciones (de pagos) mediante endpoint "Crear cancelación" de mercado pago
@@ -446,12 +469,8 @@ public class ReservaService {
         List<Reserva> pendientes = reservaRepository.findPendientesByActividadId(actividad.getId());
         if (pendientes.isEmpty()) return;
 
-        EstadoReserva cancelada = getEstadoReserva(CANCELADA_SIN_REEMBOLSO);
-
         for (Reserva r : pendientes) {
-            r.setFechaHoraExpiracion(null);
-            r.cambiarEstado(cancelada, ahora);
-            cancelarCheckout(r.getPago(), ahora);
+            cancelarReservaCancelable(r, ahora);
             reservaNotificador.notificarVisitante(r, TipoNotificacionNombre.RESERVA_CANCELADA_POR_BAJA_ACTIVIDAD);
         }
         log.info("Se cancelaron {} reservas pendientes por baja de la actividad {}", pendientes.size(), actividad.getId());
@@ -461,23 +480,17 @@ public class ReservaService {
     public void cancelarReservasPorBajaDeActividadDia(ActividadDia actividadDia, LocalDateTime ahora) {
         List<Reserva> reservasNoFinalizadasNiCanceladas = this.reservaRepository.findNoFinalizadosNiCanceladosByActividadDiaId(actividadDia.getId());
         if (reservasNoFinalizadasNiCanceladas.isEmpty()) return;
-        EstadoReserva canceladaSinReembolso = getEstadoReserva(EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO);
-        EstadoReserva canceladaConReembolso = getEstadoReserva(EstadoReservaNombre.CANCELADA_CON_REEMBOLSO);
-        EstadoReserva canceladaConReemsolboPendiente = getEstadoReserva(CANCELADA_REEMBOLSO_PENDIENTE);
 
+        // El reembolso lo pide ReembolsoService#confirmarReembolsos después del commit. Al productor no se le avisa: canceló él
         for (Reserva reserva : reservasNoFinalizadasNiCanceladas) {
-            EstadoReservaNombre estadoReservaNombre = reserva.getEstadoActual().getEstadoReserva().getNombre();
-
-            if (estadoReservaNombre.equals(PENDIENTE)) {
-                reserva.cambiarEstado(canceladaSinReembolso, ahora);
-                continue;
-            }
-
-            Reembolso reembolso = reembolsoService.crearReembolsoEnProceso(reserva, reserva.getPago().getMontoTotal(), ahora);
-            ResultadoReembolsoDTO resultado = reembolsoService.pedirReembolso(reembolso, reserva.getPago());
-
-
+            Reembolso reembolso = cancelarReservaCancelable(reserva, ahora);
+            if (reembolso == null)
+                reservaNotificador.notificarVisitante(reserva, TipoNotificacionNombre.RESERVA_CANCELADA_POR_DIA_CANCELADO);
+            else
+                reservaNotificador.notificarVisitante(reserva, TipoNotificacionNombre.RESERVA_CANCELADA_POR_DIA_CANCELADO_REEMBOLSO,
+                        reembolso.getMontoReembolso().toPlainString());
         }
+        log.info("Se cancelaron {} reservas por la cancelación del día {}", reservasNoFinalizadasNiCanceladas.size(), actividadDia.getId());
     }
 
     @Transactional(readOnly = true)
@@ -508,21 +521,49 @@ public class ReservaService {
      */
     public IniciarReembolsoDTO handleCancelarReserva(String reservaId, String emailUsuario){
         // Paso 1: guardar la cancelación y el reembolso, antes de mover dinero
-        Reembolso reembolso = self.cancelarReservaYCrearReembolso(reservaId, emailUsuario);
+        Reembolso reembolso = self.cancelarPorVisitante(reservaId, emailUsuario);
 
-        if (reembolso == null) // Si no se devolvió reembolso es porque era un caso de no reembolso
+        if (reembolso == null)
             return new IniciarReembolsoDTO(ResultadoCancelacion.CANCELADA_SIN_REEMBOLSO);
 
-        Pago pago = reembolso.getReserva().getPago();
-        if (pago.getMetodoPago() == MetodoPago.MANUAL) // El reembolso manual se aprueba instantáneamente y queda completado
-            return new IniciarReembolsoDTO(ResultadoCancelacion.REEMBOLSO_REALIZADO);
-
         // Pasos 2 y 3: pedir el reembolso a la pasarela y guardar su respuesta
-        ResultadoReembolsoDTO resultado = reembolsoService.pedirReembolso(reembolso, pago);
+        ResultadoCancelacion resultado = switch (reembolsoService.pedirReembolso(reembolso)) {
+            case REEMBOLSADO_PRODUCTOR -> ResultadoCancelacion.REEMBOLSO_REALIZADO;
+            case PEDIDO -> ResultadoCancelacion.REEMBOLSO_MANUAL_PRODUCTOR;
+            default -> ResultadoCancelacion.REEMBOLSO_EN_PROCESO;
+        };
+        return new IniciarReembolsoDTO(resultado);
+    }
 
-        if (resultado == null || resultado.aceptado())
-            return new IniciarReembolsoDTO(ResultadoCancelacion.REEMBOLSO_EN_PROCESO); // Avisar que el proceso marcha bien (o se resuelve solo), avisamos cuando sepamos
-        return new IniciarReembolsoDTO(ResultadoCancelacion.REEMBOLSO_MANUAL_PRODUCTOR); // Avisar que hubo un error. Se notificó al propietario
+    /**
+     * Paso 1 de {@link #handleCancelarReserva}: valida que la reserva sea del visitante, decide si corresponde
+     * reembolso, la cancela y avisa al visitante y a los productores.
+     *
+     * @return el reembolso "En proceso" creado, o null si no corresponde reembolso
+     */
+    @Transactional
+    protected Reembolso cancelarPorVisitante(String reservaId, String emailUsuario){
+        LocalDateTime ahora = LocalDateTime.now();
+
+        Usuario usuario = getUsuario(emailUsuario);
+        Visitante visitante = getVisitante(usuario);
+        Reserva reserva = getReserva(reservaId, visitante);
+
+        Reembolso reembolso = cancelarReservaCancelable(reserva, correspondeReembolso(reserva, ahora), ahora);
+
+        if (reembolso == null) {
+            reservaNotificador.notificarVisitante(reserva, TipoNotificacionNombre.RESERVA_CANCELADA_SIN_REEMBOLSO,
+                    parametrosService.getInstance().getDiasMinReembolso());
+            reservaNotificador.notificarProductores(reserva, PermisoCodigo.GESTIONAR_ACTIVIDAD, TipoNotificacionNombre.RESERVA_CANCELADA_PRODUCTOR,
+                    reservaNotificador.enlaceReservasEstablecimiento(reserva), reserva.getReservaDetalles().size());
+            return null;
+        }
+
+        String monto = reembolso.getMontoReembolso().toPlainString();
+        reservaNotificador.notificarVisitante(reserva, TipoNotificacionNombre.RESERVA_CANCELADA_REEMBOLSO_EN_PROCESO, monto);
+        reservaNotificador.notificarProductores(reserva, PermisoCodigo.GESTIONAR_ACTIVIDAD, TipoNotificacionNombre.RESERVA_CANCELADA_REEMBOLSO_PRODUCTOR,
+                reservaNotificador.enlaceReservasEstablecimiento(reserva), reserva.getReservaDetalles().size(), monto);
+        return reembolso;
     }
 
     //Recordatorio: notifica a las reservas pagadas cuyo día empieza en las próximas 24 h (lo llama el scheduler)
@@ -662,58 +703,6 @@ public class ReservaService {
     }
 
     /**
-     * Paso 1 de {@link #handleCancelarReserva}: valida y cancela la reserva, guarda su reembolso si corresponde y
-     * avisa al visitante y a los productores. Si es por Mercado Pago, el reembolso queda "En proceso" sin ID
-     * externo y la reserva "Cancelada con reembolso pendiente". Si es manual, el reembolso queda completado.
-     *
-     * @return el reembolso creado, o null si no corresponde reembolso
-     */
-    @Transactional
-    protected Reembolso cancelarReservaYCrearReembolso(String reservaId, String emailUsuario){
-        LocalDateTime ahora = LocalDateTime.now();
-
-        Usuario usuario = getUsuario(emailUsuario);
-        Visitante visitante = getVisitante(usuario);
-
-        // Obtenemos la reserva, si no existe o no es del visitante, error.
-        Reserva reserva = getReserva(reservaId, visitante);
-
-        // CASOS DE NO REEMBOLSO
-        if (!correspondeReembolso(reserva, ahora)){
-            reserva.cambiarEstado(getEstadoReserva(CANCELADA_SIN_REEMBOLSO), ahora);
-            reservaRepository.save(reserva);
-            reservaNotificador.notificarVisitante(reserva, TipoNotificacionNombre.RESERVA_CANCELADA_SIN_REEMBOLSO,
-                    parametrosService.getInstance().getDiasMinReembolso());
-            reservaNotificador.notificarProductores(reserva, PermisoCodigo.GESTIONAR_ACTIVIDAD, TipoNotificacionNombre.RESERVA_CANCELADA_PRODUCTOR,
-                    reservaNotificador.enlaceReservasEstablecimiento(reserva), reserva.getReservaDetalles().size());
-            return null;
-        }
-
-        // CASOS DE REEMBOLSO
-        Pago pago = reserva.getPago();
-
-        Reembolso reembolso = reembolsoService.crearReembolsoEnProceso(reserva, pago.getMontoTotal(), ahora);
-
-        TipoNotificacionNombre aviso;
-        if (pago.getMetodoPago() == MetodoPago.MANUAL){
-            // Pago manual, reembolso manual: se da por realizado en el momento
-            reembolsoService.completarReembolso(reembolso, ahora);
-            aviso = TipoNotificacionNombre.RESERVA_CANCELADA_CON_REEMBOLSO;
-        } else {
-            // Queda pendiente hasta que se confirme el reembolso en la pasarela
-            reserva.cambiarEstado(getEstadoReserva(CANCELADA_REEMBOLSO_PENDIENTE), ahora);
-            aviso = TipoNotificacionNombre.RESERVA_CANCELADA_REEMBOLSO_EN_PROCESO;
-        }
-
-        reservaRepository.save(reserva);
-        reservaNotificador.notificarVisitante(reserva, aviso, reembolso.getMontoReembolso().toPlainString());
-        // Un solo aviso a los productores por la cancelación, aunque el reembolso manual ya quede realizado
-        reservaNotificador.notificarProductores(reserva, PermisoCodigo.GESTIONAR_ACTIVIDAD, TipoNotificacionNombre.RESERVA_CANCELADA_REEMBOLSO_PRODUCTOR,
-                reservaNotificador.enlaceReservasEstablecimiento(reserva), reserva.getReservaDetalles().size(), reembolso.getMontoReembolso().toPlainString());
-        return reembolso;
-    }
-
-    /**
      * Paso 1 de {@link #reembolsarPagoNoConciliable}: registra el pago que no concilia y su reembolso, y avisa al
      * visitante. El pago queda "Aprobado" con el ID de la transacción (necesario para reembolsar), la reserva
      * "Reembolsada por pago no válido" (libera el cupo) y el reembolso "En proceso" sin ID externo.
@@ -797,5 +786,42 @@ public class ReservaService {
         boolean reprogramada = actividadDia.getEstadoActual().getEstado().getNombre() == EstadoActividadDiaNombre.REPROGRAMADA;
 
         return faltanDiasSuficientes || reprogramada;
+    }
+
+    private Reembolso cancelarReservaCancelable(Reserva reserva, LocalDateTime ahora) {
+        return cancelarReservaCancelable(reserva, true, ahora);
+    }
+
+    /**
+     * Cancela una reserva "Pendiente" o "Pagada". La pendiente no se cobró: queda "Cancelada sin reembolso" y se
+     * invalida su sesión de cobro. La pagada queda "Cancelada sin reembolso" si no corresponde reembolso, o
+     * "Cancelada con reembolso pendiente" con un reembolso "En proceso" que se pide a la pasarela después del commit.
+     * No avisa a nadie: los avisos dependen de quién cancela.
+     *
+     * @param correspondeReembolso si la política de quien cancela le da reembolso al visitante, en caso de haber pagado
+     * @return el reembolso "En proceso" creado, o null si no hay reembolso
+     * @throws ReembolsoStateException si la reserva no está "Pendiente" ni "Pagada"
+     */
+    private Reembolso cancelarReservaCancelable(Reserva reserva, boolean correspondeReembolso, LocalDateTime ahora) {
+        EstadoReservaNombre estado = reserva.getEstadoActual().getEstadoReserva().getNombre();
+
+        if (estado == PENDIENTE) {
+            reserva.setFechaHoraExpiracion(null);
+            reserva.cambiarEstado(getEstadoReserva(CANCELADA_SIN_REEMBOLSO), ahora);
+            cancelarCheckout(reserva.getPago(), ahora);
+            return null;
+        }
+        if (estado != PAGADA)
+            throw new ReembolsoStateException(estado.getEstado());
+
+        if (!correspondeReembolso) {
+            reserva.cambiarEstado(getEstadoReserva(CANCELADA_SIN_REEMBOLSO), ahora);
+            reservaRepository.save(reserva);
+            return null;
+        }
+
+        reserva.cambiarEstado(getEstadoReserva(CANCELADA_REEMBOLSO_PENDIENTE), ahora);
+        reservaRepository.save(reserva);
+        return reembolsoService.crearReembolsoEnProceso(reserva, reserva.getPago().getMontoTotal(), ahora);
     }
 }

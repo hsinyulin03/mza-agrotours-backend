@@ -305,7 +305,7 @@ class ReservaServiceNotificacionesTest {
     void cancelarSinReembolsoAvisaQueNoCorrespondeReembolso() {
         Reserva reserva = reservaPagada(MetodoPago.MERCADO_PAGO, LocalDateTime.now().plusDays(2));
 
-        assertNull(service.cancelarReservaYCrearReembolso(reserva.getId().toString(), EMAIL));
+        assertNull(service.cancelarPorVisitante(reserva.getId().toString(), EMAIL));
 
         assertEquals(EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO, reserva.getEstadoActual().getEstadoReserva().getNombre());
         verify(notificacionService).crearNotificacion(usuario, TipoNotificacionNombre.RESERVA_CANCELADA_SIN_REEMBOLSO, null,
@@ -319,7 +319,7 @@ class ReservaServiceNotificacionesTest {
     void cancelarConReembolsoPorMpAvisaQueElReembolsoEstaEnProceso() {
         Reserva reserva = reservaPagada(MetodoPago.MERCADO_PAGO, LocalDateTime.now().plusDays(30));
 
-        Reembolso reembolso = service.cancelarReservaYCrearReembolso(reserva.getId().toString(), EMAIL);
+        Reembolso reembolso = service.cancelarPorVisitante(reserva.getId().toString(), EMAIL);
 
         assertEquals(EstadoReembolsoNombre.EN_PROCESO, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
         assertEquals(EstadoReservaNombre.CANCELADA_REEMBOLSO_PENDIENTE, reserva.getEstadoActual().getEstadoReserva().getNombre());
@@ -331,18 +331,39 @@ class ReservaServiceNotificacionesTest {
     }
 
     @Test
-    void cancelarConReembolsoManualAvisaQueSeReembolso() {
+    void cancelarConPagoManualDejaElReembolsoEnProcesoHastaPedirlo() {
         Reserva reserva = reservaPagada(MetodoPago.MANUAL, LocalDateTime.now().plusDays(30));
 
-        Reembolso reembolso = service.cancelarReservaYCrearReembolso(reserva.getId().toString(), EMAIL);
+        Reembolso reembolso = service.cancelarPorVisitante(reserva.getId().toString(), EMAIL);
 
-        assertEquals(EstadoReembolsoNombre.REEMBOLSADO_PRODUCTOR, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
-        assertEquals(EstadoReservaNombre.CANCELADA_CON_REEMBOLSO, reserva.getEstadoActual().getEstadoReserva().getNombre());
-        verify(notificacionService).crearNotificacion(usuario, TipoNotificacionNombre.RESERVA_CANCELADA_CON_REEMBOLSO, null,
+        assertEquals(EstadoReembolsoNombre.EN_PROCESO, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
+        assertEquals(EstadoReservaNombre.CANCELADA_REEMBOLSO_PENDIENTE, reserva.getEstadoActual().getEstadoReserva().getNombre());
+        verify(notificacionService).crearNotificacion(usuario, TipoNotificacionNombre.RESERVA_CANCELADA_REEMBOLSO_EN_PROCESO, null,
                 link(reserva), "Cosecha", fecha(reserva), "10000.00");
-        // Un solo aviso por la cancelación: no se suma el de reembolso realizado
         verify(notificacionService).notificarProductores(establecimiento, PermisoCodigo.GESTIONAR_ACTIVIDAD,
                 TipoNotificacionNombre.RESERVA_CANCELADA_REEMBOLSO_PRODUCTOR, linkReservasPanel(), "Cosecha", fecha(reserva), 2, "10000.00");
+        verifyNoMoreInteractions(notificacionService);
+    }
+
+    @Test
+    void cancelarUnDiaCancelaSusReservasYCreaLosReembolsosSinPedirlos() {
+        Reserva pagada = reservaPagada(MetodoPago.MERCADO_PAGO, LocalDateTime.now().plusDays(1));
+        Reserva pendiente = reservaPagada(MetodoPago.MERCADO_PAGO, LocalDateTime.now().plusDays(1));
+        pendiente.cambiarEstado(new EstadoReserva(EstadoReservaNombre.PENDIENTE), LocalDateTime.now());
+        ActividadDia dia = pagada.getActividadDia();
+        when(reservaRepository.findNoFinalizadosNiCanceladosByActividadDiaId(dia.getId())).thenReturn(List.of(pagada, pendiente));
+
+        service.cancelarReservasPorBajaDeActividadDia(dia, LocalDateTime.now());
+
+        assertEquals(EstadoReservaNombre.CANCELADA_REEMBOLSO_PENDIENTE, pagada.getEstadoActual().getEstadoReserva().getNombre());
+        assertEquals(EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO, pendiente.getEstadoActual().getEstadoReserva().getNombre());
+        verify(reembolsoRepository).save(argThat(r -> r.getReserva() == pagada
+                && r.getEstadoActual().getEstadoReembolso().getNombre() == EstadoReembolsoNombre.EN_PROCESO));
+        verify(estrategiaPago, never()).reembolsar(any(), any());
+        verify(notificacionService).crearNotificacion(usuario, TipoNotificacionNombre.RESERVA_CANCELADA_POR_DIA_CANCELADO_REEMBOLSO, null,
+                link(pagada), "Cosecha", fecha(pagada), "10000.00");
+        verify(notificacionService).crearNotificacion(usuario, TipoNotificacionNombre.RESERVA_CANCELADA_POR_DIA_CANCELADO, null,
+                link(pendiente), "Cosecha", fecha(pendiente));
         verifyNoMoreInteractions(notificacionService);
     }
 
@@ -353,7 +374,7 @@ class ReservaServiceNotificacionesTest {
         Reserva reserva = reservaPagada(MetodoPago.MERCADO_PAGO, LocalDateTime.now().plusDays(30));
         Reembolso reembolso = reembolso(reserva);
 
-        reembolsoService.registrarPedidoReembolso(reembolso.getId(), ResultadoReembolsoDTO.rechazado(), true);
+        reembolsoService.registrarPedidoReembolso(reembolso.getId(), ResultadoReembolsoDTO.rechazado());
 
         assertEquals(EstadoReembolsoNombre.PEDIDO, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
         verify(notificacionService).crearNotificacion(usuario, TipoNotificacionNombre.REEMBOLSO_NO_AUTOMATICO, null,
@@ -366,8 +387,11 @@ class ReservaServiceNotificacionesTest {
     void siLaPasarelaRechazaElReintentoDelProductorNoVuelveAAvisarAlVisitante() {
         Reserva reserva = reservaPagada(MetodoPago.MERCADO_PAGO, LocalDateTime.now().plusDays(30));
         Reembolso reembolso = reembolso(reserva);
+        // Ya estuvo "Pedido" y el productor lo volvió a poner "En proceso" para reintentarlo
+        reembolso.cambiarEstado(new EstadoReembolso(LocalDateTime.now(), null, EstadoReembolsoNombre.PEDIDO), LocalDateTime.now());
+        reembolso.cambiarEstado(new EstadoReembolso(LocalDateTime.now(), null, EstadoReembolsoNombre.EN_PROCESO), LocalDateTime.now());
 
-        reembolsoService.registrarPedidoReembolso(reembolso.getId(), ResultadoReembolsoDTO.rechazado(), false);
+        reembolsoService.registrarPedidoReembolso(reembolso.getId(), ResultadoReembolsoDTO.rechazado());
 
         assertEquals(EstadoReembolsoNombre.PEDIDO, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
         verifyNoInteractions(notificacionService);
@@ -378,10 +402,26 @@ class ReservaServiceNotificacionesTest {
         Reserva reserva = reservaPagada(MetodoPago.MERCADO_PAGO, LocalDateTime.now().plusDays(30));
         Reembolso reembolso = reembolso(reserva);
 
-        reembolsoService.registrarPedidoReembolso(reembolso.getId(), new ResultadoReembolsoDTO(true, "555"), true);
+        reembolsoService.registrarPedidoReembolso(reembolso.getId(), new ResultadoReembolsoDTO(true, "555"));
 
         assertEquals("555", reembolso.getIdReembolsoExterno());
         verifyNoInteractions(notificacionService);
+    }
+
+    @Test
+    void unReembolsoManualSeCompletaAlPedirloYAvisaQueSeRealizo() {
+        Reserva reserva = reservaPagada(MetodoPago.MANUAL, LocalDateTime.now().plusDays(30));
+        Reembolso reembolso = reembolso(reserva);
+
+        EstadoReembolsoNombre estado = reembolsoService.registrarPedidoReembolso(reembolso.getId(), new ResultadoReembolsoDTO(true, null));
+
+        assertEquals(EstadoReembolsoNombre.REEMBOLSADO_PRODUCTOR, estado);
+        assertEquals(EstadoReservaNombre.CANCELADA_CON_REEMBOLSO, reserva.getEstadoActual().getEstadoReserva().getNombre());
+        verify(notificacionService).crearNotificacion(usuario, TipoNotificacionNombre.REEMBOLSO_REALIZADO, null,
+                link(reserva), "Cosecha", fecha(reserva), "10000.00");
+        verify(notificacionService).notificarProductores(establecimiento, PermisoCodigo.GESTIONAR_REEMBOLSOS_PENDIENTES,
+                TipoNotificacionNombre.REEMBOLSO_REALIZADO_PRODUCTOR, linkReservasPanel(), "Cosecha", fecha(reserva), "10000.00");
+        verifyNoMoreInteractions(notificacionService);
     }
 
     @Test

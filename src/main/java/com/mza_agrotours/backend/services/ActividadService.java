@@ -519,26 +519,18 @@ public class ActividadService {
 
     // US-ACT-10: Cancelar día de actividad
     @Transactional
-    public void cancelarDiaDeActividad(UUID idEstablecimiento, UUID idActividad, UUID idActividadDia) {
+    public void cancelarDiaDeActividad(UUID idActividad, UUID idActividadDia, String motivo) {
         ActividadDia dia = obtenerDiaDeActividad(idActividad, idActividadDia);
 
         if (dia.getEstadoActual().getEstado().getNombre().equals(EstadoActividadDiaNombre.FINALIZADA)) {
             throw new AppException(ActividadError.DIA_FINALIZADO);
         }
 
-        // 1. Obtener estado cancelación
         EstadoActividadDia estadoDiaCancelada = obtenerEstadoDia(EstadoActividadDiaNombre.CANCELADA);
         LocalDateTime ahora = LocalDateTime.now();
-        dia.cambiarEstado(estadoDiaCancelada, ahora, "Cancelación día"); // TODO: recibir motivo
+        dia.cambiarEstado(estadoDiaCancelada, ahora, motivo);
 
         reservaService.cancelarReservasPorBajaDeActividadDia(dia, ahora);
-        // 2. Reembolsar reservas
-        // 2.1. Obtener reservas a reembolsar (NO finalizadas NI canceladas)
-        List<Reserva> reservasNoFinalizadasNiCanceladas = this.reservaRepository.findNoFinalizadosNiCanceladosByActividadDiaId(idActividadDia);
-
-        // 2.2. Reembolsar dichas reservas
-        //reservaService.
-
     }
 
     //US-ACT-11: Agregar un actividadDia

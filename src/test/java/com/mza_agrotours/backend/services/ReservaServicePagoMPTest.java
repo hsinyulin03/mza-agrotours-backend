@@ -157,6 +157,9 @@ class ReservaServicePagoMPTest {
         // El paso 1 del reembolso de un pago no conciliado corre en su propia transacción vía self: se ejecuta el real
         when(self.registrarPagoNoConciliable(any(), any(), any(), any())).thenAnswer(inv -> service.registrarPagoNoConciliable(
                 inv.getArgument(0), inv.getArgument(1), inv.getArgument(2), inv.getArgument(3)));
+        // El paso 3 corre en su propia transacción vía self: se simula el estado en que deja al reembolso
+        when(selfReembolso.registrarPedidoReembolso(any(), any())).thenAnswer(inv -> inv.<ResultadoReembolsoDTO>getArgument(1).aceptado()
+                ? EstadoReembolsoNombre.EN_PROCESO : EstadoReembolsoNombre.PEDIDO);
         when(selfReembolso.iniciarReintentoReembolso(any(), any())).thenAnswer(inv -> reembolsoService.iniciarReintentoReembolso(
                 inv.getArgument(0), inv.getArgument(1)));
 
@@ -391,7 +394,7 @@ class ReservaServicePagoMPTest {
         assertEquals(TOKEN_VENDEDOR, opcionesReembolso.getValue().getAccessToken());
 
         // Se guarda la respuesta de MP y se avisa al visitante
-        verify(selfReembolso).registrarPedidoReembolso(any(), argThat(ResultadoReembolsoDTO::aceptado), eq(true));
+        verify(selfReembolso).registrarPedidoReembolso(any(), argThat(ResultadoReembolsoDTO::aceptado));
         verify(notificacionService).crearNotificacion(eq(reserva.getVisitante().getUsuario()),
                 eq(TipoNotificacionNombre.RESERVA_REEMBOLSADA_PAGO_NO_VALIDO), isNull(), anyString(),
                 eq("Cosecha"), anyString(), eq("9999.99"));
@@ -427,7 +430,7 @@ class ReservaServicePagoMPTest {
         // La reserva y el reembolso ya quedaron guardados; no se guarda respuesta, confirmarReembolsos lo busca en MP
         assertEquals(EstadoReservaNombre.REEMBOLSO_NO_CONCILIACION, reserva.getEstadoActual().getEstadoReserva().getNombre());
         verify(reembolsoRepository).save(any(Reembolso.class));
-        verify(selfReembolso, never()).registrarPedidoReembolso(any(), any(), anyBoolean());
+        verify(selfReembolso, never()).registrarPedidoReembolso(any(), any());
     }
 
     // ---------- confirmarReembolsos ----------
@@ -577,6 +580,38 @@ class ReservaServicePagoMPTest {
         assertEquals(EstadoReembolsoNombre.EN_PROCESO, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
     }
 
+    @Test
+    void unReembolsoQueMpNoTieneSePideConLaClaveDelPago() throws Exception {
+        Reembolso reembolso = reembolsoEnProceso(EstadoReservaNombre.CANCELADA_REEMBOLSO_PENDIENTE);
+        reembolso.setIdReembolsoExterno(null);  // Nunca se pidió, como los de un día cancelado
+        reembolso.getEstadoActual().setFechaHoraInicio(LocalDateTime.now().minusMinutes(10));
+
+        reembolsoService.confirmarReembolsos();
+
+        ArgumentCaptor<MPRequestOptions> opciones = ArgumentCaptor.forClass(MPRequestOptions.class);
+        verify(refundClients.constructed().get(1)).refund(eq(987L), opciones.capture());
+        assertEquals("reembolso-pago-" + reembolso.getReserva().getPago().getId(),
+                opciones.getValue().getCustomHeaders().get("X-Idempotency-Key"));
+        verify(selfReembolso).registrarPedidoReembolso(any(), argThat(ResultadoReembolsoDTO::aceptado));
+    }
+
+    @Test
+    void unReintentoQueMpNoTieneSePideConLaClaveDelIntento() throws Exception {
+        Reembolso reembolso = reembolsoEnProceso(EstadoReservaNombre.CANCELADA_REEMBOLSO_PENDIENTE);
+        reembolso.setId(UUID.randomUUID());
+        reembolso.setIdReembolsoExterno(null);
+        LocalDateTime inicioIntento = LocalDateTime.now().minusMinutes(10);
+        reembolso.cambiarEstado(new EstadoReembolso(LocalDateTime.now(), null, EstadoReembolsoNombre.PEDIDO), inicioIntento.minusMinutes(5));
+        reembolso.cambiarEstado(new EstadoReembolso(LocalDateTime.now(), null, EstadoReembolsoNombre.EN_PROCESO), inicioIntento);
+
+        reembolsoService.confirmarReembolsos();
+
+        ArgumentCaptor<MPRequestOptions> opciones = ArgumentCaptor.forClass(MPRequestOptions.class);
+        verify(refundClients.constructed().get(1)).refund(eq(987L), opciones.capture());
+        long epoch = inicioIntento.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        assertEquals("reembolso-" + reembolso.getId() + "-" + epoch, opciones.getValue().getCustomHeaders().get("X-Idempotency-Key"));
+    }
+
     // ---------- reembolsarPorProductor ----------
 
     private static final UUID ESTABLECIMIENTO = UUID.randomUUID();
@@ -628,7 +663,7 @@ class ReservaServicePagoMPTest {
 
         assertEquals(ResultadoReembolsoProductor.EN_PROCESO, resultado.resultado());
         assertEquals(EstadoReembolsoNombre.EN_PROCESO, reembolso.getEstadoActual().getEstadoReembolso().getNombre());
-        verify(selfReembolso).registrarPedidoReembolso(eq(reembolso.getId()), eq(new ResultadoReembolsoDTO(true, "556")), eq(false));
+        verify(selfReembolso).registrarPedidoReembolso(eq(reembolso.getId()), eq(new ResultadoReembolsoDTO(true, "556")));
     }
 
     @Test
@@ -647,7 +682,7 @@ class ReservaServicePagoMPTest {
         assertEquals(TOKEN_VENDEDOR, opciones.getValue().getAccessToken());
         String clave = opciones.getValue().getCustomHeaders().get("X-Idempotency-Key");
         assertTrue(clave.startsWith("reembolso-" + reembolso.getId() + "-"), clave);
-        verify(selfReembolso).registrarPedidoReembolso(eq(reembolso.getId()), argThat(ResultadoReembolsoDTO::aceptado), eq(false));
+        verify(selfReembolso).registrarPedidoReembolso(eq(reembolso.getId()), argThat(ResultadoReembolsoDTO::aceptado));
     }
 
     @Test
@@ -658,7 +693,7 @@ class ReservaServicePagoMPTest {
         ResultadoReembolsoProductorDTO resultado = reembolsoService.reembolsarPorProductor(ESTABLECIMIENTO, reembolso.getId());
 
         assertEquals(ResultadoReembolsoProductor.RECHAZADO, resultado.resultado());
-        verify(selfReembolso).registrarPedidoReembolso(eq(reembolso.getId()), eq(ResultadoReembolsoDTO.rechazado()), eq(false));
+        verify(selfReembolso).registrarPedidoReembolso(eq(reembolso.getId()), eq(ResultadoReembolsoDTO.rechazado()));
     }
 
     @Test

@@ -76,7 +76,9 @@ public class ActividadProductorController {
     public ResponseEntity<?> cancelarDiaActividad(
             @PathVariable UUID establecimientoId,
             @PathVariable UUID actividadId,
-            @PathVariable UUID actividadDiaId) {
+            @PathVariable UUID actividadDiaId,
+            @RequestBody String motivo) {
+        servicio.cancelarDiaDeActividad(actividadId, actividadDiaId, motivo);
         return ResponseEntity.ok().build();
     }
 
