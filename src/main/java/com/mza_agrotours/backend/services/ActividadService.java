@@ -441,6 +441,7 @@ public class ActividadService {
 
         DTOListadoReservasResumenResponse dto = actividadMapper.actividadToListadoReservasResumenResponse(actividad);
         dto.setEstadoDia(dia.getEstadoActual().getEstado().getNombre().toString());
+        dto.setMotivoEstadoDia(dia.getEstadoActual().getMotivo());
         dto.setFecha(dia.getFechaHoraInicio().toLocalDate().toString());
         dto.setHoraInicio(dia.getFechaHoraInicio().toLocalTime().toString());
         dto.setHoraFin(dia.getFechaHoraFin().toLocalTime().toString());
@@ -521,8 +522,10 @@ public class ActividadService {
     @Transactional
     public void cancelarDiaDeActividad(UUID idActividad, UUID idActividadDia, String motivo) {
         ActividadDia dia = obtenerDiaDeActividad(idActividad, idActividadDia);
+        EstadoActividadDiaNombre estadoActual = dia.getEstadoActual().getEstado().getNombre();
 
-        if (dia.getEstadoActual().getEstado().getNombre().equals(EstadoActividadDiaNombre.FINALIZADA)) {
+        if (estadoActual.equals(EstadoActividadDiaNombre.CANCELADA)
+            || estadoActual.equals(EstadoActividadDiaNombre.FINALIZADA)) {
             throw new AppException(ActividadError.DIA_FINALIZADO);
         }
 

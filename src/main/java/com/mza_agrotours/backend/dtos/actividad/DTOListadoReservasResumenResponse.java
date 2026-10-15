@@ -12,6 +12,7 @@ public class DTOListadoReservasResumenResponse {
     private UUID id;
     private String nombre;
     private String estadoDia;
+    private String motivoEstadoDia;
     private List<DTOCultivoResponse> cultivos;
     private String nombreEstablecimiento;
     private String nombreDepartamento;
