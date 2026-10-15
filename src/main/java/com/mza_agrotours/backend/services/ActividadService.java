@@ -1,27 +1,18 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import com.mza_agrotours.backend.dtos.actividad.*;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import com.mza_agrotours.backend.entities.ActividadFoto;
 import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.Usuario;
-import com.mza_agrotours.backend.entities.actividad.*;
-import com.mza_agrotours.backend.dtos.actividad.DiaActividadReservaDTO;
-import com.mza_agrotours.backend.dtos.actividad.InfoParaReservarDTO;
-import com.mza_agrotours.backend.dtos.actividad.RangoEtarioReservaDTO;
-import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
-import com.mza_agrotours.backend.entities.Archivo;
-import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.entities.reservas.ReservaDetalle;
-import com.mza_agrotours.backend.enums.Dia;
-import com.mza_agrotours.backend.enums.EstadoActividadDiaNombre;
-import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.enums.*;
+import com.mza_agrotours.backend.enums.outbox.TipoOperacion;
 import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.exceptions.actividad.*;
 import com.mza_agrotours.backend.mappers.ActividadMapper;
@@ -33,15 +24,15 @@ import com.mza_agrotours.backend.repositories.VisitanteRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadDiaRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
-import com.mza_agrotours.backend.enums.outbox.TipoOperacion;
 import com.mza_agrotours.backend.services.outbox.OutboxService;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -450,6 +441,7 @@ public class ActividadService {
 
         DTOListadoReservasResumenResponse dto = actividadMapper.actividadToListadoReservasResumenResponse(actividad);
         dto.setEstadoDia(dia.getEstadoActual().getEstado().getNombre().toString());
+        dto.setMotivoEstadoDia(dia.getEstadoActual().getMotivo());
         dto.setFecha(dia.getFechaHoraInicio().toLocalDate().toString());
         dto.setHoraInicio(dia.getFechaHoraInicio().toLocalTime().toString());
         dto.setHoraFin(dia.getFechaHoraFin().toLocalTime().toString());
@@ -524,6 +516,24 @@ public class ActividadService {
         dto.setConfiguraciones(configuraciones);
         dto.setDiasDelMes(diasDelMes);
         return dto;
+    }
+
+    // US-ACT-10: Cancelar día de actividad
+    @Transactional
+    public void cancelarDiaDeActividad(UUID idActividad, UUID idActividadDia, String motivo) {
+        ActividadDia dia = obtenerDiaDeActividad(idActividad, idActividadDia);
+        EstadoActividadDiaNombre estadoActual = dia.getEstadoActual().getEstado().getNombre();
+
+        if (estadoActual.equals(EstadoActividadDiaNombre.CANCELADA)
+            || estadoActual.equals(EstadoActividadDiaNombre.FINALIZADA)) {
+            throw new AppException(ActividadError.DIA_FINALIZADO);
+        }
+
+        EstadoActividadDia estadoDiaCancelada = obtenerEstadoDia(EstadoActividadDiaNombre.CANCELADA);
+        LocalDateTime ahora = LocalDateTime.now();
+        dia.cambiarEstado(estadoDiaCancelada, ahora, motivo);
+
+        reservaService.cancelarReservasPorBajaDeActividadDia(dia, ahora);
     }
 
     //US-ACT-11: Agregar un actividadDia

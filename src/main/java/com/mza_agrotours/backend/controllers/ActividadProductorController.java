@@ -70,6 +70,17 @@ public class ActividadProductorController {
 
     }
 
+    // US-ACT-10: Cancelar día de actividad
+    @DeleteMapping("/{actividadId}/dias/{actividadDiaId}")
+    @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
+    public ResponseEntity<?> cancelarDiaActividad(
+            @PathVariable UUID establecimientoId,
+            @PathVariable UUID actividadId,
+            @PathVariable UUID actividadDiaId,
+            @RequestBody String motivo) {
+        servicio.cancelarDiaDeActividad(actividadId, actividadDiaId, motivo);
+        return ResponseEntity.ok().build();
+    }
 
     //US-ACT-04: Modificar Actividad
     @GetMapping("/edit/{actividadId}")

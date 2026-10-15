@@ -46,7 +46,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Transactional
 class ReembolsosPendientesIT extends AbstractIntegrationTest {
 
-    @Autowired private ReservaService reservaService;
+    @Autowired private ReembolsoService reembolsoService;
     @Autowired private ReservaRepository reservaRepository;
     @Autowired private ReembolsoRepository reembolsoRepository;
     @Autowired private EstadoReembolsoRepository estadoReembolsoRepository;
@@ -77,7 +77,7 @@ class ReembolsosPendientesIT extends AbstractIntegrationTest {
         crearReembolso(establecimiento, EstadoReembolsoNombre.EN_PROCESO, hace1Dia, 2);
         crearReembolso(otroEstablecimiento, EstadoReembolsoNombre.PEDIDO, hace1Dia, 2);
 
-        Page<ReembolsoGetCatalogoDTO> pagina = reservaService.listarReembolsosPendientes(establecimiento.getId(),
+        Page<ReembolsoGetCatalogoDTO> pagina = reembolsoService.listarReembolsosPendientes(establecimiento.getId(),
                 PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "fechaHoraPedido", "id")));
 
         assertThat(pagina.getTotalElements()).isEqualTo(2);
@@ -99,7 +99,7 @@ class ReembolsosPendientesIT extends AbstractIntegrationTest {
             crearReembolso(establecimiento, EstadoReembolsoNombre.PEDIDO, LocalDateTime.now().minusDays(i), 1);
         crearReembolso(establecimiento, EstadoReembolsoNombre.REEMBOLSADO_PRODUCTOR, LocalDateTime.now(), 1);
 
-        Page<ReembolsoGetCatalogoDTO> pagina = reservaService.listarReembolsosPendientes(establecimiento.getId(),
+        Page<ReembolsoGetCatalogoDTO> pagina = reembolsoService.listarReembolsosPendientes(establecimiento.getId(),
                 PageRequest.of(0, 2, Sort.by("fechaHoraPedido")));
 
         assertThat(pagina.getContent()).hasSize(2);
