@@ -11,22 +11,19 @@ public class OutboxStrategyFactory {
     private final DelEstablecimientoOutboxStrategy delEstablecimientoOutboxStrategy;
     private final DelUsuarioChatFirebaseOutboxStrategy delUsuarioChatFirebaseOutboxStrategy;
     private final DelActividadChatOutboxStrategy delActividadChatOutboxStrategy;
-    private final ReembolsarReservaOutboxStrategy reembolsarReservaOutboxStrategy;
 
     public OutboxStrategyFactory(EliminarUsuarioFirebaseOutboxStrategy eliminarUsuarioFirebaseOutboxStrategy,
                                  AddMiembroEstablecimientoOutboxStrategy addMiembroEstablecimientoOutboxStrategy,
                                  DelMiembroEstablecimientoOutboxStrategy delMiembroEstablecimientoOutboxStrategy,
                                  DelEstablecimientoOutboxStrategy delEstablecimientoOutboxStrategy,
                                  DelUsuarioChatFirebaseOutboxStrategy delUsuarioChatFirebaseOutboxStrategy,
-                                 DelActividadChatOutboxStrategy delActividadChatOutboxStrategy,
-                                 ReembolsarReservaOutboxStrategy reembolsarReservaOutboxStrategy) {
+                                 DelActividadChatOutboxStrategy delActividadChatOutboxStrategy) {
         this.eliminarUsuarioFirebaseOutboxStrategy = eliminarUsuarioFirebaseOutboxStrategy;
         this.addMiembroEstablecimientoOutboxStrategy = addMiembroEstablecimientoOutboxStrategy;
         this.delMiembroEstablecimientoOutboxStrategy = delMiembroEstablecimientoOutboxStrategy;
         this.delEstablecimientoOutboxStrategy = delEstablecimientoOutboxStrategy;
         this.delUsuarioChatFirebaseOutboxStrategy = delUsuarioChatFirebaseOutboxStrategy;
         this.delActividadChatOutboxStrategy = delActividadChatOutboxStrategy;
-        this.reembolsarReservaOutboxStrategy = reembolsarReservaOutboxStrategy;
     }
 
     public OutboxStrategy getStrategy(Outbox outbox) {
@@ -37,7 +34,6 @@ public class OutboxStrategyFactory {
             case QUITAR_ESTABLECIMIENTO -> delEstablecimientoOutboxStrategy;
             case QUITAR_USUARIO_CHAT -> delUsuarioChatFirebaseOutboxStrategy;
             case QUITAR_ACTIVIDAD_CHAT -> delActividadChatOutboxStrategy;
-            case REEMBOLSAR_RESERVA -> reembolsarReservaOutboxStrategy;
         };
     }
 }
