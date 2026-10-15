@@ -37,6 +37,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Period;
+import java.time.chrono.ChronoLocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -516,6 +517,50 @@ public class ActividadService {
         dto.setConfiguraciones(configuraciones);
         dto.setDiasDelMes(diasDelMes);
         return dto;
+    }
+
+    // US-ACT-09: Reprogramar día de actividad
+    @Transactional
+    public void reprogramarDiaDeActividad(UUID idActividad, UUID idActividadDia, ActividadReprogramarRequest actividadReprogramarRequest) {
+        ActividadDia dia = obtenerDiaDeActividad(idActividad, idActividadDia);
+        EstadoActividadDiaNombre estadoActual = dia.getEstadoActual().getEstado().getNombre();
+
+        if (!estadoActual.equals(EstadoActividadDiaNombre.ACTIVA)) {
+            throw new AppException(ActividadError.DIA_NO_REPROGRAMABLE);
+        }
+
+        if (!actividadReprogramarRequest.getHoraInicioReprogramada().isBefore(actividadReprogramarRequest.getHoraFinReprogramada())) {
+            throw new AppException(ActividadError.FECHA_INVALIDA_REPROGRAMACION);
+        }
+
+        List<Reserva> reservasPagadas = reservaRepository.findFirstByActividadDiaIdPagada(dia.getId(), PageRequest.of(0,1))
+                .stream().toList();
+
+        if (!reservasPagadas.isEmpty()) {
+            Reserva reservaPagadaMasAntigua = reservasPagadas.get(0);
+            if (!actividadReprogramarRequest.getFechaReprogramada()
+                    .isBefore(ChronoLocalDate.from(
+                            reservaPagadaMasAntigua
+                                    .getPago()
+                                    .getFechaHoraPago().plusDays(120)))) {
+                throw new AppException(ActividadError.DIA_NO_REPROGRAMABLE);
+            }
+        }
+
+        if (actividadRepository.existsActividadDiaVigenteByActividadDiaId(dia.getId(), actividadReprogramarRequest.getFechaReprogramada().atStartOfDay())) {
+            throw new AppException(ActividadError.DIA_NO_REPROGRAMABLE);
+        }
+
+        dia.setFechaHoraInicio(actividadReprogramarRequest
+                .getFechaReprogramada()
+                .atTime(actividadReprogramarRequest.getHoraInicioReprogramada()));
+
+        dia.setFechaHoraFin(actividadReprogramarRequest
+                .getFechaReprogramada()
+                .atTime(actividadReprogramarRequest.getHoraFinReprogramada()));
+
+        EstadoActividadDia estadoDiaReprogramado = obtenerEstadoDia(EstadoActividadDiaNombre.REPROGRAMADA);
+        dia.cambiarEstado(estadoDiaReprogramado, LocalDateTime.now(), actividadReprogramarRequest.getMotivo());
     }
 
     // US-ACT-10: Cancelar día de actividad

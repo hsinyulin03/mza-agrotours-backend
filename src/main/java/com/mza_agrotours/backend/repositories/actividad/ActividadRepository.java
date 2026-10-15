@@ -191,6 +191,26 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
                                       @Param("desde") LocalDateTime desde,
                                       @Param("hasta") LocalDateTime hasta);
 
+    default boolean existsActividadDiaVigenteByActividadDiaId(UUID actividadDiaId, LocalDateTime fechaHora) {
+        LocalDateTime desde = fechaHora.toLocalDate().atStartOfDay();
+        return existsOtroDiaVigenteEnRango(actividadDiaId, desde, desde.plusDays(1));
+    }
+
+    @Query("SELECT COUNT(ad) > 0 FROM Actividad a " +
+            "JOIN a.actividadesDias objetivo " +
+            "JOIN a.actividadesDias ad " +
+            "JOIN ad.estadoActual ade " +
+            "JOIN ade.estado e " +
+            "WHERE objetivo.id = :actividadDiaId " +
+            "AND ad.id <> :actividadDiaId " +
+            "AND ad.fechaHoraInicio >= :desde " +
+            "AND ad.fechaHoraInicio < :hasta " +
+            "AND e.nombre IN (com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.ACTIVA, " +
+            "com.mza_agrotours.backend.enums.EstadoActividadDiaNombre.REPROGRAMADA)")
+    boolean existsOtroDiaVigenteEnRango(@Param("actividadDiaId") UUID actividadDiaId,
+                                        @Param("desde") LocalDateTime desde,
+                                        @Param("hasta") LocalDateTime hasta);
+
     @Query("SELECT ad FROM Actividad a " +
             "JOIN a.actividadesDias ad " +
             "LEFT JOIN FETCH ad.estadoActual " +
