@@ -40,7 +40,11 @@ public enum ActividadError implements ErrorCode {
     CALENDARIO_ANIO_INVALIDO("A.calendarioAnioInvalido", HttpStatus.BAD_REQUEST,
             "El año consultado está fuera del rango permitido."),
     DIA_FINALIZADO("A.diaFinalizado", HttpStatus.FORBIDDEN,
-            "El día seleccionado ya ha sido finalizado.");
+            "El día seleccionado ya ha sido finalizado."),
+    DIA_NO_REPROGRAMABLE("A.diaNoReprogramable", HttpStatus.FORBIDDEN,
+            "El día de actividad seleccionado no es reprogramable."),
+    FECHA_INVALIDA_REPROGRAMACION("A.fechaInvalidaReprogramacion", HttpStatus.BAD_REQUEST,
+            "La fecha seleccionada de reprogramación del día no es válida");
 
     private final String code;
     private final HttpStatus httpStatus;
