@@ -141,6 +141,11 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA)")
     List<Reserva> findNoFinalizadosNiCanceladosByActividadDiaId(@Param("actividadDiaId") UUID actividadDiaId);
 
+    @Query("SELECT r FROM Reserva r " +
+            "WHERE r.actividadDia.id = :actividadDiaId " +
+            "AND r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA")
+    List<Reserva> findPagadasByActividadDiaId(@Param("actividadDiaId") UUID actividadDiaId);
+
     @Query("SELECT COUNT(r) > 0 FROM Reserva r " +
             "WHERE r.actividad.id = :actividadId " +
             "AND r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA " +

@@ -89,6 +89,11 @@ public enum TipoNotificacionNombre {
             "Tu reserva fue cancelada",
             "El productor canceló la actividad %s del %s, así que cancelamos tu reserva y pedimos el reembolso de $%s. Te avisaremos cuando se realice.",
             EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
+    RESERVA_REPROGRAMADA(
+            ScopeNotificacionNombre.VISITANTE,
+            "Tu reserva fue reprogramada",
+            "El productor reprogramó la actividad %s para el %s (antes era el %s). Motivo: %s. Si la nueva fecha no te queda bien, podés cancelar tu reserva cuando quieras y te reembolsamos el total.",
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
     RESERVA_REEMBOLSADA_PAGO_NO_VALIDO(
             ScopeNotificacionNombre.VISITANTE,
             "No pudimos validar tu pago",

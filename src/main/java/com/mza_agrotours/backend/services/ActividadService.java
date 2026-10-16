@@ -581,7 +581,7 @@ public class ActividadService {
         EstadoActividadDia estadoDiaReprogramado = obtenerEstadoDia(EstadoActividadDiaNombre.REPROGRAMADA);
         dia.cambiarEstado(estadoDiaReprogramado, LocalDateTime.now(), actividadReprogramarRequest.getMotivo());
 
-        // TODO: notificar visitantes
+        reservaService.notificarReprogramacionDeActividadDia(dia, fechaHoraInicioAnterior, actividadReprogramarRequest.getMotivo());
     }
 
     // US-ACT-10: Cancelar día de actividad
