@@ -37,7 +37,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Period;
-import java.time.chrono.ChronoLocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -517,6 +516,24 @@ public class ActividadService {
         dto.setConfiguraciones(configuraciones);
         dto.setDiasDelMes(diasDelMes);
         return dto;
+    }
+
+    // US-ACT-09: Información calendario para reprogramar actividad
+    @Transactional(readOnly = true)
+    public CalendarioReprogramacionResponse informacionCalendarioReprogramarActividad(UUID idActividad, UUID idActividadDia, int mes, int anio) {
+        ActividadDia dia = obtenerDiaDeActividad(idActividad, idActividadDia);
+        DTOCalendarioGestionDiasResponse calendario = obtenerCalendarioGestionDias(idActividad, mes, anio);
+        List<Reserva> reservasPagadas = reservaRepository.findFirstByActividadDiaIdPagada(dia.getId(), PageRequest.of(0,1));
+
+        CalendarioReprogramacionResponse calendarioResponse = new CalendarioReprogramacionResponse();
+        calendarioResponse.setCalendarioGestionDiasResponse(calendario);
+
+        if (!reservasPagadas.isEmpty()) {
+            Reserva reservaPagadaMasAntigua = reservasPagadas.get(0);
+            calendarioResponse.setFechaHoraPagoReservaMasAntigua(reservaPagadaMasAntigua.getPago().getFechaHoraPago());
+        }
+
+        return calendarioResponse;
     }
 
     // US-ACT-09: Reprogramar día de actividad
