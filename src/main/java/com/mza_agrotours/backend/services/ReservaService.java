@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.config.RutasNotificacionesFront;
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaPagoDTO;
 import com.mza_agrotours.backend.dtos.reservas.*;
 import com.mza_agrotours.backend.entities.TipoIdentificacion;
@@ -71,6 +72,7 @@ public class ReservaService {
     private final NotificacionService notificacionService;
     private final ReservaNotificador reservaNotificador;
     private final ReembolsoService reembolsoService;
+    private final ArchivoService archivoService;
 
     public ReservaService(ReservaRepository reservaRepository,
                           ReservaMapper reservaMapper,
@@ -84,7 +86,8 @@ public class ReservaService {
                           EstadoPagoRepository estadoPagoRepository,
                           NotificacionService notificacionService,
                           ReservaNotificador reservaNotificador,
-                          ReembolsoService reembolsoService) {
+                          ReembolsoService reembolsoService,
+                          ArchivoService archivoService) {
         this.self = self;
         this.reservaRepository = reservaRepository;
         this.reservaMapper = reservaMapper;
@@ -98,6 +101,7 @@ public class ReservaService {
         this.notificacionService = notificacionService;
         this.reservaNotificador = reservaNotificador;
         this.reembolsoService = reembolsoService;
+        this.archivoService = archivoService;
     }
 
     @Transactional
@@ -112,7 +116,7 @@ public class ReservaService {
         Reserva reserva = getReserva(idReserva, visitante);
 
         // Armamos el DTO
-        return reservaMapper.reservaToConsultarReservaDTO(reserva);
+        return reservaMapper.reservaToConsultarReservaDTO(reserva, fotoPortada(reserva));
     }
 
     @Transactional(readOnly = true)
@@ -132,7 +136,7 @@ public class ReservaService {
 
         // Armamos el dto para cada reserva
         for (Reserva reserva: reservas){
-            dtos.add(reservaMapper.reservaToListarReservaDTO(reserva));
+            dtos.add(reservaMapper.reservaToListarReservaDTO(reserva, fotoPortada(reserva)));
         }
 
         // Armamos el DTO
@@ -274,7 +278,7 @@ public class ReservaService {
             reservaNotificador.notificarVisitante(nuevaReserva, TipoNotificacionNombre.RESERVA_INICIADA, plazoPago.format(ReservaNotificador.FORMATO_FECHA_HORA));
 
         // Avisar al frontend de qué pasó
-        return new IniciarReservaDTO(reservaMapper.reservaToConsultarReservaDTO(nuevaReserva), preferenceID);
+        return new IniciarReservaDTO(reservaMapper.reservaToConsultarReservaDTO(nuevaReserva, fotoPortada(nuevaReserva)), preferenceID);
     }
 
     /**
@@ -753,6 +757,10 @@ public class ReservaService {
     private EstadoPago getEstadoPago(EstadoPagoNombre estadoPagoNombre){
         return estadoPagoRepository.findByNombre(estadoPagoNombre)
                 .orElseThrow(() -> new EstadoPagoNotFoundException(estadoPagoNombre));
+    }
+
+    private DTOFotosResponse fotoPortada(Reserva reserva) {
+        return archivoService.mapearFoto(reserva.getActividad().archivoPortada());
     }
 
     private Reserva getReserva(String idReserva, Visitante visitante){

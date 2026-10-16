@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.mappers.reserva;
 
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import com.mza_agrotours.backend.dtos.pago.ContactoReembolsoDTO;
 import com.mza_agrotours.backend.dtos.pago.PagoReembolsoSistemaDTO;
 import com.mza_agrotours.backend.dtos.pago.PersonaReservaDTO;
@@ -45,7 +46,8 @@ public interface ReservaMapper {
     @Mapping(target = "idActividad", source = "reserva.actividad.id")
     @Mapping(target = "idEstablecimiento", source = "reserva.actividad.establecimiento.id")
     @Mapping(target = "calificada", expression = "java(reserva.getCalificacion() != null)")
-    ConsultarReservaDTO reservaToConsultarReservaDTO(Reserva reserva);
+    @Mapping(target = "fotoPortada", source = "fotoPortada")
+    ConsultarReservaDTO reservaToConsultarReservaDTO(Reserva reserva, DTOFotosResponse fotoPortada);
 
     @Mapping(target = "tipoRangoEtario", source = "reservaDetalle.actividadRangoEtario.nombre")
     ConsultarReservaDetalleDTO reservaDetalleToDTO(ReservaDetalle reservaDetalle);
@@ -60,7 +62,8 @@ public interface ReservaMapper {
     @Mapping(target = "ubicacionEstablecimiento", source = "reserva.actividad.establecimiento.ubicacion")
     @Mapping(target = "nombreEstablecimiento", source = "reserva.actividad.establecimiento.razonSocial")
     @Mapping(target = "idActividad", source = "reserva.actividad.id")
-    ListarReservaDTO reservaToListarReservaDTO(Reserva reserva);
+    @Mapping(target = "fotoPortada", source = "fotoPortada")
+    ListarReservaDTO reservaToListarReservaDTO(Reserva reserva, DTOFotosResponse fotoPortada);
 
     // US RESE-10
     @Mapping(target = "idPago", source = "pago.id")

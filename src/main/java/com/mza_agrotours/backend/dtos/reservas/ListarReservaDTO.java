@@ -1,5 +1,7 @@
 package com.mza_agrotours.backend.dtos.reservas;
 
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -19,10 +21,9 @@ public record ListarReservaDTO(
         String nombreActividad, String idActividad,
 
         // Establecimiento - nombre, id, ubicación
-        String nombreEstablecimiento, String ubicacionEstablecimiento
+        String nombreEstablecimiento, String ubicacionEstablecimiento,
 
-        // TODO Foto - (url, nombre)
-        // FotoDTO foto
+        DTOFotosResponse fotoPortada
 ) {
 
 }
