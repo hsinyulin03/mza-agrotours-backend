@@ -255,16 +255,7 @@ public class ActividadService {
 
     private DTOListadoActividadVisitanteResponse mapearListadoVisitante(Actividad actividad) {
         DTOListadoActividadVisitanteResponse dto = actividadMapper.actividadToDTOListadoActividadVisitante(actividad);
-
-        if (actividad.getFotos() != null && !actividad.getFotos().isEmpty()) {
-            Archivo primeraFoto = actividad.getFotos().get(0).getArchivo();
-            DTOFotosResponse fotoDto = new DTOFotosResponse();
-            fotoDto.setKey(primeraFoto.getKey());
-            fotoDto.setNombre(primeraFoto.getNombre());
-            fotoDto.setExtension(primeraFoto.getExtension());
-            fotoDto.setDownloadUrl(archivoService.getDownloadUrl(primeraFoto.getKey()));
-            dto.setFotoPortada(fotoDto);
-        }
+        dto.setFotoPortada(archivoService.mapearFoto(actividad.archivoPortada()));
         return dto;
     }
 

@@ -619,15 +619,6 @@ public class TipoCultivoService {
     }
 
     private DTOFotosResponse mapearFoto(Archivo foto) {
-        if (foto == null) {
-            return null;
-        }
-
-        DTOFotosResponse dto = new DTOFotosResponse();
-        dto.setKey(foto.getKey());
-        dto.setNombre(foto.getNombre());
-        dto.setExtension(foto.getExtension());
-        dto.setDownloadUrl(this.archivoService.getDownloadUrl(foto.getKey()));
-        return dto;
+        return this.archivoService.mapearFoto(foto);
     }
 }

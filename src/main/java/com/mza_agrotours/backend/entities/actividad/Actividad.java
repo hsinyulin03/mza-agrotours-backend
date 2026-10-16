@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.entities.actividad;
 
 import com.mza_agrotours.backend.entities.ActividadFoto;
+import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.BaseEntity;
 import com.mza_agrotours.backend.entities.Calificacion;
 import com.mza_agrotours.backend.entities.cultivo.TipoCultivo;
@@ -109,6 +110,10 @@ public class Actividad extends BaseEntity {
     }
     public void addFoto(ActividadFoto foto) {
         this.fotos.add(foto);
+    }
+
+    public Archivo archivoPortada() {
+        return this.fotos.isEmpty() ? null : this.fotos.get(0).getArchivo();
     }
 
 }
