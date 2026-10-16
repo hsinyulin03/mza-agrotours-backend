@@ -9,7 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @NoArgsConstructor
@@ -24,8 +24,8 @@ public class ActividadReprogramarRequest {
 
     @NotNull
     @Future
-    private LocalDate fechaReprogramada;
+    private LocalDateTime fechaHoraInicioReprogramada;
 
-    private LocalTime horaInicioReprogramada;
+    @NotNull
     private LocalTime horaFinReprogramada;
 }

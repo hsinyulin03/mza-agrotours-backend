@@ -546,38 +546,36 @@ public class ActividadService {
             throw new AppException(ActividadError.DIA_NO_REPROGRAMABLE);
         }
 
-        if (!actividadReprogramarRequest.getHoraInicioReprogramada().isBefore(actividadReprogramarRequest.getHoraFinReprogramada())) {
+        LocalTime horaInicio = actividadReprogramarRequest.getFechaHoraInicioReprogramada().toLocalTime();
+        if (!horaInicio.isBefore(actividadReprogramarRequest.getHoraFinReprogramada())) {
             throw new AppException(ActividadError.FECHA_INVALIDA_REPROGRAMACION);
         }
 
-        List<Reserva> reservasPagadas = reservaRepository.findFirstByActividadDiaIdPagada(dia.getId(), PageRequest.of(0,1))
-                .stream().toList();
+        List<Reserva> reservasPagadas = reservaRepository.findFirstByActividadDiaIdPagada(dia.getId(), PageRequest.of(0,1));
 
         if (!reservasPagadas.isEmpty()) {
             Reserva reservaPagadaMasAntigua = reservasPagadas.get(0);
-            if (!actividadReprogramarRequest.getFechaReprogramada()
-                    .isBefore(ChronoLocalDate.from(
-                            reservaPagadaMasAntigua
-                                    .getPago()
-                                    .getFechaHoraPago().plusDays(120)))) {
+            if (!actividadReprogramarRequest.getFechaHoraInicioReprogramada()
+                    .isBefore(reservaPagadaMasAntigua.getPago().getFechaHoraPago().plusDays(120))) {
                 throw new AppException(ActividadError.DIA_NO_REPROGRAMABLE);
             }
         }
 
-        if (actividadRepository.existsActividadDiaVigenteByActividadDiaId(dia.getId(), actividadReprogramarRequest.getFechaReprogramada().atStartOfDay())) {
+        if (actividadRepository.existsActividadDiaVigenteByActividadDiaId(dia.getId(), actividadReprogramarRequest.getFechaHoraInicioReprogramada())) {
             throw new AppException(ActividadError.DIA_NO_REPROGRAMABLE);
         }
 
-        dia.setFechaHoraInicio(actividadReprogramarRequest
-                .getFechaReprogramada()
-                .atTime(actividadReprogramarRequest.getHoraInicioReprogramada()));
+        dia.setFechaHoraInicio(actividadReprogramarRequest.getFechaHoraInicioReprogramada());
 
         dia.setFechaHoraFin(actividadReprogramarRequest
-                .getFechaReprogramada()
+                .getFechaHoraInicioReprogramada()
+                .toLocalDate()
                 .atTime(actividadReprogramarRequest.getHoraFinReprogramada()));
 
         EstadoActividadDia estadoDiaReprogramado = obtenerEstadoDia(EstadoActividadDiaNombre.REPROGRAMADA);
         dia.cambiarEstado(estadoDiaReprogramado, LocalDateTime.now(), actividadReprogramarRequest.getMotivo());
+
+        // TODO: notificar visitantes
     }
 
     // US-ACT-10: Cancelar día de actividad

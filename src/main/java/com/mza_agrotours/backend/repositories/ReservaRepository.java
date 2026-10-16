@@ -77,10 +77,10 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
 
 
     @Query("SELECT r FROM Reserva r " +
-            "WHERE r.actividadDia = :actividadDiaId " +
+            "WHERE r.actividadDia.id = :actividadDiaId " +
             "AND r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA " +
             "ORDER BY r.pago.fechaHoraPago ASC")
-    Optional<Reserva> findFirstByActividadDiaIdPagada(@Param("actividadDiaId") UUID actividadDiaId, Pageable pageable);
+    List<Reserva> findFirstByActividadDiaIdPagada(@Param("actividadDiaId") UUID actividadDiaId, Pageable pageable);
 
     @Query("SELECT COUNT(r) > 0 FROM Reserva r " +
             "WHERE r.visitante.id = :visitanteId " +
