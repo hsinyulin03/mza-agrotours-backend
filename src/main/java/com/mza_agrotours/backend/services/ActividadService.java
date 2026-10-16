@@ -547,9 +547,10 @@ public class ActividadService {
         }
 
         LocalTime horaInicio = actividadReprogramarRequest.getFechaHoraInicioReprogramada().toLocalTime();
-        if (!horaInicio.isBefore(actividadReprogramarRequest.getHoraFinReprogramada())) {
-            throw new AppException(ActividadError.FECHA_INVALIDA_REPROGRAMACION);
-        }
+        validarHorario(horaInicio, actividadReprogramarRequest.getHoraFinReprogramada());
+
+        LocalDate fechaHoy = LocalDate.now();
+        validarFechaEnVentana(fechaHoy.plusDays(120), fechaHoy);
 
         LocalDateTime fechaHoraInicioAnterior = dia.getFechaHoraInicio();
         if (actividadReprogramarRequest.getFechaHoraInicioReprogramada()
@@ -568,7 +569,7 @@ public class ActividadService {
         }
 
         if (actividadRepository.existsActividadDiaVigenteByActividadDiaId(dia.getId(), actividadReprogramarRequest.getFechaHoraInicioReprogramada())) {
-            throw new AppException(ActividadError.DIA_NO_REPROGRAMABLE);
+            throw new AppException(ActividadError.DIA_FECHA_OCUPADA);
         }
 
         dia.setFechaHoraInicio(actividadReprogramarRequest.getFechaHoraInicioReprogramada());
