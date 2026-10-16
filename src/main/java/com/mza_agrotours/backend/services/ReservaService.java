@@ -493,6 +493,16 @@ public class ReservaService {
         log.info("Se cancelaron {} reservas por la cancelación del día {}", reservasNoFinalizadasNiCanceladas.size(), actividadDia.getId());
     }
 
+    // El día ya tiene la fecha nueva: el notificador la pone sola, la anterior va como dato
+    @Transactional
+    public void notificarReprogramacionDeActividadDia(ActividadDia actividadDia, LocalDateTime fechaHoraInicioAnterior, String motivo) {
+        List<Reserva> reservasPagadas = reservaRepository.findPagadasByActividadDiaId(actividadDia.getId());
+        String fechaAnterior = fechaHoraInicioAnterior.format(ReservaNotificador.FORMATO_FECHA_HORA);
+        for (Reserva reserva : reservasPagadas) {
+            reservaNotificador.notificarVisitante(reserva, TipoNotificacionNombre.RESERVA_REPROGRAMADA, fechaAnterior, motivo);
+        }
+    }
+
     @Transactional(readOnly = true)
     public IniciarReembolsoDTO handleCancelarReservaCondicion(String reservaId, String emailUsuario){
         LocalDateTime ahora = LocalDateTime.now();

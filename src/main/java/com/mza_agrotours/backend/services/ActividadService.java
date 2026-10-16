@@ -518,6 +518,73 @@ public class ActividadService {
         return dto;
     }
 
+    // US-ACT-09: Información calendario para reprogramar actividad
+    @Transactional(readOnly = true)
+    public CalendarioReprogramacionResponse informacionCalendarioReprogramarActividad(UUID idActividad, UUID idActividadDia, int mes, int anio) {
+        ActividadDia dia = obtenerDiaDeActividad(idActividad, idActividadDia);
+        DTOCalendarioGestionDiasResponse calendario = obtenerCalendarioGestionDias(idActividad, mes, anio);
+        List<Reserva> reservasPagadas = reservaRepository.findFirstByActividadDiaIdPagada(dia.getId(), PageRequest.of(0,1));
+
+        CalendarioReprogramacionResponse calendarioResponse = new CalendarioReprogramacionResponse();
+        calendarioResponse.setCalendarioGestionDiasResponse(calendario);
+
+        if (!reservasPagadas.isEmpty()) {
+            Reserva reservaPagadaMasAntigua = reservasPagadas.get(0);
+            calendarioResponse.setFechaHoraPagoReservaMasAntigua(reservaPagadaMasAntigua.getPago().getFechaHoraPago());
+        }
+
+        return calendarioResponse;
+    }
+
+    // US-ACT-09: Reprogramar día de actividad
+    @Transactional
+    public void reprogramarDiaDeActividad(UUID idActividad, UUID idActividadDia, ActividadReprogramarRequest actividadReprogramarRequest) {
+        ActividadDia dia = obtenerDiaDeActividad(idActividad, idActividadDia);
+        EstadoActividadDiaNombre estadoActual = dia.getEstadoActual().getEstado().getNombre();
+
+        if (!estadoActual.equals(EstadoActividadDiaNombre.ACTIVA)) {
+            throw new AppException(ActividadError.DIA_NO_REPROGRAMABLE);
+        }
+
+        LocalTime horaInicio = actividadReprogramarRequest.getFechaHoraInicioReprogramada().toLocalTime();
+        validarHorario(horaInicio, actividadReprogramarRequest.getHoraFinReprogramada());
+
+        LocalDate fechaHoy = LocalDate.now();
+        validarFechaEnVentana(fechaHoy.plusDays(120), fechaHoy);
+
+        LocalDateTime fechaHoraInicioAnterior = dia.getFechaHoraInicio();
+        if (actividadReprogramarRequest.getFechaHoraInicioReprogramada()
+                .isBefore(fechaHoraInicioAnterior)) {
+            throw new AppException(ActividadError.FECHA_INVALIDA_REPROGRAMACION);
+        }
+
+        List<Reserva> reservasPagadas = reservaRepository.findFirstByActividadDiaIdPagada(dia.getId(), PageRequest.of(0,1));
+
+        if (!reservasPagadas.isEmpty()) {
+            Reserva reservaPagadaMasAntigua = reservasPagadas.get(0);
+            if (!actividadReprogramarRequest.getFechaHoraInicioReprogramada()
+                    .isBefore(reservaPagadaMasAntigua.getPago().getFechaHoraPago().plusDays(120))) {
+                throw new AppException(ActividadError.DIA_NO_REPROGRAMABLE);
+            }
+        }
+
+        if (actividadRepository.existsActividadDiaVigenteByActividadDiaId(dia.getId(), actividadReprogramarRequest.getFechaHoraInicioReprogramada())) {
+            throw new AppException(ActividadError.DIA_FECHA_OCUPADA);
+        }
+
+        dia.setFechaHoraInicio(actividadReprogramarRequest.getFechaHoraInicioReprogramada());
+
+        dia.setFechaHoraFin(actividadReprogramarRequest
+                .getFechaHoraInicioReprogramada()
+                .toLocalDate()
+                .atTime(actividadReprogramarRequest.getHoraFinReprogramada()));
+
+        EstadoActividadDia estadoDiaReprogramado = obtenerEstadoDia(EstadoActividadDiaNombre.REPROGRAMADA);
+        dia.cambiarEstado(estadoDiaReprogramado, LocalDateTime.now(), actividadReprogramarRequest.getMotivo());
+
+        reservaService.notificarReprogramacionDeActividadDia(dia, fechaHoraInicioAnterior, actividadReprogramarRequest.getMotivo());
+    }
+
     // US-ACT-10: Cancelar día de actividad
     @Transactional
     public void cancelarDiaDeActividad(UUID idActividad, UUID idActividadDia, String motivo) {

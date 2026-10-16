@@ -75,6 +75,13 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "WHERE p.idCheckoutExterno = :idCheckoutExterno ")
     Optional<Reserva> findByPagoWithIdCheckoutExterno(@Param("idCheckoutExterno") String idCheckoutExterno);
 
+
+    @Query("SELECT r FROM Reserva r " +
+            "WHERE r.actividadDia.id = :actividadDiaId " +
+            "AND r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA " +
+            "ORDER BY r.pago.fechaHoraPago ASC")
+    List<Reserva> findFirstByActividadDiaIdPagada(@Param("actividadDiaId") UUID actividadDiaId, Pageable pageable);
+
     @Query("SELECT COUNT(r) > 0 FROM Reserva r " +
             "WHERE r.visitante.id = :visitanteId " +
             "AND r.estadoActual.estadoReserva.nombre = :estadoReservaNombre ")
@@ -133,6 +140,11 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "AND (r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PENDIENTE OR " +
             "r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA)")
     List<Reserva> findNoFinalizadosNiCanceladosByActividadDiaId(@Param("actividadDiaId") UUID actividadDiaId);
+
+    @Query("SELECT r FROM Reserva r " +
+            "WHERE r.actividadDia.id = :actividadDiaId " +
+            "AND r.estadoActual.estadoReserva.nombre = com.mza_agrotours.backend.enums.EstadoReservaNombre.PAGADA")
+    List<Reserva> findPagadasByActividadDiaId(@Param("actividadDiaId") UUID actividadDiaId);
 
     @Query("SELECT COUNT(r) > 0 FROM Reserva r " +
             "WHERE r.actividad.id = :actividadId " +

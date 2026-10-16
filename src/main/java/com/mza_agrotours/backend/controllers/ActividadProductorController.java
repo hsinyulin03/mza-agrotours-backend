@@ -8,6 +8,8 @@ import com.mza_agrotours.backend.services.ActividadService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -70,6 +72,36 @@ public class ActividadProductorController {
 
     }
 
+    // US-ACT-09: Calendario reprogramar dia actividad
+    @GetMapping("/{actividadId}/dias/{actividadDiaId}/calendario-reprogramacion")
+    @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
+    public ResponseEntity<?> verCalendarioReprogramacionDiaActividad(
+            @PathVariable UUID establecimientoId,
+            @PathVariable UUID actividadId,
+            @PathVariable UUID actividadDiaId,
+            @RequestParam @Min(value = 1, message = "El mes debe ser mayor o igual a 1")
+            @Max(value = 12, message = "El mes debe ser menor o igual a 12") int mes,
+            @RequestParam int anio
+
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(servicio
+                .informacionCalendarioReprogramarActividad(actividadId, actividadDiaId, mes, anio)));
+    }
+
+    // US-ACT-09: Reprogramar día de actividad
+    @PostMapping("/{actividadId}/dias/{actividadDiaId}/reprogramar")
+    @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
+    public ResponseEntity<?> reprogramarDiaActividad(
+            @PathVariable UUID establecimientoId,
+            @PathVariable UUID actividadId,
+            @PathVariable UUID actividadDiaId,
+            @RequestBody @Valid ActividadReprogramarRequest actividadReprogramarRequest
+
+    ) {
+        this.servicio.reprogramarDiaDeActividad(actividadId, actividadDiaId, actividadReprogramarRequest);
+        return ResponseEntity.ok().build();
+    }
+
     // US-ACT-10: Cancelar día de actividad
     @DeleteMapping("/{actividadId}/dias/{actividadDiaId}")
     @PreAuthorize("@estAuth.tienePermisoSobreActividad(authentication, #establecimientoId, #actividadId, T(com.mza_agrotours.backend.enums.PermisoCodigo).GESTIONAR_ACTIVIDAD)")
@@ -77,6 +109,9 @@ public class ActividadProductorController {
             @PathVariable UUID establecimientoId,
             @PathVariable UUID actividadId,
             @PathVariable UUID actividadDiaId,
+            @Valid
+            @NotBlank(message = "El motivo es obligatorio")
+            @Size(max=200)
             @RequestBody String motivo) {
         servicio.cancelarDiaDeActividad(actividadId, actividadDiaId, motivo);
         return ResponseEntity.ok().build();
