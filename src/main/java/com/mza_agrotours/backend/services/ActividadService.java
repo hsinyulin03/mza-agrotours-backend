@@ -551,6 +551,12 @@ public class ActividadService {
             throw new AppException(ActividadError.FECHA_INVALIDA_REPROGRAMACION);
         }
 
+        LocalDateTime fechaHoraInicioAnterior = dia.getFechaHoraInicio();
+        if (actividadReprogramarRequest.getFechaHoraInicioReprogramada()
+                .isBefore(fechaHoraInicioAnterior)) {
+            throw new AppException(ActividadError.FECHA_INVALIDA_REPROGRAMACION);
+        }
+
         List<Reserva> reservasPagadas = reservaRepository.findFirstByActividadDiaIdPagada(dia.getId(), PageRequest.of(0,1));
 
         if (!reservasPagadas.isEmpty()) {
