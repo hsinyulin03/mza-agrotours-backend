@@ -405,6 +405,7 @@ public class EstablecimientoService  {
         // Obtener precio base vigente
         BigDecimal precioBase = obtenerPrecioBaseVigente(actividad);
         dto.setPrecioDesde(precioBase);
+        dto.setFotoPortada(mapearFoto(actividad.archivoPortada()));
 
         // TODO: implementar cálculo real del promedio de Calificacion.puntuacion
         // dto.setPuntuacion(calcularCalificacionPromedio(actividad));
