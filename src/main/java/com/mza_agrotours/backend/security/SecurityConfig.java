@@ -114,6 +114,8 @@ public class SecurityConfig {
                         // Callback de OAuth de MP: lo invoca el navegador al volver de MP, sin token.
                         // Lo protege la validación del state (CuentaMercadoPagoService)
                         .requestMatchers(HttpMethod.GET, "/mercadopago/oauth/callback").permitAll()
+                        // Webhook de pagos de MP: llega sin token, lo protege la firma (MercadoPagoWebhookController)
+                        .requestMatchers(HttpMethod.POST, "/mercadopago/webhooks/pagos").permitAll()
 
                         //Docs
                         .requestMatchers(
