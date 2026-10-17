@@ -35,6 +35,14 @@ public interface EstrategiaPago {
     ResultadoConsultaPagoDTO consultarPago(Reserva reserva);
 
     /**
+     * Si los pagos de este medio se confirman consultándolos periódicamente con {@link #consultarPago(Reserva)}.
+     * Es falso cuando la pasarela avisa los pagos por notificación.
+     */
+    default boolean requiereConsultaPeriodica() {
+        return true;
+    }
+
+    /**
      * Invalida la sesión de cobro del pago para que ya no pueda pagarse.
      *
      * @param pago pago cuya sesión de cobro se invalida

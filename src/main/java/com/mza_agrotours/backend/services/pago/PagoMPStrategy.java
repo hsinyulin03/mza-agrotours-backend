@@ -15,6 +15,7 @@ import com.mercadopago.resources.merchantorder.MerchantOrderPayment;
 import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.payment.PaymentRefund;
 import com.mercadopago.resources.preference.Preference;
+import com.mza_agrotours.backend.config.MercadoPagoCheckoutProperties;
 import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaPagoDTO;
 import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaReembolso;
 import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoDTO;
@@ -36,6 +37,7 @@ import com.mza_agrotours.backend.services.ParametrosService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -55,12 +57,15 @@ public class PagoMPStrategy implements EstrategiaPago{
     private final ParametrosService parametrosService;
     private final CuentaMercadoPagoService cuentaMercadoPagoService;
     private final ConciliadorPagoMP conciliadorPagoMP;
+    private final MercadoPagoCheckoutProperties checkoutProperties;
 
-    public PagoMPStrategy(PagoRepository pagoRepository, ParametrosService parametrosService, CuentaMercadoPagoService cuentaMercadoPagoService, ConciliadorPagoMP conciliadorPagoMP) {
+    public PagoMPStrategy(PagoRepository pagoRepository, ParametrosService parametrosService, CuentaMercadoPagoService cuentaMercadoPagoService,
+                          ConciliadorPagoMP conciliadorPagoMP, MercadoPagoCheckoutProperties checkoutProperties) {
         this.pagoRepository = pagoRepository;
         this.parametrosService = parametrosService;
         this.cuentaMercadoPagoService = cuentaMercadoPagoService;
         this.conciliadorPagoMP = conciliadorPagoMP;
+        this.checkoutProperties = checkoutProperties;
     }
 
     @Override
@@ -120,8 +125,15 @@ public class PagoMPStrategy implements EstrategiaPago{
                     .installments(12)
                     .build();
 
+            // Una sola pantalla de retorno: el front muestra el resultado según el status que agrega MP
+            PreferenceBackUrlsRequest backUrls = PreferenceBackUrlsRequest.builder()
+                    .success(checkoutProperties.backUrl())
+                    .failure(checkoutProperties.backUrl())
+                    .pending(checkoutProperties.backUrl())
+                    .build();
+
             // Creamos la preference Request con Items, Payer, Métodos de Pago, info del marketplace y un par de datos nuevos
-            PreferenceRequest preferenceRequest = PreferenceRequest.builder() // TODO back url
+            PreferenceRequest preferenceRequest = PreferenceRequest.builder()
                     .items(items)
                     .marketplaceFee(comisionPropia)
                     .payer(payer)
@@ -131,6 +143,9 @@ public class PagoMPStrategy implements EstrategiaPago{
                     .expirationDateFrom(OffsetDateTime.now())
                     .expirationDateTo(reserva.getFechaHoraExpiracion().atZone(ZoneId.systemDefault()).toOffsetDateTime())
                     .externalReference(reserva.getId().toString())
+                    .backUrls(backUrls)
+                    .autoReturn("approved")
+                    .notificationUrl(notificationUrlDe(reserva))
                     .build();
 
             // Creamos la preference con el token del vendedor, así el pago queda en su cuenta
@@ -172,8 +187,27 @@ public class PagoMPStrategy implements EstrategiaPago{
     }
 
     /**
-     * Workaround al todavía no tener notificaciones webhook de Mercado Pago: busca las merchant orders de la
-     * preference del pago y concilia con la reserva ({@link ConciliadorPagoMP}) el primer pago aprobado que encuentre.
+     * URL del webhook para la preference de la reserva, null si no hay webhook. Lleva la reserva para saber con el
+     * token de qué vendedor consultar el payment notificado; {@code source_news=webhooks} evita que MP mande
+     * también notificaciones IPN.
+     */
+    private String notificationUrlDe(Reserva reserva) {
+        if (!checkoutProperties.tieneWebhook()) return null;
+        return UriComponentsBuilder.fromUriString(checkoutProperties.notificationUrl())
+                .queryParam("reservaId", reserva.getId())
+                .queryParam("source_news", "webhooks")
+                .toUriString();
+    }
+
+    // Con webhook, MP avisa de cada pago y no hace falta consultar las preferences pendientes
+    @Override
+    public boolean requiereConsultaPeriodica() {
+        return !checkoutProperties.tieneWebhook();
+    }
+
+    /**
+     * Polling, para cuando no hay webhook: busca las merchant orders de la preference del pago y concilia con la
+     * reserva ({@link ConciliadorPagoMP}) el primer pago aprobado que encuentre.
      */
     @Override
     public ResultadoConsultaPagoDTO consultarPago(Reserva reserva) {

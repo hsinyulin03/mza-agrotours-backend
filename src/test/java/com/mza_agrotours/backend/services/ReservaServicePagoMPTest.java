@@ -18,6 +18,8 @@ import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.payment.PaymentFeeDetail;
 import com.mercadopago.resources.payment.PaymentRefund;
 import com.mza_agrotours.backend.clients.mercadopago.MercadoPagoOAuthClient;
+import com.mza_agrotours.backend.config.MercadoPagoCheckoutProperties;
+import com.mza_agrotours.backend.services.pago.PagoManualStrategy;
 import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoDTO;
 import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoProductorDTO;
 import com.mza_agrotours.backend.entities.Usuario;
@@ -95,6 +97,8 @@ class ReservaServicePagoMPTest {
     private ReembolsoService reembolsoService;
     private ReembolsoRepository reembolsoRepository;
     private NotificacionService notificacionService;
+    private EstrategiaPagoFactory estrategiaPagoFactory;
+    private CuentaMercadoPagoService cuentaService;
 
     private final EstadoReserva estadoPagada = new EstadoReserva(EstadoReservaNombre.PAGADA);
     private final EstadoReserva estadoExpirada = new EstadoReserva(EstadoReservaNombre.EXPIRADA);
@@ -134,15 +138,13 @@ class ReservaServicePagoMPTest {
                 Optional.of(new EstadoReembolso(LocalDateTime.now(), null, inv.<EstadoReembolsoNombre>getArgument(0))));
 
         // Servicio real: opcionesDe no usa sus dependencias
-        CuentaMercadoPagoService cuentaService = new CuentaMercadoPagoService(
+        cuentaService = new CuentaMercadoPagoService(
                 mock(EstablecimientoRepository.class), mock(CuentaMercadoPagoRepository.class),
                 mock(MercadoPagoOAuthClient.class), mock(Cifrador.class));
 
         // Estrategia real: es la que habla con MP; ReservaService solo la obtiene de la factory
-        PagoMPStrategy estrategiaMP = new PagoMPStrategy(mock(PagoRepository.class), mock(ParametrosService.class),
-                cuentaService, new ConciliadorPagoMP());
-        EstrategiaPagoFactory estrategiaPagoFactory = mock(EstrategiaPagoFactory.class);
-        when(estrategiaPagoFactory.get(MetodoPago.MERCADO_PAGO)).thenReturn(estrategiaMP);
+        estrategiaPagoFactory = mock(EstrategiaPagoFactory.class);
+        usarEstrategiaMP(null);
 
         ReservaNotificador reservaNotificador = new ReservaNotificador(notificacionService);
         reembolsoService = new ReembolsoService(reembolsoRepository, mock(ReembolsoSistemaPagoRepository.class),
@@ -189,6 +191,13 @@ class ReservaServicePagoMPTest {
             when(client.get(anyLong(), anyLong(), any(MPRequestOptions.class))).thenReturn(refund);
             when(client.list(anyLong(), any(MPRequestOptions.class))).thenReturn(refunds);
         });
+    }
+
+    private void usarEstrategiaMP(String notificationUrl) {
+        PagoMPStrategy estrategiaMP = new PagoMPStrategy(mock(PagoRepository.class), mock(ParametrosService.class),
+                cuentaService, new ConciliadorPagoMP(), new MercadoPagoCheckoutProperties("http://front/pago",
+                        notificationUrl, notificationUrl == null ? null : "secreto"));
+        when(estrategiaPagoFactory.get(MetodoPago.MERCADO_PAGO)).thenReturn(estrategiaMP);
     }
 
     @AfterEach

@@ -7,7 +7,11 @@ import com.mercadopago.core.MPRequestOptions;
 import com.mercadopago.net.MPResourceList;
 import com.mercadopago.resources.payment.PaymentRefund;
 import com.mercadopago.resources.preference.Preference;
+import com.mercadopago.client.payment.PaymentClient;
+import com.mercadopago.resources.payment.Payment;
 import com.mza_agrotours.backend.clients.mercadopago.MercadoPagoOAuthClient;
+import com.mza_agrotours.backend.config.MercadoPagoCheckoutProperties;
+import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaPagoDTO;
 import com.mza_agrotours.backend.dtos.pago.ResultadoConsultaReembolso;
 import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoDTO;
 import com.mza_agrotours.backend.dtos.reservas.PagoStrategyDTO;
@@ -56,7 +60,12 @@ import static org.mockito.Mockito.*;
 class PagoMPStrategyTest {
 
     private static final String TOKEN_VENDEDOR = "APP_USR-token-del-vendedor";
+    private static final String BACK_URL = "http://localhost:3000/reservas/pago-resultado";
+    private static final String WEBHOOK_URL = "https://api.test/mercadopago/webhooks/pagos";
 
+    private PagoRepository pagoRepository;
+    private ParametrosService parametrosService;
+    private CuentaMercadoPagoService cuentaService;
     private PagoMPStrategy strategy;
     private Establecimiento establecimiento;
     private Reserva reserva;
@@ -64,26 +73,32 @@ class PagoMPStrategyTest {
 
     @BeforeEach
     void setUp() {
-        PagoRepository pagoRepository = mock(PagoRepository.class);
+        pagoRepository = mock(PagoRepository.class);
         when(pagoRepository.findEstadoPagoByEstadoPagoNombre(EstadoPagoNombre.PENDIENTE))
                 .thenReturn(Optional.of(new EstadoPago(EstadoPagoNombre.PENDIENTE, LocalDateTime.now(), null)));
 
         parametros = mock(Parametros.class);
         when(parametros.getPorcentajeComision()).thenReturn(new BigDecimal("0.10"));
-        ParametrosService parametrosService = mock(ParametrosService.class);
+        parametrosService = mock(ParametrosService.class);
         when(parametrosService.getInstance()).thenReturn(parametros);
 
         // Servicio real: getCuentaParaCobrar y opcionesDe no usan sus dependencias
-        CuentaMercadoPagoService cuentaService = new CuentaMercadoPagoService(
+        cuentaService = new CuentaMercadoPagoService(
                 mock(EstablecimientoRepository.class), mock(CuentaMercadoPagoRepository.class),
                 mock(MercadoPagoOAuthClient.class), mock(Cifrador.class));
 
-        strategy = new PagoMPStrategy(pagoRepository, parametrosService, cuentaService, new ConciliadorPagoMP());
+        strategy = estrategiaCon(null);
 
         establecimiento = new Establecimiento();
         establecimiento.setId(UUID.randomUUID());
 
         reserva = reservaDe(establecimiento, new BigDecimal("10000.00"));
+    }
+
+    private PagoMPStrategy estrategiaCon(String notificationUrl) {
+        MercadoPagoCheckoutProperties checkout = new MercadoPagoCheckoutProperties(BACK_URL, notificationUrl,
+                notificationUrl == null ? null : "secreto");
+        return new PagoMPStrategy(pagoRepository, parametrosService, cuentaService, new ConciliadorPagoMP(), checkout);
     }
 
     private static Reserva reservaDe(Establecimiento establecimiento, BigDecimal total) {
@@ -159,6 +174,40 @@ class PagoMPStrategyTest {
             assertEquals(EstadoPagoNombre.PENDIENTE, pago.getEstadoActual().getEstadoPago().getNombre());
             assertSame(pago, reserva.getPago());
         }
+    }
+
+    @Test
+    void laPreferenceVuelveAlFrontYSinWebhookNoLlevaNotificationUrl() throws Exception {
+        vincularCuenta(LocalDateTime.now().plusDays(100));
+
+        try (MockedConstruction<PreferenceClient> clientes = preferenceClientQueDevuelve("pref-123")) {
+            strategy.procesarPago(reserva);
+
+            ArgumentCaptor<PreferenceRequest> request = ArgumentCaptor.forClass(PreferenceRequest.class);
+            verify(clientes.constructed().get(0)).create(request.capture(), any(MPRequestOptions.class));
+            assertEquals(BACK_URL, request.getValue().getBackUrls().getSuccess());
+            assertEquals(BACK_URL, request.getValue().getBackUrls().getFailure());
+            assertEquals(BACK_URL, request.getValue().getBackUrls().getPending());
+            assertEquals("approved", request.getValue().getAutoReturn());
+            assertNull(request.getValue().getNotificationUrl());
+        }
+        assertTrue(strategy.requiereConsultaPeriodica());
+    }
+
+    @Test
+    void conWebhookLaPreferenceLlevaLaNotificationUrlConLaReserva() throws Exception {
+        vincularCuenta(LocalDateTime.now().plusDays(100));
+        PagoMPStrategy conWebhook = estrategiaCon(WEBHOOK_URL);
+
+        try (MockedConstruction<PreferenceClient> clientes = preferenceClientQueDevuelve("pref-123")) {
+            conWebhook.procesarPago(reserva);
+
+            ArgumentCaptor<PreferenceRequest> request = ArgumentCaptor.forClass(PreferenceRequest.class);
+            verify(clientes.constructed().get(0)).create(request.capture(), any(MPRequestOptions.class));
+            assertEquals(WEBHOOK_URL + "?reservaId=" + reserva.getId() + "&source_news=webhooks",
+                    request.getValue().getNotificationUrl());
+        }
+        assertFalse(conWebhook.requiereConsultaPeriodica());
     }
 
     @Test
