@@ -66,7 +66,8 @@ class ReembolsoServiceImpagoTest {
         service = new ReembolsoService(reembolsoRepository, mock(ReembolsoSistemaPagoRepository.class),
                 mock(EstadoPagoRepository.class), estadoReembolsoRepository, mock(AdministradorSistemasRepository.class),
                 mock(ReservaRepository.class), mock(ReembolsoMapper.class), mock(EstrategiaPagoFactory.class),
-                parametrosService, new ReservaNotificador(notificacionService), self);
+                parametrosService, new ReservaNotificador(notificacionService), self,
+                mock(DeudaEstablecimientoService.class));
     }
 
     // ---------- Datos ----------

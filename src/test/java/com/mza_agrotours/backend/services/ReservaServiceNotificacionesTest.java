@@ -123,7 +123,7 @@ class ReservaServiceNotificacionesTest {
         reembolsoService = new ReembolsoService(reembolsoRepository, mock(ReembolsoSistemaPagoRepository.class),
                 estadoPagoRepository, estadoReembolsoRepository, mock(AdministradorSistemasRepository.class),
                 reservaRepository, mock(ReembolsoMapper.class), estrategiaPagoFactory, parametrosService,
-                reservaNotificador, selfReembolso);
+                reservaNotificador, selfReembolso, mock(DeudaEstablecimientoService.class));
         service = new ReservaService(reservaRepository, reservaMapper, actividadRepository, parametrosService,
                 usuarioRepository, visitanteRepository, tipoIdentificacionRepository, estrategiaPagoFactory, self,
                 estadoPagoRepository, notificacionService, reservaNotificador, reembolsoService);

@@ -148,7 +148,7 @@ class ReservaServicePagoMPTest {
         reembolsoService = new ReembolsoService(reembolsoRepository, mock(ReembolsoSistemaPagoRepository.class),
                 estadoPagoRepository, estadoReembolsoRepository, mock(AdministradorSistemasRepository.class),
                 reservaRepository, mock(ReembolsoMapper.class), estrategiaPagoFactory, mock(ParametrosService.class),
-                reservaNotificador, selfReembolso);
+                reservaNotificador, selfReembolso, mock(DeudaEstablecimientoService.class));
         service = new ReservaService(reservaRepository, mock(ReservaMapper.class), mock(ActividadRepository.class),
                 mock(ParametrosService.class), usuarioRepository, visitanteRepository,
                 mock(TipoIdentificacionRepository.class), estrategiaPagoFactory, self,
