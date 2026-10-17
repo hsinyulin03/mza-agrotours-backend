@@ -1,6 +1,8 @@
 package com.mza_agrotours.backend.repositories;
 
 import com.mza_agrotours.backend.entities.deudas.DeudaEstablecimiento;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -26,6 +28,11 @@ public interface DeudaRepository extends BaseEntityRepository<DeudaEstablecimien
             "LEFT JOIN FETCH e.estadoDeudaEstablecimiento " +
             "WHERE d.id = :id")
     Optional<DeudaEstablecimiento> findDetalleById(@Param("id") UUID id);
+
+    // Bloquea la deuda para que dos administradores no registren devoluciones sobre el mismo monto restante
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT d FROM DeudaEstablecimiento d WHERE d.id = :id")
+    Optional<DeudaEstablecimiento> findByIdForUpdate(@Param("id") UUID id);
 
     @Query("SELECT d.id FROM DeudaEstablecimiento d WHERE d.reembolso.id = :idReembolso")
     Optional<UUID> findIdByReembolsoId(@Param("idReembolso") UUID idReembolso);

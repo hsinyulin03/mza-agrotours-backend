@@ -8,6 +8,7 @@ public record DeudaEstadoDTO(
         LocalDateTime fechaHoraInicio,
         LocalDateTime fechaHoraFin,
         BigDecimal montoDevueltoTransaccion,
-        String motivo
+        String motivo,
+        DeudaPagoDTO pago // Null si el cambio no tuvo pago
 ) {
 }
