@@ -14,8 +14,7 @@ public class PronosticoClimaScheduler {
         this.climaService = climaService;
     }
 
-    // @Scheduled(cron = "0 0 5 * * *", zone = ClimaService.ZONA_ID)
-    @Scheduled(initialDelay = 10L, timeUnit = TimeUnit.SECONDS)
+    @Scheduled(cron = "0 0 5 * * *", zone = ClimaService.ZONA_ID)
     public void actualizarPronosticos() {
         this.climaService.actualizarPronosticos();
     }
