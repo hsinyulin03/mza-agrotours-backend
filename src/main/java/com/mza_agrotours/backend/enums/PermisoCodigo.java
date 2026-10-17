@@ -34,4 +34,8 @@ public enum PermisoCodigo {
     LEER_REEMBOLSOS,
     GESTIONAR_REEMBOLSOS,
 
+    // Deudas
+    LEER_DEUDAS,
+    GESTIONAR_DEUDAS,
+
 }

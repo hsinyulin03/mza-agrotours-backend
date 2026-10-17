@@ -6,6 +6,7 @@ import com.mza_agrotours.backend.entities.Usuario;
 import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.actividad.ActividadDia;
+import com.mza_agrotours.backend.entities.deudas.DeudaEstablecimiento;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.entities.pago.EstadoPago;
 import com.mza_agrotours.backend.entities.pago.EstadoReembolso;
@@ -53,7 +54,10 @@ class ReembolsoServiceSistemaTest {
     private AdministradorSistemasRepository administradorSistemasRepository;
     private ReembolsoMapper reembolsoMapper;
     private NotificacionService notificacionService;
+    private DeudaEstablecimientoService deudaEstablecimientoService;
     private ReembolsoService service;
+
+    private final DeudaEstablecimiento deuda = new DeudaEstablecimiento();
 
     private final AdministradorSistemas administrador = new AdministradorSistemas();
     private final Usuario usuarioVisitante = mock(Usuario.class);
@@ -67,7 +71,10 @@ class ReembolsoServiceSistemaTest {
         administradorSistemasRepository = mock(AdministradorSistemasRepository.class);
         reembolsoMapper = mock(ReembolsoMapper.class);
         notificacionService = mock(NotificacionService.class);
+        deudaEstablecimientoService = mock(DeudaEstablecimientoService.class);
         establecimiento.setId(UUID.randomUUID());
+        deuda.setId(UUID.randomUUID());
+        when(deudaEstablecimientoService.crearNuevaDeuda(any(), any())).thenReturn(deuda);
 
         when(administradorSistemasRepository.findByEmailActivo(EMAIL_ADMIN)).thenReturn(Optional.of(administrador));
 
@@ -83,7 +90,7 @@ class ReembolsoServiceSistemaTest {
         service = new ReembolsoService(reembolsoRepository, reembolsoSistemaPagoRepository, estadoPagoRepository,
                 estadoReembolsoRepository, administradorSistemasRepository, reservaRepository, reembolsoMapper,
                 mock(EstrategiaPagoFactory.class), mock(ParametrosService.class),
-                new ReservaNotificador(notificacionService), mock(ReembolsoService.class));
+                new ReservaNotificador(notificacionService), mock(ReembolsoService.class), deudaEstablecimientoService);
     }
 
     // ---------- Datos ----------
@@ -162,7 +169,8 @@ class ReembolsoServiceSistemaTest {
         verify(notificacionService).notificarProductores(eq(establecimiento), eq(PermisoCodigo.GESTIONAR_REEMBOLSOS_PENDIENTES),
                 eq(TipoNotificacionNombre.REEMBOLSO_SISTEMA_PRODUCTOR), eq("/panel/" + establecimiento.getId() + "/reservas"),
                 eq("Cosecha"), any(), eq("10000.00"));
-        verify(reembolsoMapper).reembolsoToDetalleReembolsoAdminDTO(reembolso, vinculo);
+        verify(deudaEstablecimientoService).crearNuevaDeuda(reembolso, establecimiento);
+        verify(reembolsoMapper).reembolsoToDetalleReembolsoAdminDTO(reembolso, vinculo, deuda.getId());
     }
 
     @Test

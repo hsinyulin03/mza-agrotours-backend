@@ -25,7 +25,10 @@ public record DetalleReembolsoAdminDTO(
         List<PersonaReservaDTO> personas,
 
         // Pago con el que el sistema hizo el reembolso. Null mientras está IMPAGO
-        PagoReembolsoSistemaDTO pagoReembolsoSistema
+        PagoReembolsoSistemaDTO pagoReembolsoSistema,
+
+        // Deuda que generó el reembolso al pagarlo el sistema. Null mientras está IMPAGO
+        String idDeuda
 ) {
 
 }

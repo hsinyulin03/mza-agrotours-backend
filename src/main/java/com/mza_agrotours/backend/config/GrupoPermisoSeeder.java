@@ -99,6 +99,13 @@ public class GrupoPermisoSeeder implements CommandLineRunner {
                             "Ver los reembolsos que los productores no pagaron y los pagados por el sistema",
                             "clipboard-check",
                             List.of(PermisoCodigo.LEER_REEMBOLSOS, PermisoCodigo.GESTIONAR_REEMBOLSOS)
+                    )),
+            entry("Gestión de deudas",
+                    new SeedGrupoPermiso(
+                            TipoPermisoNombre.ADMIN,
+                            "Ver y gestionar las deudas de los establecimientos con el sistema",
+                            "clipboard-check",
+                            List.of(PermisoCodigo.LEER_DEUDAS, PermisoCodigo.GESTIONAR_DEUDAS)
                     ))
 
     );

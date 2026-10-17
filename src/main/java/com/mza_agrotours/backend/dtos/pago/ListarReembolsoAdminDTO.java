@@ -11,7 +11,10 @@ public record ListarReembolsoAdminDTO(
         String estado, LocalDateTime fechaHoraEstado,
 
         // Establecimiento - nombre y nombre del productor líder (titular)
-        String nombreEstablecimiento, String nombreProductorLider
+        String nombreEstablecimiento, String nombreProductorLider,
+
+        // Deuda que generó el reembolso al pagarlo el sistema. Null mientras está IMPAGO
+        String idDeuda
 ) {
 
 }

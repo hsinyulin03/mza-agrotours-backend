@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.pago.*;
 import com.mza_agrotours.backend.entities.AdministradorSistemas;
+import com.mza_agrotours.backend.entities.deudas.DeudaEstablecimiento;
 import com.mza_agrotours.backend.entities.pago.*;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
@@ -60,8 +61,9 @@ public class ReembolsoService {
     private final EstrategiaPagoFactory estrategiaPagoFactory;
     private final ParametrosService parametrosService;
     private final ReservaNotificador reservaNotificador;
+    private final DeudaEstablecimientoService deudaEstablecimientoService;
 
-    public ReembolsoService(ReembolsoRepository reembolsoRepository, ReembolsoSistemaPagoRepository reembolsoSistemaPagoRepository, EstadoPagoRepository estadoPagoRepository, EstadoReembolsoRepository estadoReembolsoRepository, AdministradorSistemasRepository administradorSistemasRepository, ReservaRepository reservaRepository, ReembolsoMapper reembolsoMapper, EstrategiaPagoFactory estrategiaPagoFactory, ParametrosService parametrosService, ReservaNotificador reservaNotificador, @Lazy ReembolsoService self) {
+    public ReembolsoService(ReembolsoRepository reembolsoRepository, ReembolsoSistemaPagoRepository reembolsoSistemaPagoRepository, EstadoPagoRepository estadoPagoRepository, EstadoReembolsoRepository estadoReembolsoRepository, AdministradorSistemasRepository administradorSistemasRepository, ReservaRepository reservaRepository, ReembolsoMapper reembolsoMapper, EstrategiaPagoFactory estrategiaPagoFactory, ParametrosService parametrosService, ReservaNotificador reservaNotificador, @Lazy ReembolsoService self, DeudaEstablecimientoService deudaEstablecimientoService) {
         this.self = self;
         this.reembolsoRepository = reembolsoRepository;
         this.reembolsoSistemaPagoRepository = reembolsoSistemaPagoRepository;
@@ -73,12 +75,12 @@ public class ReembolsoService {
         this.estrategiaPagoFactory = estrategiaPagoFactory;
         this.parametrosService = parametrosService;
         this.reservaNotificador = reservaNotificador;
+        this.deudaEstablecimientoService = deudaEstablecimientoService;
     }
 
     @Transactional(readOnly = true)
     public Page<ReembolsoGetCatalogoDTO> listarReembolsosPendientes(UUID establecimientoId, Pageable pageable){
-        Page<ReembolsoGetCatalogoDTO> pendientes = reembolsoRepository.findPedidosByEstablecimiento(establecimientoId, pageable);
-        return pendientes;
+        return reembolsoRepository.findPedidosByEstablecimiento(establecimientoId, pageable);
     }
 
     /**
@@ -87,9 +89,14 @@ public class ReembolsoService {
      */
     @Transactional(readOnly = true)
     public List<ListarReembolsoAdminDTO> listarReembolsosImpagos(){
-        return reembolsoRepository.findByEstadoActualIn(ESTADOS_REEMBOLSO_ADMIN)
-                .stream()
-                .map(reembolsoMapper::reembolsoToListarReembolsoAdminDTO)
+        List<Reembolso> reembolsos = reembolsoRepository.findByEstadoActualIn(ESTADOS_REEMBOLSO_ADMIN);
+
+        // Solo los REEMBOLSADO_SISTEMA tienen deuda
+        Map<UUID, UUID> idsDeuda = deudaEstablecimientoService.getIdsDeudaPorReembolso(
+                reembolsos.stream().map(Reembolso::getId).toList());
+
+        return reembolsos.stream()
+                .map(r -> reembolsoMapper.reembolsoToListarReembolsoAdminDTO(r, idsDeuda.get(r.getId())))
                 .toList();
     }
 
@@ -106,8 +113,10 @@ public class ReembolsoService {
         // Solo existe si el reembolso ya lo pagó el sistema
         ReembolsoSistemaPago reembolsoSistemaPago = reembolsoSistemaPagoRepository.findByReembolsoId(idReembolso)
                 .orElse(null);
+        UUID idDeuda = deudaEstablecimientoService.getIdDeudaDeReembolso(idReembolso)
+                .orElse(null);
 
-        return reembolsoMapper.reembolsoToDetalleReembolsoAdminDTO(reembolso, reembolsoSistemaPago);
+        return reembolsoMapper.reembolsoToDetalleReembolsoAdminDTO(reembolso, reembolsoSistemaPago, idDeuda);
     }
 
     /**
@@ -159,13 +168,16 @@ public class ReembolsoService {
         Reserva reserva = reembolso.getReserva();
         completarReservaReembolsada(reserva, ahora);
 
+        // Se crea la deuda al productor
+        DeudaEstablecimiento deuda = deudaEstablecimientoService.crearNuevaDeuda(reembolso, reserva.getActividad().getEstablecimiento());
+
         reembolsoSistemaPagoRepository.save(reembolsoSistemaPago);
         reembolsoRepository.save(reembolso);
         reservaRepository.save(reserva);
         reservaNotificador.notificarVisitante(reserva, TipoNotificacionNombre.REEMBOLSO_REALIZADO, reembolso.getMontoReembolso().toPlainString());
         reservaNotificador.notificarProductoresReembolso(reembolso);
 
-        return reembolsoMapper.reembolsoToDetalleReembolsoAdminDTO(reembolso, reembolsoSistemaPago);
+        return reembolsoMapper.reembolsoToDetalleReembolsoAdminDTO(reembolso, reembolsoSistemaPago, deuda.getId());
     }
 
     /**

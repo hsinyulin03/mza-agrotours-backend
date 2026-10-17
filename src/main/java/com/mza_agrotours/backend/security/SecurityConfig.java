@@ -100,6 +100,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/admin/reembolsos/**").hasAuthority(PermisoCodigo.LEER_REEMBOLSOS.name())
                         .requestMatchers("/admin/reembolsos/**").hasAuthority(PermisoCodigo.GESTIONAR_REEMBOLSOS.name())
 
+                        .requestMatchers(HttpMethod.GET, "/admin/deudas/**").hasAuthority(PermisoCodigo.LEER_DEUDAS.name())
+                        .requestMatchers("/admin/deudas/**").hasAuthority(PermisoCodigo.GESTIONAR_DEUDAS.name())
+
                         //Permisos
                         .requestMatchers( "/permisos/grupos-permisos/admin").hasAuthority(PermisoCodigo.LEER_ADMIN.name())
                         .requestMatchers("/permisos/grupos-permisos/productor").authenticated()

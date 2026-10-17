@@ -4,10 +4,14 @@ import com.mza_agrotours.backend.dtos.pago.DetalleReembolsoAdminDTO;
 import com.mza_agrotours.backend.dtos.pago.ListarReembolsoAdminDTO;
 import com.mza_agrotours.backend.entities.pago.Reembolso;
 import com.mza_agrotours.backend.entities.pago.ReembolsoSistemaPago;
+import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+import java.util.UUID;
+
+// Usa ReservaMapper para el pago del sistema, los contactos y las personas de la reserva (US RESE-10)
+@Mapper(componentModel = "spring", uses = ReservaMapper.class)
 public interface ReembolsoMapper {
     // US RESE-09
     @Mapping(target = "idReembolso", source = "reembolso.id")
@@ -15,7 +19,8 @@ public interface ReembolsoMapper {
     @Mapping(target = "fechaHoraEstado", source = "reembolso.estadoActual.fechaHoraInicio")
     @Mapping(target = "nombreEstablecimiento", source = "reembolso.reserva.actividad.establecimiento.nombre")
     @Mapping(target = "nombreProductorLider", source = "reembolso.reserva.actividad.establecimiento.titular.usuario.nombre")
-    ListarReembolsoAdminDTO reembolsoToListarReembolsoAdminDTO(Reembolso reembolso);
+    @Mapping(target = "idDeuda", source = "idDeuda")
+    ListarReembolsoAdminDTO reembolsoToListarReembolsoAdminDTO(Reembolso reembolso, UUID idDeuda);
 
     @Mapping(target = "idReembolso", source = "reembolso.id")
     @Mapping(target = "fechaHoraPedido", source = "reembolso.fechaHoraPedido")
@@ -31,5 +36,6 @@ public interface ReembolsoMapper {
     @Mapping(target = "productorLider", source = "reembolso.reserva.actividad.establecimiento.titular.usuario")
     @Mapping(target = "personas", source = "reembolso.reserva.reservaDetalles")
     @Mapping(target = "pagoReembolsoSistema", source = "reembolsoSistemaPago")
-    DetalleReembolsoAdminDTO reembolsoToDetalleReembolsoAdminDTO(Reembolso reembolso, ReembolsoSistemaPago reembolsoSistemaPago);
+    @Mapping(target = "idDeuda", source = "idDeuda")
+    DetalleReembolsoAdminDTO reembolsoToDetalleReembolsoAdminDTO(Reembolso reembolso, ReembolsoSistemaPago reembolsoSistemaPago, UUID idDeuda);
 }
