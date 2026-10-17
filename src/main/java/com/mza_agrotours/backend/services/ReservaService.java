@@ -29,6 +29,7 @@ import com.mza_agrotours.backend.exceptions.pago.*;
 import com.mza_agrotours.backend.exceptions.reservas.ActividadFullException;
 import com.mza_agrotours.backend.exceptions.reservas.EstadoReservaNotFoundException;
 import com.mza_agrotours.backend.exceptions.reservas.FechaNacimientoInvalidaException;
+import com.mza_agrotours.backend.exceptions.reservas.ReservaNoPendienteException;
 import com.mza_agrotours.backend.exceptions.reservas.ReservaNotFoundException;
 import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
 import com.mza_agrotours.backend.repositories.ReservaRepository;
@@ -301,6 +302,8 @@ public class ReservaService {
             try{
                 r.setFechaHoraExpiracion(null);
                 self.expirarReservaYNotificar(r, estadoReserva, ahora);
+            } catch (ReservaNoPendienteException e) {
+                log.info("La reserva {} se pagó o canceló antes de expirar", r.getId());
             } catch (Exception e) {
                 idFallidas.add(r.getId().toString());
             }
@@ -701,6 +704,7 @@ public class ReservaService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected void expirarReservaYNotificar(Reserva r, EstadoReserva estadoExpirada, LocalDateTime ahora){
+        bloquearPendiente(r);
         cambiarEstadoReservaYGuardar(r, estadoExpirada, ahora);
         reservaNotificador.notificarVisitante(r, TipoNotificacionNombre.RESERVA_EXPIRADA);
     }
@@ -711,6 +715,7 @@ public class ReservaService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected void confirmarPagoReservaYNotificar(Reserva r, EstadoReserva estadoPagada, LocalDateTime ahora){
+        bloquearPendiente(r);
         cambiarEstadoReservaYGuardar(r, estadoPagada, ahora);
         reservaNotificador.notificarVisitante(r, TipoNotificacionNombre.RESERVA_PAGADA, r.getPago().getMontoTotal().toPlainString());
         reservaNotificador.notificarProductoresReservaConfirmada(r);
@@ -725,6 +730,7 @@ public class ReservaService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected Reembolso registrarPagoNoConciliable(Reserva reserva, String idTransaccionExterna, BigDecimal montoPagado, LocalDateTime ahora){
+        bloquearPendiente(reserva);
         Pago pago = reserva.getPago();
         pago.setIdTransaccionExterna(idTransaccionExterna);
         pago.cambiarEstado(getEstadoPago(EstadoPagoNombre.APROBADO), ahora); // La pasarela lo aprobó; pasa a "Reembolsado" al confirmarse
@@ -738,6 +744,18 @@ public class ReservaService {
         reservaNotificador.notificarVisitante(reserva, TipoNotificacionNombre.RESERVA_REEMBOLSADA_PAGO_NO_VALIDO, montoPagado.toPlainString());
 
         return reembolso;
+    }
+
+    /**
+     * Bloquea la fila de la reserva hasta el fin de la transacción y verifica que siga "Pendiente", para que el pago
+     * por webhook, el polling y la expiración no apliquen dos cambios de estado sobre la misma reserva.
+     *
+     * @throws ReservaNoPendienteException si otro proceso ya la sacó de "Pendiente"
+     */
+    private void bloquearPendiente(Reserva r){
+        Reserva actual = reservaRepository.findByIdForUpdate(r.getId()).orElseThrow(ReservaNotFoundException::new);
+        if (actual.getEstadoActual().getEstadoReserva().getNombre() != PENDIENTE)
+            throw new ReservaNoPendienteException(r.getId());
     }
 
     private Usuario getUsuario(String emailUsuario){

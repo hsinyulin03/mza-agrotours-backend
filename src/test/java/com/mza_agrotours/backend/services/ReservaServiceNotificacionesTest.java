@@ -271,6 +271,7 @@ class ReservaServiceNotificacionesTest {
         reserva.cambiarEstado(new EstadoReserva(EstadoReservaNombre.PENDIENTE), LocalDateTime.now());
         reserva.setFechaHoraExpiracion(LocalDateTime.now().minusMinutes(1));
         when(reservaRepository.findReservasExpiradas(any())).thenReturn(List.of(reserva));
+        when(reservaRepository.findByIdForUpdate(reserva.getId())).thenReturn(Optional.of(reserva));
         doAnswer(inv -> {
             service.expirarReservaYNotificar(inv.getArgument(0), inv.getArgument(1), inv.getArgument(2));
             return null;
@@ -288,6 +289,7 @@ class ReservaServiceNotificacionesTest {
     void confirmarElPagoDeUnaReservaAvisaAlVisitante() {
         Reserva reserva = reservaPagada(MetodoPago.MERCADO_PAGO, LocalDateTime.now().plusDays(10));
         reserva.cambiarEstado(new EstadoReserva(EstadoReservaNombre.PENDIENTE), LocalDateTime.now());
+        when(reservaRepository.findByIdForUpdate(reserva.getId())).thenReturn(Optional.of(reserva));
 
         service.confirmarPagoReservaYNotificar(reserva, new EstadoReserva(EstadoReservaNombre.PAGADA), LocalDateTime.now());
 

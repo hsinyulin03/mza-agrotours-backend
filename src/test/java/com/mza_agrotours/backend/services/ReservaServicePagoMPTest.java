@@ -241,6 +241,10 @@ class ReservaServicePagoMPTest {
 
     private void pendientes(Reserva... reservas) {
         when(reservaRepository.findReservasPendientes(any())).thenReturn(List.of(reservas));
+        for (Reserva r : reservas) {
+            when(reservaRepository.findById(r.getId())).thenReturn(Optional.of(r));
+            when(reservaRepository.findByIdForUpdate(r.getId())).thenReturn(Optional.of(r));
+        }
     }
 
     /** Registra en MP una merchant order de la preference con pagos {id, status}. */

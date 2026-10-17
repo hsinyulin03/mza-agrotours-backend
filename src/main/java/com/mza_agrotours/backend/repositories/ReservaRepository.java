@@ -9,8 +9,10 @@ import com.mza_agrotours.backend.dtos.administrador_sistemas.ConteoPorEstablecim
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
 import com.mza_agrotours.backend.enums.EstadoReservaNombre;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -74,6 +76,11 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
             "JOIN FETCH r.pago p " +
             "WHERE p.idCheckoutExterno = :idCheckoutExterno ")
     Optional<Reserva> findByPagoWithIdCheckoutExterno(@Param("idCheckoutExterno") String idCheckoutExterno);
+
+    // Serializa los cambios de estado de una reserva pendiente (pago por webhook, polling y expiración)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM Reserva r WHERE r.id = :id")
+    Optional<Reserva> findByIdForUpdate(@Param("id") UUID id);
 
 
     @Query("SELECT r FROM Reserva r " +
