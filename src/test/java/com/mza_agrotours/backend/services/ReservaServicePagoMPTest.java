@@ -311,6 +311,26 @@ class ReservaServicePagoMPTest {
         verify(self, never()).confirmarPagoReservaYNotificar(eq(reserva), any(), any());
     }
 
+    // ---------- Webhook ----------
+
+    @Test
+    void conWebhookElPollingNoConsultaMpPeroSigueAprobandoLosPagosManuales() {
+        usarEstrategiaMP("https://api.test/mercadopago/webhooks/pagos");
+        when(estrategiaPagoFactory.get(MetodoPago.MANUAL)).thenReturn(new PagoManualStrategy(mock(PagoRepository.class), mock(ParametrosService.class)));
+        Reserva mp = reservaPendiente("pref-1", cuentaVendedor());
+        Reserva manual = reservaPendiente(null, null);
+        manual.getPago().setMetodoPago(MetodoPago.MANUAL);
+        pendientes(mp, manual);
+        merchantOrder("pref-1", 987L, "approved");
+        payment(987L, "10000", VENDEDOR);
+
+        service.pagarReservas();
+
+        assertTrue(merchantOrderClients.constructed().isEmpty());
+        assertNoConfirmada(mp);
+        verify(self).confirmarPagoReservaYNotificar(eq(manual), eq(estadoPagada), any());
+    }
+
     // ---------- pagarReservas ----------
 
     @Test
