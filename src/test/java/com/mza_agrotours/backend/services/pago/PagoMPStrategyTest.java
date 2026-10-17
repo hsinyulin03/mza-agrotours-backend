@@ -267,6 +267,79 @@ class PagoMPStrategyTest {
         }
     }
 
+    // ---------- Pago notificado ----------
+
+    private static Payment paymentDe(String status, String externalReference) {
+        Payment payment = mock(Payment.class);
+        when(payment.getId()).thenReturn(987L);
+        when(payment.getStatus()).thenReturn(status);
+        when(payment.getExternalReference()).thenReturn(externalReference);
+        when(payment.getCurrencyId()).thenReturn("ARS");
+        when(payment.getTransactionAmount()).thenReturn(new BigDecimal("10000.00"));
+        when(payment.getCollectorId()).thenReturn(123456L);
+        when(payment.getFeeDetails()).thenReturn(List.of());
+        return payment;
+    }
+
+    private Reserva reservaConPago(CuentaMercadoPago cuenta) {
+        Pago pago = new Pago();
+        pago.setMetodoPago(MetodoPago.MERCADO_PAGO);
+        pago.setCuentaMercadoPago(cuenta);
+        reserva.setPago(pago);
+        reserva.setSubTotalComisionPropia(BigDecimal.ZERO);
+        return reserva;
+    }
+
+    @Test
+    void elPaymentNotificadoSeConsultaConElTokenDelVendedorYSeConcilia() throws Exception {
+        Reserva conPago = reservaConPago(vincularCuenta(LocalDateTime.now().plusDays(100)));
+        Payment payment = paymentDe("approved", conPago.getId().toString());
+
+        try (MockedConstruction<PaymentClient> clientes = mockConstruction(PaymentClient.class, (client, contexto) ->
+                when(client.get(anyLong(), any(MPRequestOptions.class))).thenReturn(payment))) {
+            ResultadoConsultaPagoDTO resultado = strategy.consultarPagoNotificado(conPago, "987");
+
+            ArgumentCaptor<MPRequestOptions> opciones = ArgumentCaptor.forClass(MPRequestOptions.class);
+            verify(clientes.constructed().get(0)).get(eq(987L), opciones.capture());
+            assertEquals(TOKEN_VENDEDOR, opciones.getValue().getAccessToken());
+            assertTrue(resultado.aprobado());
+            assertEquals("987", resultado.idTransaccionExterna());
+        }
+    }
+
+    @Test
+    void unPaymentNotificadoDeOtraReservaNoSeApruebaNiSeConcilia() throws Exception {
+        Reserva conPago = reservaConPago(vincularCuenta(LocalDateTime.now().plusDays(100)));
+        Payment payment = paymentDe("approved", UUID.randomUUID().toString());
+
+        try (MockedConstruction<PaymentClient> ignored = mockConstruction(PaymentClient.class, (client, contexto) ->
+                when(client.get(anyLong(), any(MPRequestOptions.class))).thenReturn(payment))) {
+            assertFalse(strategy.consultarPagoNotificado(conPago, "987").aprobado());
+        }
+        verify(payment, never()).getFeeDetails();
+    }
+
+    @Test
+    void unPaymentNotificadoNoAprobadoNoSeConcilia() throws Exception {
+        Reserva conPago = reservaConPago(vincularCuenta(LocalDateTime.now().plusDays(100)));
+        Payment payment = paymentDe("rejected", conPago.getId().toString());
+
+        try (MockedConstruction<PaymentClient> ignored = mockConstruction(PaymentClient.class, (client, contexto) ->
+                when(client.get(anyLong(), any(MPRequestOptions.class))).thenReturn(payment))) {
+            assertFalse(strategy.consultarPagoNotificado(conPago, "987").aprobado());
+        }
+    }
+
+    @Test
+    void unPaymentIdNoNumericoNoLlamaAMp() {
+        Reserva conPago = reservaConPago(null);
+
+        try (MockedConstruction<PaymentClient> clientes = mockConstruction(PaymentClient.class)) {
+            assertFalse(strategy.consultarPagoNotificado(conPago, "no-es-un-id").aprobado());
+            assertTrue(clientes.constructed().isEmpty());
+        }
+    }
+
     // ---------- Reembolsos ----------
 
     /** Pago aprobado de MP (payment 987) cobrado con la cuenta indicada. */

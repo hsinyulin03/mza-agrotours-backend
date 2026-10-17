@@ -242,15 +242,49 @@ public class PagoMPStrategy implements EstrategiaPago{
                         reserva.getId(), aprobados.size(), aprobados);
 
             // Conciliamos con el detalle del pago (monto, vendedor y comisiones) antes de darlo por aprobado
-            Payment payment = new PaymentClient().get(aprobados.get(0), opcionesMP);
-            conciliadorPagoMP.conciliar(reserva, payment);
-
-            return new ResultadoConsultaPagoDTO(true, payment.getId().toString());
+            return conciliar(reserva, new PaymentClient().get(aprobados.get(0), opcionesMP));
         } catch (MPApiException e) {
             throw new PasarelaPagoException("Error de la API de MP consultando merchant orders: " + e.getApiResponse().getContent(), e);
         } catch (MPException e) {
             throw new PasarelaPagoException("Error de red/SDK consultando merchant orders", e);
         }
+    }
+
+    /**
+     * Consulta el payment notificado por el webhook con el token del vendedor de la reserva. Si no está aprobado o
+     * no es de esta reserva (su external_reference es otra) se devuelve como no aprobado; si lo es, se concilia.
+     */
+    @Override
+    public ResultadoConsultaPagoDTO consultarPagoNotificado(Reserva reserva, String idTransaccionExterna) {
+        long paymentId;
+        try {
+            paymentId = Long.parseLong(idTransaccionExterna);
+        } catch (NumberFormatException e) {
+            log.warn("Notificación de MP con un payment ID inválido '{}' para la reserva {}", idTransaccionExterna, reserva.getId());
+            return ResultadoConsultaPagoDTO.noAprobado();
+        }
+
+        try {
+            Payment payment = new PaymentClient().get(paymentId, opcionesDe(reserva.getPago()));
+            if (!"approved".equals(payment.getStatus())) return ResultadoConsultaPagoDTO.noAprobado();
+
+            if (!reserva.getId().toString().equals(payment.getExternalReference())) {
+                log.warn("El payment MP {} notificado para la reserva {} es de la external_reference {}",
+                        paymentId, reserva.getId(), payment.getExternalReference());
+                return ResultadoConsultaPagoDTO.noAprobado();
+            }
+
+            return conciliar(reserva, payment);
+        } catch (MPApiException e) {
+            throw new PasarelaPagoException("Error de la API de MP consultando el payment: " + e.getApiResponse().getContent(), e);
+        } catch (MPException e) {
+            throw new PasarelaPagoException("Error de red/SDK consultando el payment", e);
+        }
+    }
+
+    private ResultadoConsultaPagoDTO conciliar(Reserva reserva, Payment payment) {
+        conciliadorPagoMP.conciliar(reserva, payment);
+        return new ResultadoConsultaPagoDTO(true, payment.getId().toString());
     }
 
     /**

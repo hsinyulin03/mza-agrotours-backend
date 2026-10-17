@@ -36,10 +36,23 @@ public interface EstrategiaPago {
 
     /**
      * Si los pagos de este medio se confirman consultándolos periódicamente con {@link #consultarPago(Reserva)}.
-     * Es falso cuando la pasarela avisa los pagos por notificación.
+     * Es falso cuando la pasarela avisa por notificación y se confirman con {@link #consultarPagoNotificado}.
      */
     default boolean requiereConsultaPeriodica() {
         return true;
+    }
+
+    /**
+     * Como {@link #consultarPago(Reserva)}, para una transacción puntual que la pasarela notificó como asociada
+     * a la reserva. Se valida contra la pasarela que realmente pertenezca a la reserva.
+     *
+     * @param reserva reserva cuyo pago se consulta
+     * @param idTransaccionExterna ID de la transacción notificada
+     * @throws PasarelaPagoException si falla la comunicación con la pasarela
+     * @throws PagoNoConciliableException si el pago está aprobado pero no concilia con la reserva
+     */
+    default ResultadoConsultaPagoDTO consultarPagoNotificado(Reserva reserva, String idTransaccionExterna) {
+        throw new UnsupportedOperationException(getMetodo() + " no recibe notificaciones de pago");
     }
 
     /**

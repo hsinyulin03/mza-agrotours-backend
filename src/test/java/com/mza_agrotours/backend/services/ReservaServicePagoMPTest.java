@@ -331,6 +331,71 @@ class ReservaServicePagoMPTest {
         verify(self).confirmarPagoReservaYNotificar(eq(manual), eq(estadoPagada), any());
     }
 
+    @Test
+    void elPagoNotificadoConfirmaLaReserva() throws Exception {
+        Reserva reserva = reservaPendiente("pref-1", cuentaVendedor());
+        pendientes(reserva);
+        payment(987L, "10000", VENDEDOR);
+        when(paymentsPorId.get(987L).getExternalReference()).thenReturn(reserva.getId().toString());
+
+        service.confirmarPagoNotificado(reserva.getId(), "987");
+
+        assertConfirmada(reserva);
+        assertEquals("987", reserva.getPago().getIdTransaccionExterna());
+        assertTrue(merchantOrderClients.constructed().isEmpty(), "Con el payment notificado no se buscan merchant orders");
+        verify(preferenceClients.constructed().get(0)).update(eq("pref-1"), any(PreferenceRequest.class), any(MPRequestOptions.class));
+    }
+
+    @Test
+    void unaNotificacionRepetidaDeUnaReservaYaPagadaSeIgnora() {
+        Reserva reserva = reservaPendiente("pref-1", cuentaVendedor());
+        reserva.cambiarEstado(estadoPagada, LocalDateTime.now());
+        pendientes(reserva);
+
+        service.confirmarPagoNotificado(reserva.getId(), "987");
+
+        assertTrue(paymentClients.constructed().isEmpty());
+        verify(self, never()).confirmarPagoReservaYNotificar(any(), any(), any());
+    }
+
+    @Test
+    void unaNotificacionDeUnaReservaInexistenteSeIgnora() {
+        service.confirmarPagoNotificado(UUID.randomUUID(), "987");
+
+        assertTrue(paymentClients.constructed().isEmpty());
+    }
+
+    @Test
+    void unPagoNotificadoQueNoConciliaSeReembolsa() throws Exception {
+        Reserva reserva = reservaPendiente("pref-1", cuentaVendedor());
+        pendientes(reserva);
+        payment(987L, "9999.99", VENDEDOR);
+        when(paymentsPorId.get(987L).getExternalReference()).thenReturn(reserva.getId().toString());
+
+        service.confirmarPagoNotificado(reserva.getId(), "987");
+
+        verify(self, never()).confirmarPagoReservaYNotificar(any(), any(), any());
+        assertEquals(EstadoReservaNombre.REEMBOLSO_NO_CONCILIACION, reserva.getEstadoActual().getEstadoReserva().getNombre());
+        verify(refundClients.constructed().get(0)).refund(eq(987L), any(MPRequestOptions.class));
+    }
+
+    @Test
+    void siLaReservaDejoDeEstarPendienteNoSeRegistraElReembolso() throws Exception {
+        Reserva reserva = reservaPendiente("pref-1", cuentaVendedor());
+        pendientes(reserva);
+        payment(987L, "9999.99", VENDEDOR);
+        when(paymentsPorId.get(987L).getExternalReference()).thenReturn(reserva.getId().toString());
+        // Otra notificación la sacó de "Pendiente" entre la lectura y el bloqueo
+        Reserva yaProcesada = reservaPendiente("pref-1", cuentaVendedor());
+        yaProcesada.cambiarEstado(estadoPagada, LocalDateTime.now());
+        when(reservaRepository.findByIdForUpdate(reserva.getId())).thenReturn(Optional.of(yaProcesada));
+
+        service.confirmarPagoNotificado(reserva.getId(), "987");
+
+        verify(reembolsoRepository, never()).save(any());
+        assertTrue(refundClients.constructed().isEmpty());
+    }
+
     // ---------- pagarReservas ----------
 
     @Test

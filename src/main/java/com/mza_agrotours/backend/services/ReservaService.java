@@ -347,8 +347,8 @@ public class ReservaService {
 
     /**
      * Tarea programada que busca todas las reservas "Pendiente" y consulta, mediante la estrategia del método de pago
-     * de cada una, si su pago fue aprobado. Se saltean las de medios que confirman sus pagos por notificación,
-     * como Mercado Pago con webhook configurado.
+     * de cada una, si su pago fue aprobado. Se saltean las de medios que confirman sus pagos por notificación
+     * (ver {@link #confirmarPagoNotificado}), como Mercado Pago con webhook configurado.
      * <p>
      * Cada pago aprobado se confirma con {@link #aplicarResultadoPago}. Los errores de comunicación con la pasarela o
      * de backend al procesar una reserva particular no interrumpen el procesamiento del resto y quedan registrados
@@ -395,6 +395,38 @@ public class ReservaService {
 
         log.info("Se pagaron {}/{} reservas pendientes consultadas y se reembolsaron {} pagos que no conciliaron. Las reservas con cambio fallido fueron {}, con ids: {}",
                 pagosExitosos, consultadas, pagosReembolsados, idFallidas.size(), idFallidas);
+    }
+
+    /**
+     * Confirma el pago de una reserva a partir de una notificación de la pasarela (webhook). La notificación solo
+     * aporta el ID de la transacción: la estrategia la consulta a la pasarela y valida que sea de esta reserva.
+     * <p>
+     * Es idempotente: si la reserva no existe o ya no está "Pendiente" (pagada por una notificación anterior,
+     * expirada o cancelada) no se hace nada, así que la pasarela puede repetir la notificación sin efectos.
+     *
+     * @param reservaId reserva a la que corresponde la notificación
+     * @param idTransaccionExterna ID de la transacción notificada
+     * @throws PasarelaPagoException si falla la comunicación con la pasarela; la notificación debe reintentarse
+     */
+    @Transactional(readOnly = true)
+    public void confirmarPagoNotificado(UUID reservaId, String idTransaccionExterna){
+        Optional<Reserva> optReserva = reservaRepository.findById(reservaId);
+        if (optReserva.isEmpty()) {
+            log.warn("Notificación de pago {} para la reserva inexistente {}", idTransaccionExterna, reservaId);
+            return;
+        }
+        Reserva r = optReserva.get();
+        Pago pago = r.getPago();
+        // NOTE: gap conocido, igual que en el polling: un pago aprobado de una reserva ya expirada o cancelada no se reembolsa
+        if (pago == null || r.getEstadoActual().getEstadoReserva().getNombre() != PENDIENTE) {
+            log.info("Notificación de pago {} para la reserva {}, que ya no está pendiente: se ignora", idTransaccionExterna, reservaId);
+            return;
+        }
+
+        ResultadoAplicacionPago resultado = aplicarResultadoPago(r,
+                () -> getEstrategiaPago(pago).consultarPagoNotificado(r, idTransaccionExterna),
+                getEstadoReserva(PAGADA), getEstadoPago(EstadoPagoNombre.APROBADO), LocalDateTime.now());
+        log.info("Notificación de pago {} para la reserva {}: {}", idTransaccionExterna, reservaId, resultado);
     }
 
     private enum ResultadoAplicacionPago { NO_APROBADO, PAGADA, REEMBOLSADA, YA_NO_PENDIENTE }
