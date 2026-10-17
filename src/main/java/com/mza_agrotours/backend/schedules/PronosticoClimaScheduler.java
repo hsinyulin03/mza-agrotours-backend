@@ -4,6 +4,8 @@ import com.mza_agrotours.backend.services.ClimaService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.concurrent.TimeUnit;
+
 @Component
 public class PronosticoClimaScheduler {
     private final ClimaService climaService;
@@ -12,7 +14,8 @@ public class PronosticoClimaScheduler {
         this.climaService = climaService;
     }
 
-    @Scheduled(cron = "0 0 5 * * *", zone = ClimaService.ZONA_ID)
+    // @Scheduled(cron = "0 0 5 * * *", zone = ClimaService.ZONA_ID)
+    @Scheduled(initialDelay = 10L, timeUnit = TimeUnit.SECONDS)
     public void actualizarPronosticos() {
         this.climaService.actualizarPronosticos();
     }

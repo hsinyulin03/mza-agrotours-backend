@@ -2,6 +2,7 @@ package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.pago.*;
 import com.mza_agrotours.backend.entities.AdministradorSistemas;
+import com.mza_agrotours.backend.entities.deudas.DeudaEstablecimiento;
 import com.mza_agrotours.backend.entities.pago.*;
 import com.mza_agrotours.backend.entities.reservas.EstadoReserva;
 import com.mza_agrotours.backend.entities.reservas.Reserva;
@@ -60,8 +61,9 @@ public class ReembolsoService {
     private final EstrategiaPagoFactory estrategiaPagoFactory;
     private final ParametrosService parametrosService;
     private final ReservaNotificador reservaNotificador;
+    private final DeudaEstablecimientoService deudaEstablecimientoService;
 
-    public ReembolsoService(ReembolsoRepository reembolsoRepository, ReembolsoSistemaPagoRepository reembolsoSistemaPagoRepository, EstadoPagoRepository estadoPagoRepository, EstadoReembolsoRepository estadoReembolsoRepository, AdministradorSistemasRepository administradorSistemasRepository, ReservaRepository reservaRepository, ReembolsoMapper reembolsoMapper, EstrategiaPagoFactory estrategiaPagoFactory, ParametrosService parametrosService, ReservaNotificador reservaNotificador, @Lazy ReembolsoService self) {
+    public ReembolsoService(ReembolsoRepository reembolsoRepository, ReembolsoSistemaPagoRepository reembolsoSistemaPagoRepository, EstadoPagoRepository estadoPagoRepository, EstadoReembolsoRepository estadoReembolsoRepository, AdministradorSistemasRepository administradorSistemasRepository, ReservaRepository reservaRepository, ReembolsoMapper reembolsoMapper, EstrategiaPagoFactory estrategiaPagoFactory, ParametrosService parametrosService, ReservaNotificador reservaNotificador, @Lazy ReembolsoService self, DeudaEstablecimientoService deudaEstablecimientoService) {
         this.self = self;
         this.reembolsoRepository = reembolsoRepository;
         this.reembolsoSistemaPagoRepository = reembolsoSistemaPagoRepository;
@@ -73,6 +75,7 @@ public class ReembolsoService {
         this.estrategiaPagoFactory = estrategiaPagoFactory;
         this.parametrosService = parametrosService;
         this.reservaNotificador = reservaNotificador;
+        this.deudaEstablecimientoService = deudaEstablecimientoService;
     }
 
     @Transactional(readOnly = true)
@@ -158,6 +161,9 @@ public class ReembolsoService {
 
         Reserva reserva = reembolso.getReserva();
         completarReservaReembolsada(reserva, ahora);
+
+        // Se crea la deuda al productor
+        deudaEstablecimientoService.crearNuevaDeuda(reembolso, reserva.getActividad().getEstablecimiento());
 
         reembolsoSistemaPagoRepository.save(reembolsoSistemaPago);
         reembolsoRepository.save(reembolso);
