@@ -583,6 +583,7 @@ public class TipoCultivoService {
         dto.setNombreEstablecimiento(actividad.getEstablecimiento().getNombre());
         dto.setNombreDepartamento(actividad.getEstablecimiento().getDepartamento().getNombre());
         dto.setPrecioRegular(obtenerPrecioBaseVigente(actividad));
+        dto.setFotoPortada(mapearFoto(actividad.archivoPortada()));
         return dto;
     }
     private BigDecimal obtenerPrecioBaseVigente(Actividad actividad) {
@@ -619,15 +620,6 @@ public class TipoCultivoService {
     }
 
     private DTOFotosResponse mapearFoto(Archivo foto) {
-        if (foto == null) {
-            return null;
-        }
-
-        DTOFotosResponse dto = new DTOFotosResponse();
-        dto.setKey(foto.getKey());
-        dto.setNombre(foto.getNombre());
-        dto.setExtension(foto.getExtension());
-        dto.setDownloadUrl(this.archivoService.getDownloadUrl(foto.getKey()));
-        return dto;
+        return this.archivoService.mapearFoto(foto);
     }
 }

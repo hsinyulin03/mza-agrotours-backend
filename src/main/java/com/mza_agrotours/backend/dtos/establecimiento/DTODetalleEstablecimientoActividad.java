@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.dtos.establecimiento;
 
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -17,4 +18,6 @@ public class DTODetalleEstablecimientoActividad {
     private BigDecimal precioDesde;
 
     private Double puntuacion;
+
+    private DTOFotosResponse fotoPortada;
 }

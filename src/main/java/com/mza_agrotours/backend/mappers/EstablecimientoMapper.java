@@ -34,6 +34,7 @@ public interface EstablecimientoMapper {
     @Mapping(target = "cultivos", ignore = true)
     @Mapping(target = "precioDesde", ignore = true)
     @Mapping(target = "puntuacion", ignore = true)
+    @Mapping(target = "fotoPortada", ignore = true)
     DTODetalleEstablecimientoActividad actividadToDtoDetalle(Actividad actividad);
 }
 

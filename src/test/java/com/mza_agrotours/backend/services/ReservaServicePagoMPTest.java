@@ -152,7 +152,7 @@ class ReservaServicePagoMPTest {
         service = new ReservaService(reservaRepository, mock(ReservaMapper.class), mock(ActividadRepository.class),
                 mock(ParametrosService.class), usuarioRepository, visitanteRepository,
                 mock(TipoIdentificacionRepository.class), estrategiaPagoFactory, self,
-                estadoPagoRepository, notificacionService, reservaNotificador, reembolsoService);
+                estadoPagoRepository, notificacionService, reservaNotificador, reembolsoService, mock(ArchivoService.class));
 
         // El paso 1 del reembolso de un pago no conciliado corre en su propia transacción vía self: se ejecuta el real
         when(self.registrarPagoNoConciliable(any(), any(), any(), any())).thenAnswer(inv -> service.registrarPagoNoConciliable(

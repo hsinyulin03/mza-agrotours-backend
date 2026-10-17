@@ -43,6 +43,7 @@ public interface ActividadMapper {
 
     @Mapping(target = "departamento",source = "departamento.nombre")
     @Mapping(target = "estado", source = "estadoActual.estadoEstablecimiento.nombre")
+    @Mapping(target = "foto", ignore = true)
     DTOEstablecimientoCard establecimientoToDTOEstablecimientoCard(Establecimiento establecimiento);
 
     @Mapping(target = "nombreEstablecimiento", source = "nombre")

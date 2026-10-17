@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadRequest;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoUploadResponse;
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import com.mza_agrotours.backend.dtos.archivo.PresignedUrlResponse;
 import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.enums.CarpetaArchivo;
@@ -119,6 +120,19 @@ public class ArchivoService {
 
     public String getDownloadUrl(String key) {
         return this.objectStorageService.generateDownloadUrl(key);
+    }
+
+    public DTOFotosResponse mapearFoto(Archivo foto) {
+        if (foto == null) {
+            return null;
+        }
+
+        DTOFotosResponse dto = new DTOFotosResponse();
+        dto.setKey(foto.getKey());
+        dto.setNombre(foto.getNombre());
+        dto.setExtension(foto.getExtension());
+        dto.setDownloadUrl(getDownloadUrl(foto.getKey()));
+        return dto;
     }
 
     private String extensionValidada(String nombreOKey, CarpetaArchivo carpeta) {
