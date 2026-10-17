@@ -153,7 +153,24 @@ public enum TipoNotificacionNombre {
             ScopeNotificacionNombre.ADMINISTRADOR,
             "Nuevo reembolso impago",
             "El establecimiento %s no realizó a tiempo el reembolso de $%s de una reserva para la actividad %s del %s. Hay que realizarlo y registrarlo desde el sistema.",
-            EnumSet.of(CanalNotificacion.PUSH));
+            EnumSet.of(CanalNotificacion.PUSH)),
+
+    // Deudas
+    DEUDA_DEVOLUCION_PARCIAL_PRODUCTOR(
+            ScopeNotificacionNombre.ESTABLECIMIENTO,
+            "Se registró una devolución de deuda",
+            "Agrotours registró una devolución de $%s de la deuda de $%s del establecimiento. Resta devolver $%s.",
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
+    DEUDA_DEVOLUCION_TOTAL_PRODUCTOR(
+            ScopeNotificacionNombre.ESTABLECIMIENTO,
+            "Deuda saldada",
+            "Agrotours registró una devolución de $%s y la deuda de $%s del establecimiento quedó saldada.",
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH)),
+    DEUDA_ACUERDO_MEDIO_PRODUCTOR(
+            ScopeNotificacionNombre.ESTABLECIMIENTO,
+            "Deuda cerrada por acuerdo",
+            "La deuda de $%s del establecimiento se cerró con un acuerdo con Agrotours. En total se devolvieron $%s.",
+            EnumSet.of(CanalNotificacion.EMAIL, CanalNotificacion.PUSH));
 
         private final ScopeNotificacionNombre scope;
         private final String titulo;
