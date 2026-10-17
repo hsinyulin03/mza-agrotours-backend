@@ -182,6 +182,7 @@ public class ActividadService {
                 .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
         DTOActividadDetalleResponse response = actividadMapper.actividadToDTOActividadDetalle(actividad);
         response.setFotos(obtenerUrlsDeDescarga(response.getFotos()));
+        response.getEstablecimiento().setFoto(archivoService.mapearFoto(actividad.getEstablecimiento().getFoto()));
         // Sección de reseñas
         response.setResumenResenias(calificacionService.obtenerResumenResenias(idActividad));
         response.setReseniasRecientes(calificacionService.obtenerReseniasRecientes(idActividad));
@@ -255,16 +256,7 @@ public class ActividadService {
 
     private DTOListadoActividadVisitanteResponse mapearListadoVisitante(Actividad actividad) {
         DTOListadoActividadVisitanteResponse dto = actividadMapper.actividadToDTOListadoActividadVisitante(actividad);
-
-        if (actividad.getFotos() != null && !actividad.getFotos().isEmpty()) {
-            Archivo primeraFoto = actividad.getFotos().get(0).getArchivo();
-            DTOFotosResponse fotoDto = new DTOFotosResponse();
-            fotoDto.setKey(primeraFoto.getKey());
-            fotoDto.setNombre(primeraFoto.getNombre());
-            fotoDto.setExtension(primeraFoto.getExtension());
-            fotoDto.setDownloadUrl(archivoService.getDownloadUrl(primeraFoto.getKey()));
-            dto.setFotoPortada(fotoDto);
-        }
+        dto.setFotoPortada(archivoService.mapearFoto(actividad.archivoPortada()));
         return dto;
     }
 

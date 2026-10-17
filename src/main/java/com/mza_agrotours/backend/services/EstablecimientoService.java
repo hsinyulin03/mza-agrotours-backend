@@ -405,6 +405,7 @@ public class EstablecimientoService  {
         // Obtener precio base vigente
         BigDecimal precioBase = obtenerPrecioBaseVigente(actividad);
         dto.setPrecioDesde(precioBase);
+        dto.setFotoPortada(mapearFoto(actividad.archivoPortada()));
 
         // TODO: implementar cálculo real del promedio de Calificacion.puntuacion
         // dto.setPuntuacion(calcularCalificacionPromedio(actividad));
@@ -460,16 +461,7 @@ public class EstablecimientoService  {
     }
 
     private DTOFotosResponse mapearFoto(Archivo foto) {
-        if (foto == null) {
-            return null;
-        }
-
-        DTOFotosResponse dto = new DTOFotosResponse();
-        dto.setKey(foto.getKey());
-        dto.setNombre(foto.getNombre());
-        dto.setExtension(foto.getExtension());
-        dto.setDownloadUrl(this.archivoService.getDownloadUrl(foto.getKey()));
-        return dto;
+        return this.archivoService.mapearFoto(foto);
     }
 }
 

@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.dtos.tipoCultivo;
 
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -12,5 +13,6 @@ public class DTOActividadResumenCultivo {
     private String nombreEstablecimiento;
     private String nombreDepartamento;
     private BigDecimal precioRegular;
+    private DTOFotosResponse fotoPortada;
 
 }
