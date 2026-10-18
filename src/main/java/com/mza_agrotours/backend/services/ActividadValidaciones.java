@@ -9,7 +9,7 @@ import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.time.temporal.ChronoUnit;
+import java.time.LocalDate;
 import java.util.*;
 
 @Component
@@ -67,16 +67,20 @@ public class ActividadValidaciones {
 
     private List<String> validarFechas(DTOActividadAlta dto) {
         List<String> errores = new ArrayList<>();
-        long diasDiferencia = ChronoUnit.DAYS.between(dto.getFechaDesde(), dto.getFechaHasta());
 
-        //Validar que la fecha desde sea igual o anterior que fecha hasta
-        if (diasDiferencia < 0) {
-            errores.add("La fecha 'hasta' debe ser igual o posterior a la fecha 'desde'.");
+        LocalDate fechaDesdeMin = LocalDate.now();
+        LocalDate fechaHastaMax = fechaDesdeMin.plusDays(120);
+
+        if (dto.getFechaDesde().isBefore(fechaDesdeMin)) {
+            errores.add("La fecha 'desde' debe ser igual o posterior a la fecha actual.");
         }
 
-        //Validar que la vigencia de la actividad sea mayor a 0 y menor a 120 días
-        if (diasDiferencia > 120) {
-            errores.add("La vigencia máxima permitida es de 120 días corridos.");
+        if (dto.getFechaHasta().isBefore(dto.getFechaDesde())) {
+            errores.add("La fecha 'hasta' debe ser posterior a la fecha 'desde'.");
+        }
+
+        if (fechaHastaMax.isBefore(dto.getFechaHasta())) {
+            errores.add("La fecha 'hasta' no puede superar los 120 días desde la fecha actual");
         }
         return errores;
     }
