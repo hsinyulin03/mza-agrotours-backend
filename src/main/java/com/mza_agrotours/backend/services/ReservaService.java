@@ -29,6 +29,7 @@ import com.mza_agrotours.backend.exceptions.pago.*;
 import com.mza_agrotours.backend.exceptions.reservas.ActividadFullException;
 import com.mza_agrotours.backend.exceptions.reservas.EstadoReservaNotFoundException;
 import com.mza_agrotours.backend.exceptions.reservas.FechaNacimientoInvalidaException;
+import com.mza_agrotours.backend.exceptions.reservas.ReservaNoPendienteException;
 import com.mza_agrotours.backend.exceptions.reservas.ReservaNotFoundException;
 import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
 import com.mza_agrotours.backend.repositories.ReservaRepository;
@@ -52,6 +53,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.Supplier;
 
 import static com.mza_agrotours.backend.enums.EstadoReservaNombre.*;
 
@@ -301,6 +303,8 @@ public class ReservaService {
             try{
                 r.setFechaHoraExpiracion(null);
                 self.expirarReservaYNotificar(r, estadoReserva, ahora);
+            } catch (ReservaNoPendienteException e) {
+                log.info("La reserva {} se pagó o canceló antes de expirar", r.getId());
             } catch (Exception e) {
                 idFallidas.add(r.getId().toString());
             }
@@ -342,19 +346,15 @@ public class ReservaService {
     }
 
     /**
-     * Workaround al todavía no tener notificaciones webhook de las pasarelas.
+     * Tarea programada que busca todas las reservas "Pendiente" y consulta, mediante la estrategia del método de pago
+     * de cada una, si su pago fue aprobado. Se saltean las de medios que confirman sus pagos por notificación
+     * (ver {@link #confirmarPagoNotificado}), como Mercado Pago con webhook configurado.
      * <p>
-     * Tarea programada que busca todas las reservas "Pendiente" aún no expiradas y consulta, mediante la
-     * estrategia del método de pago de cada una, si su pago fue aprobado.
+     * Cada pago aprobado se confirma con {@link #aplicarResultadoPago}. Los errores de comunicación con la pasarela o
+     * de backend al procesar una reserva particular no interrumpen el procesamiento del resto y quedan registrados
+     * en el log.
      * <p>
-     * La estrategia concilia el pago aprobado con la reserva (en MP, {@link com.mza_agrotours.backend.services.pago.ConciliadorPagoMP}:
-     * monto, moneda, vendedor y comisiones). Si concilia, se guarda el ID de la transacción externa, se marca el pago
-     * como "Aprobado", la reserva como "Pagada", se le quita la fecha de expiración, se avisa al visitante y se
-     * invalida la sesión de cobro para reducir la chance de un pago duplicado. Si no concilia, el pago se reembolsa
-     * (ver {@link #reembolsarPagoNoConciliable}). Los errores de comunicación con la pasarela o de backend al procesar
-     * una reserva particular no interrumpen el procesamiento del resto y quedan registrados en el log.
-     * <p>
-     * NOTE: gap conocido, solo se revisan reservas pendientes no expiradas. Un pago aprobado después de que la reserva
+     * NOTE: gap conocido, solo se revisan reservas pendientes. Un pago aprobado después de que la reserva
      *  expiró o se canceló (ej. baja de la actividad) no se detecta ni se reembolsa automáticamente.
      */
     @Transactional(readOnly = true)
@@ -366,6 +366,7 @@ public class ReservaService {
         EstadoPago estadoPago = getEstadoPago(EstadoPagoNombre.APROBADO);
 
         List<String> idFallidas = new ArrayList<>(); // Array de las id de reserva que fallaron en pasarse a pagada
+        int consultadas = 0;
         int pagosExitosos = 0; // Cantidad de pagos exitosos
         int pagosReembolsados = 0; // Cantidad de pagos que no conciliaron y se reembolsaron
 
@@ -373,31 +374,14 @@ public class ReservaService {
             Pago pago = r.getPago();
 
             try{
-                // La estrategia concilia el pago con la reserva antes de devolverlo como aprobado
-                ResultadoConsultaPagoDTO resultado = getEstrategiaPago(pago).consultarPago(r);
-                if (!resultado.aprobado()) continue;
+                EstrategiaPago estrategia = getEstrategiaPago(pago);
+                if (!estrategia.requiereConsultaPeriodica()) continue;
+                consultadas++;
 
-                pago.setIdTransaccionExterna(resultado.idTransaccionExterna()); // Necesario para reembolsar
-                pago.cambiarEstado(estadoPago, ahora);  //Estado del pago
-
-                r.setFechaHoraExpiracion(null);         // FHExpiración de la reserva
-                self.confirmarPagoReservaYNotificar(r, estadoReserva, ahora); // Estado de la reserva y aviso al visitante
-
-                // Invalidar la sesión de cobro (para menor chance que se pague 2 veces)
-                cancelarCheckout(pago, ahora);
-
-                pagosExitosos++; // Contador de reservas pagadas para el log
-            } catch (PagoNoConciliableException e) {
-                // NOTE: se reembolsa siempre, incluso si se acreditó a otro vendedor (gap conocido: ese reembolso
-                //  probablemente falle con el token del vendedor y termine "Pedido")
-                log.error("Pago aprobado de la reserva {} que no concilia, se reembolsa: {}", r.getId(), e.getMessage());
-                try {
-                    reembolsarPagoNoConciliable(r, e, ahora);
-                    pagosReembolsados++;
-                } catch (Exception ex) {
-                    // Si falla antes de guardar el reembolso, la reserva sigue pendiente y se reintenta en la próxima ejecución
-                    log.warn("Error de backend reembolsando el pago no conciliado de la reserva {}", r.getId(), ex);
-                    idFallidas.add(r.getId().toString());
+                switch (aplicarResultadoPago(r, () -> estrategia.consultarPago(r), estadoReserva, estadoPago, ahora)) {
+                    case PAGADA -> pagosExitosos++;
+                    case REEMBOLSADA -> pagosReembolsados++;
+                    default -> { }
                 }
             } catch (PasarelaPagoException e) {
                 log.warn("Error de la pasarela consultando el pago de la reserva {}", r.getId(), e);
@@ -409,8 +393,88 @@ public class ReservaService {
             }
         }
 
-        log.info("Se pagaron {}/{} reservas pendientes encontradas y se reembolsaron {} pagos que no conciliaron. Las reservas con cambio fallido fueron {}, con ids: {}",
-                pagosExitosos, reservas.size(), pagosReembolsados, idFallidas.size(), idFallidas);
+        log.info("Se pagaron {}/{} reservas pendientes consultadas y se reembolsaron {} pagos que no conciliaron. Las reservas con cambio fallido fueron {}, con ids: {}",
+                pagosExitosos, consultadas, pagosReembolsados, idFallidas.size(), idFallidas);
+    }
+
+    /**
+     * Confirma el pago de una reserva a partir de una notificación de la pasarela (webhook). La notificación solo
+     * aporta el ID de la transacción: la estrategia la consulta a la pasarela y valida que sea de esta reserva.
+     * <p>
+     * Es idempotente: si la reserva no existe o ya no está "Pendiente" (pagada por una notificación anterior,
+     * expirada o cancelada) no se hace nada, así que la pasarela puede repetir la notificación sin efectos.
+     *
+     * @param reservaId reserva a la que corresponde la notificación
+     * @param idTransaccionExterna ID de la transacción notificada
+     * @throws PasarelaPagoException si falla la comunicación con la pasarela; la notificación debe reintentarse
+     */
+    @Transactional(readOnly = true)
+    public void confirmarPagoNotificado(UUID reservaId, String idTransaccionExterna){
+        Optional<Reserva> optReserva = reservaRepository.findById(reservaId);
+        if (optReserva.isEmpty()) {
+            log.warn("Notificación de pago {} para la reserva inexistente {}", idTransaccionExterna, reservaId);
+            return;
+        }
+        Reserva r = optReserva.get();
+        Pago pago = r.getPago();
+        // NOTE: gap conocido, igual que en el polling: un pago aprobado de una reserva ya expirada o cancelada no se reembolsa
+        if (pago == null || r.getEstadoActual().getEstadoReserva().getNombre() != PENDIENTE) {
+            log.info("Notificación de pago {} para la reserva {}, que ya no está pendiente: se ignora", idTransaccionExterna, reservaId);
+            return;
+        }
+
+        ResultadoAplicacionPago resultado = aplicarResultadoPago(r,
+                () -> getEstrategiaPago(pago).consultarPagoNotificado(r, idTransaccionExterna),
+                getEstadoReserva(PAGADA), getEstadoPago(EstadoPagoNombre.APROBADO), LocalDateTime.now());
+        log.info("Notificación de pago {} para la reserva {}: {}", idTransaccionExterna, reservaId, resultado);
+    }
+
+    private enum ResultadoAplicacionPago { NO_APROBADO, PAGADA, REEMBOLSADA, YA_NO_PENDIENTE }
+
+    /**
+     * Consulta el pago de una reserva pendiente y aplica el resultado. La estrategia concilia el pago aprobado con la
+     * reserva (en MP, {@link com.mza_agrotours.backend.services.pago.ConciliadorPagoMP}: monto, moneda, vendedor y
+     * comisiones). Si concilia, se guarda el ID de la transacción externa, se marca el pago como "Aprobado", la reserva
+     * como "Pagada", se le quita la fecha de expiración, se avisa al visitante y se invalida la sesión de cobro para
+     * reducir la chance de un pago duplicado. Si no concilia, el pago se reembolsa (ver {@link #reembolsarPagoNoConciliable}).
+     * Si otro proceso sacó a la reserva de "Pendiente" mientras tanto, no se aplica nada.
+     *
+     * @throws PasarelaPagoException si falla la comunicación con la pasarela
+     */
+    private ResultadoAplicacionPago aplicarResultadoPago(Reserva r, Supplier<ResultadoConsultaPagoDTO> consulta,
+                                                        EstadoReserva estadoPagada, EstadoPago estadoAprobado, LocalDateTime ahora){
+        try {
+            return confirmarOReembolsar(r, consulta, estadoPagada, estadoAprobado, ahora);
+        } catch (ReservaNoPendienteException e) {
+            log.info("La reserva {} dejó de estar pendiente mientras se confirmaba su pago", r.getId());
+            return ResultadoAplicacionPago.YA_NO_PENDIENTE;
+        }
+    }
+
+    private ResultadoAplicacionPago confirmarOReembolsar(Reserva r, Supplier<ResultadoConsultaPagoDTO> consulta,
+                                                         EstadoReserva estadoPagada, EstadoPago estadoAprobado, LocalDateTime ahora){
+        Pago pago = r.getPago();
+        try {
+            ResultadoConsultaPagoDTO resultado = consulta.get();
+            if (!resultado.aprobado()) return ResultadoAplicacionPago.NO_APROBADO;
+
+            pago.setIdTransaccionExterna(resultado.idTransaccionExterna()); // Necesario para reembolsar
+            pago.cambiarEstado(estadoAprobado, ahora);  //Estado del pago
+
+            r.setFechaHoraExpiracion(null);         // FHExpiración de la reserva
+            self.confirmarPagoReservaYNotificar(r, estadoPagada, ahora); // Estado de la reserva y aviso al visitante
+
+            // Invalidar la sesión de cobro (para menor chance que se pague 2 veces)
+            cancelarCheckout(pago, ahora);
+            return ResultadoAplicacionPago.PAGADA;
+        } catch (PagoNoConciliableException e) {
+            // NOTE: se reembolsa siempre, incluso si se acreditó a otro vendedor (gap conocido: ese reembolso
+            //  probablemente falle con el token del vendedor y termine "Pedido")
+            log.error("Pago aprobado de la reserva {} que no concilia, se reembolsa: {}", r.getId(), e.getMessage());
+            // Si falla antes de guardar el reembolso, la reserva sigue pendiente y se reintenta
+            reembolsarPagoNoConciliable(r, e, ahora);
+            return ResultadoAplicacionPago.REEMBOLSADA;
+        }
     }
 
     /**
@@ -701,6 +765,7 @@ public class ReservaService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected void expirarReservaYNotificar(Reserva r, EstadoReserva estadoExpirada, LocalDateTime ahora){
+        bloquearPendiente(r);
         cambiarEstadoReservaYGuardar(r, estadoExpirada, ahora);
         reservaNotificador.notificarVisitante(r, TipoNotificacionNombre.RESERVA_EXPIRADA);
     }
@@ -711,6 +776,7 @@ public class ReservaService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected void confirmarPagoReservaYNotificar(Reserva r, EstadoReserva estadoPagada, LocalDateTime ahora){
+        bloquearPendiente(r);
         cambiarEstadoReservaYGuardar(r, estadoPagada, ahora);
         reservaNotificador.notificarVisitante(r, TipoNotificacionNombre.RESERVA_PAGADA, r.getPago().getMontoTotal().toPlainString());
         reservaNotificador.notificarProductoresReservaConfirmada(r);
@@ -725,6 +791,7 @@ public class ReservaService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected Reembolso registrarPagoNoConciliable(Reserva reserva, String idTransaccionExterna, BigDecimal montoPagado, LocalDateTime ahora){
+        bloquearPendiente(reserva);
         Pago pago = reserva.getPago();
         pago.setIdTransaccionExterna(idTransaccionExterna);
         pago.cambiarEstado(getEstadoPago(EstadoPagoNombre.APROBADO), ahora); // La pasarela lo aprobó; pasa a "Reembolsado" al confirmarse
@@ -738,6 +805,18 @@ public class ReservaService {
         reservaNotificador.notificarVisitante(reserva, TipoNotificacionNombre.RESERVA_REEMBOLSADA_PAGO_NO_VALIDO, montoPagado.toPlainString());
 
         return reembolso;
+    }
+
+    /**
+     * Bloquea la fila de la reserva hasta el fin de la transacción y verifica que siga "Pendiente", para que el pago
+     * por webhook, el polling y la expiración no apliquen dos cambios de estado sobre la misma reserva.
+     *
+     * @throws ReservaNoPendienteException si otro proceso ya la sacó de "Pendiente"
+     */
+    private void bloquearPendiente(Reserva r){
+        Reserva actual = reservaRepository.findByIdForUpdate(r.getId()).orElseThrow(ReservaNotFoundException::new);
+        if (actual.getEstadoActual().getEstadoReserva().getNombre() != PENDIENTE)
+            throw new ReservaNoPendienteException(r.getId());
     }
 
     private Usuario getUsuario(String emailUsuario){

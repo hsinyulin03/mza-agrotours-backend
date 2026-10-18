@@ -18,6 +18,8 @@ import com.mercadopago.resources.payment.Payment;
 import com.mercadopago.resources.payment.PaymentFeeDetail;
 import com.mercadopago.resources.payment.PaymentRefund;
 import com.mza_agrotours.backend.clients.mercadopago.MercadoPagoOAuthClient;
+import com.mza_agrotours.backend.config.MercadoPagoCheckoutProperties;
+import com.mza_agrotours.backend.services.pago.PagoManualStrategy;
 import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoDTO;
 import com.mza_agrotours.backend.dtos.pago.ResultadoReembolsoProductorDTO;
 import com.mza_agrotours.backend.entities.Usuario;
@@ -95,6 +97,8 @@ class ReservaServicePagoMPTest {
     private ReembolsoService reembolsoService;
     private ReembolsoRepository reembolsoRepository;
     private NotificacionService notificacionService;
+    private EstrategiaPagoFactory estrategiaPagoFactory;
+    private CuentaMercadoPagoService cuentaService;
 
     private final EstadoReserva estadoPagada = new EstadoReserva(EstadoReservaNombre.PAGADA);
     private final EstadoReserva estadoExpirada = new EstadoReserva(EstadoReservaNombre.EXPIRADA);
@@ -134,15 +138,13 @@ class ReservaServicePagoMPTest {
                 Optional.of(new EstadoReembolso(LocalDateTime.now(), null, inv.<EstadoReembolsoNombre>getArgument(0))));
 
         // Servicio real: opcionesDe no usa sus dependencias
-        CuentaMercadoPagoService cuentaService = new CuentaMercadoPagoService(
+        cuentaService = new CuentaMercadoPagoService(
                 mock(EstablecimientoRepository.class), mock(CuentaMercadoPagoRepository.class),
                 mock(MercadoPagoOAuthClient.class), mock(Cifrador.class));
 
         // Estrategia real: es la que habla con MP; ReservaService solo la obtiene de la factory
-        PagoMPStrategy estrategiaMP = new PagoMPStrategy(mock(PagoRepository.class), mock(ParametrosService.class),
-                cuentaService, new ConciliadorPagoMP());
-        EstrategiaPagoFactory estrategiaPagoFactory = mock(EstrategiaPagoFactory.class);
-        when(estrategiaPagoFactory.get(MetodoPago.MERCADO_PAGO)).thenReturn(estrategiaMP);
+        estrategiaPagoFactory = mock(EstrategiaPagoFactory.class);
+        usarEstrategiaMP(null);
 
         ReservaNotificador reservaNotificador = new ReservaNotificador(notificacionService);
         reembolsoService = new ReembolsoService(reembolsoRepository, mock(ReembolsoSistemaPagoRepository.class),
@@ -189,6 +191,13 @@ class ReservaServicePagoMPTest {
             when(client.get(anyLong(), anyLong(), any(MPRequestOptions.class))).thenReturn(refund);
             when(client.list(anyLong(), any(MPRequestOptions.class))).thenReturn(refunds);
         });
+    }
+
+    private void usarEstrategiaMP(String notificationUrl) {
+        PagoMPStrategy estrategiaMP = new PagoMPStrategy(mock(PagoRepository.class), mock(ParametrosService.class),
+                cuentaService, new ConciliadorPagoMP(), new MercadoPagoCheckoutProperties("http://front/pago",
+                        notificationUrl, notificationUrl == null ? null : "secreto"));
+        when(estrategiaPagoFactory.get(MetodoPago.MERCADO_PAGO)).thenReturn(estrategiaMP);
     }
 
     @AfterEach
@@ -241,6 +250,10 @@ class ReservaServicePagoMPTest {
 
     private void pendientes(Reserva... reservas) {
         when(reservaRepository.findReservasPendientes(any())).thenReturn(List.of(reservas));
+        for (Reserva r : reservas) {
+            when(reservaRepository.findById(r.getId())).thenReturn(Optional.of(r));
+            when(reservaRepository.findByIdForUpdate(r.getId())).thenReturn(Optional.of(r));
+        }
     }
 
     /** Registra en MP una merchant order de la preference con pagos {id, status}. */
@@ -296,6 +309,91 @@ class ReservaServicePagoMPTest {
         assertNull(reserva.getPago().getIdTransaccionExterna());
         assertNotNull(reserva.getFechaHoraExpiracion());
         verify(self, never()).confirmarPagoReservaYNotificar(eq(reserva), any(), any());
+    }
+
+    // ---------- Webhook ----------
+
+    @Test
+    void conWebhookElPollingNoConsultaMpPeroSigueAprobandoLosPagosManuales() {
+        usarEstrategiaMP("https://api.test/mercadopago/webhooks/pagos");
+        when(estrategiaPagoFactory.get(MetodoPago.MANUAL)).thenReturn(new PagoManualStrategy(mock(PagoRepository.class), mock(ParametrosService.class)));
+        Reserva mp = reservaPendiente("pref-1", cuentaVendedor());
+        Reserva manual = reservaPendiente(null, null);
+        manual.getPago().setMetodoPago(MetodoPago.MANUAL);
+        pendientes(mp, manual);
+        merchantOrder("pref-1", 987L, "approved");
+        payment(987L, "10000", VENDEDOR);
+
+        service.pagarReservas();
+
+        assertTrue(merchantOrderClients.constructed().isEmpty());
+        assertNoConfirmada(mp);
+        verify(self).confirmarPagoReservaYNotificar(eq(manual), eq(estadoPagada), any());
+    }
+
+    @Test
+    void elPagoNotificadoConfirmaLaReserva() throws Exception {
+        Reserva reserva = reservaPendiente("pref-1", cuentaVendedor());
+        pendientes(reserva);
+        payment(987L, "10000", VENDEDOR);
+        when(paymentsPorId.get(987L).getExternalReference()).thenReturn(reserva.getId().toString());
+
+        service.confirmarPagoNotificado(reserva.getId(), "987");
+
+        assertConfirmada(reserva);
+        assertEquals("987", reserva.getPago().getIdTransaccionExterna());
+        assertTrue(merchantOrderClients.constructed().isEmpty(), "Con el payment notificado no se buscan merchant orders");
+        verify(preferenceClients.constructed().get(0)).update(eq("pref-1"), any(PreferenceRequest.class), any(MPRequestOptions.class));
+    }
+
+    @Test
+    void unaNotificacionRepetidaDeUnaReservaYaPagadaSeIgnora() {
+        Reserva reserva = reservaPendiente("pref-1", cuentaVendedor());
+        reserva.cambiarEstado(estadoPagada, LocalDateTime.now());
+        pendientes(reserva);
+
+        service.confirmarPagoNotificado(reserva.getId(), "987");
+
+        assertTrue(paymentClients.constructed().isEmpty());
+        verify(self, never()).confirmarPagoReservaYNotificar(any(), any(), any());
+    }
+
+    @Test
+    void unaNotificacionDeUnaReservaInexistenteSeIgnora() {
+        service.confirmarPagoNotificado(UUID.randomUUID(), "987");
+
+        assertTrue(paymentClients.constructed().isEmpty());
+    }
+
+    @Test
+    void unPagoNotificadoQueNoConciliaSeReembolsa() throws Exception {
+        Reserva reserva = reservaPendiente("pref-1", cuentaVendedor());
+        pendientes(reserva);
+        payment(987L, "9999.99", VENDEDOR);
+        when(paymentsPorId.get(987L).getExternalReference()).thenReturn(reserva.getId().toString());
+
+        service.confirmarPagoNotificado(reserva.getId(), "987");
+
+        verify(self, never()).confirmarPagoReservaYNotificar(any(), any(), any());
+        assertEquals(EstadoReservaNombre.REEMBOLSO_NO_CONCILIACION, reserva.getEstadoActual().getEstadoReserva().getNombre());
+        verify(refundClients.constructed().get(0)).refund(eq(987L), any(MPRequestOptions.class));
+    }
+
+    @Test
+    void siLaReservaDejoDeEstarPendienteNoSeRegistraElReembolso() throws Exception {
+        Reserva reserva = reservaPendiente("pref-1", cuentaVendedor());
+        pendientes(reserva);
+        payment(987L, "9999.99", VENDEDOR);
+        when(paymentsPorId.get(987L).getExternalReference()).thenReturn(reserva.getId().toString());
+        // Otra notificación la sacó de "Pendiente" entre la lectura y el bloqueo
+        Reserva yaProcesada = reservaPendiente("pref-1", cuentaVendedor());
+        yaProcesada.cambiarEstado(estadoPagada, LocalDateTime.now());
+        when(reservaRepository.findByIdForUpdate(reserva.getId())).thenReturn(Optional.of(yaProcesada));
+
+        service.confirmarPagoNotificado(reserva.getId(), "987");
+
+        verify(reembolsoRepository, never()).save(any());
+        assertTrue(refundClients.constructed().isEmpty());
     }
 
     // ---------- pagarReservas ----------
