@@ -26,11 +26,7 @@ import com.mza_agrotours.backend.exceptions.actividad.ActividadDiaNotFound;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotFoundException;
 import com.mza_agrotours.backend.exceptions.pago.*;
-import com.mza_agrotours.backend.exceptions.reservas.ActividadFullException;
-import com.mza_agrotours.backend.exceptions.reservas.EstadoReservaNotFoundException;
-import com.mza_agrotours.backend.exceptions.reservas.FechaNacimientoInvalidaException;
-import com.mza_agrotours.backend.exceptions.reservas.ReservaNoPendienteException;
-import com.mza_agrotours.backend.exceptions.reservas.ReservaNotFoundException;
+import com.mza_agrotours.backend.exceptions.reservas.*;
 import com.mza_agrotours.backend.mappers.reserva.ReservaMapper;
 import com.mza_agrotours.backend.repositories.ReservaRepository;
 import com.mza_agrotours.backend.repositories.TipoIdentificacionRepository;
@@ -219,12 +215,12 @@ public class ReservaService {
             TipoIdentificacion tipoIdentificacion = tipoIdentificacionRepository.findByNombre(TipoIdentificacionNombre.valueOf(dtoDetalle.tipoIdentificacion()))
                     .orElseThrow(() -> new TipoIdentificacionInvalidoException("El tipo de identificación provisto no es válido"));
 
-            ActividadRangoEtario actividadRangoEtario = null;
-            for (ActividadRangoEtario are : ares){
-                if (fechaHoraActual.toLocalDate().isBefore(dtoDetalle.fechaNacimiento().plusYears(are.getEdadMaxima())) &&
-                        fechaHoraActual.toLocalDate().isAfter(dtoDetalle.fechaNacimiento().plusYears(are.getEdadMinima()))
-                ) actividadRangoEtario = are;
-            }
+            int edad = dtoDetalle.fechaNacimiento().until(fechaHoraActual.toLocalDate())
+                    .getYears();
+            ActividadRangoEtario actividadRangoEtario = ares.stream()
+                    .filter(are -> are.getEdadMinima() <= edad && are.getEdadMaxima() >= edad)
+                    .findFirst().orElse(null);
+
             if (actividadRangoEtario == null) throw new FechaNacimientoInvalidaException();
             totalReserva = totalReserva.add(actividadRangoEtario.getPrecio());
             reservaDetalles.add(reservaMapper.DTOtoReservaDetalle(dtoDetalle, tipoIdentificacion, renglonReserva, actividadRangoEtario));
