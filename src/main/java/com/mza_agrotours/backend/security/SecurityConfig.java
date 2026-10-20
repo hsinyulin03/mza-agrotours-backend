@@ -103,6 +103,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/admin/deudas/**").hasAuthority(PermisoCodigo.LEER_DEUDAS.name())
                         .requestMatchers("/admin/deudas/**").hasAuthority(PermisoCodigo.GESTIONAR_DEUDAS.name())
 
+                        .requestMatchers(HttpMethod.GET, "/admin/parametros").hasAuthority(PermisoCodigo.LEER_PARAMETROS.name())
+                        .requestMatchers("/admin/parametros").hasAuthority(PermisoCodigo.GESTIONAR_PARAMETROS.name())
+
                         //Permisos
                         .requestMatchers( "/permisos/grupos-permisos/admin").hasAuthority(PermisoCodigo.LEER_ADMIN.name())
                         .requestMatchers("/permisos/grupos-permisos/productor").authenticated()

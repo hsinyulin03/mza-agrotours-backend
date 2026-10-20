@@ -106,6 +106,13 @@ public class GrupoPermisoSeeder implements CommandLineRunner {
                             "Ver y gestionar las deudas de los establecimientos con el sistema",
                             "clipboard-check",
                             List.of(PermisoCodigo.LEER_DEUDAS, PermisoCodigo.GESTIONAR_DEUDAS)
+                    )),
+            entry("Gestión de parámetros",
+                    new SeedGrupoPermiso(
+                            TipoPermisoNombre.ADMIN,
+                            "Ver y modificar los parámetros generales del sistema",
+                            "clipboard-check",
+                            List.of(PermisoCodigo.LEER_PARAMETROS, PermisoCodigo.GESTIONAR_PARAMETROS)
                     ))
 
     );

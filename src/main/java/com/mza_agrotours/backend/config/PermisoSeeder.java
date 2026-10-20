@@ -77,7 +77,11 @@ public class PermisoSeeder implements CommandLineRunner {
             entry(PermisoCodigo.LEER_DEUDAS,
                     new SeedPermiso(TipoPermisoNombre.ADMIN, "Lectura de deudas", "Ver las deudas de los establecimientos")),
             entry(PermisoCodigo.GESTIONAR_DEUDAS,
-                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Gestionar deudas", "Registrar devoluciones de deudas de los establecimientos"))
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Gestionar deudas", "Registrar devoluciones de deudas de los establecimientos")),
+            entry(PermisoCodigo.LEER_PARAMETROS,
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Lectura de parámetros", "Ver los parámetros generales del sistema")),
+            entry(PermisoCodigo.GESTIONAR_PARAMETROS,
+                    new SeedPermiso(TipoPermisoNombre.ADMIN, "Gestionar parámetros", "Modificar los parámetros generales del sistema"))
     );
 
     private final PermisoRepository permisoRepository;
