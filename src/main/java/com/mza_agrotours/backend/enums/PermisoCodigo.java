@@ -38,4 +38,7 @@ public enum PermisoCodigo {
     LEER_DEUDAS,
     GESTIONAR_DEUDAS,
 
+    // Parámetros
+    LEER_PARAMETROS,
+    GESTIONAR_PARAMETROS,
 }
