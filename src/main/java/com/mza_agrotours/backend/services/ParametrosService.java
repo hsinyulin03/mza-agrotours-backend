@@ -21,7 +21,6 @@ public class ParametrosService {
         this.parametrosRepository = parametrosRepository;
     }
 
-    @Transactional
     public synchronized Parametros getInstance() {
         if (instance == null) {
             instance = parametrosRepository.findFirstByOrderByIdAsc()
