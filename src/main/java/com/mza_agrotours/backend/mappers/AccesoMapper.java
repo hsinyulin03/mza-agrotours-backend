@@ -31,6 +31,7 @@ public interface AccesoMapper {
         accesoEstablecimientoDTO.setId(rol.getEstablecimiento().getId().toString());
         accesoEstablecimientoDTO.setNombre(rol.getEstablecimiento().getNombre());
         accesoEstablecimientoDTO.setEstado(rol.getEstablecimiento().getEstadoActual().getEstadoEstablecimiento().getNombre().name());
+        accesoEstablecimientoDTO.setMotivoEstado(rol.getEstablecimiento().getEstadoActual().getMotivo());
 
         accesoDTO.setEstablecimiento(accesoEstablecimientoDTO);
         return accesoDTO;

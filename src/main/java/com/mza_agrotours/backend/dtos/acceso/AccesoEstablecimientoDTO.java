@@ -11,4 +11,5 @@ public class AccesoEstablecimientoDTO {
     private String id;
     private String nombre;
     private String estado;
+    private String motivoEstado;
 }
