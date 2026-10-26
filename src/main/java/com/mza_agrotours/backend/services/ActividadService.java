@@ -116,8 +116,6 @@ public class ActividadService {
     //US-ACT-03 Alta de actividad
     @Transactional
     public DTOActividadAltaResponse altaActividad(UUID establecimientoId, DTOActividadAlta dto) {
-        validarEstablecimientoNoSuspendido(establecimientoId);
-
         //Primero hacemos las validaciones del negocio
         List<String> errores = actividadValidaciones.obtenerErroresValidacionActividad(establecimientoId, dto);
 
@@ -178,7 +176,7 @@ public class ActividadService {
     //US-ACT-02:  Consultar detalle de una actividad
     @Transactional(readOnly = true)
     public DTOActividadDetalleResponse obtenerDetallePorId(UUID idActividad) {
-        Actividad actividad = this.actividadRepository.findByIdVigenteConEstablecimientoActivo(idActividad)
+        Actividad actividad = this.actividadRepository.findByIdVigente(idActividad)
                 .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
         DTOActividadDetalleResponse response = actividadMapper.actividadToDTOActividadDetalle(actividad);
         response.setFotos(obtenerUrlsDeDescarga(response.getFotos()));
@@ -263,8 +261,6 @@ public class ActividadService {
     //US-ACT-04: Modificar Actividad
     @Transactional
     public DTOActividadGetResponse modificarActividad(UUID idEstablecimiento, UUID idActividad, DTOActividadUpdate dto) {
-        validarEstablecimientoNoSuspendido(idEstablecimiento);
-
         Actividad actividad = obtenerActividad(idActividad);
 
         List<String> errores = actividadValidaciones.obtenerErroresValidacionModificacion(idEstablecimiento, idActividad, dto);
@@ -376,8 +372,6 @@ public class ActividadService {
 
     @Transactional
     public DTOCambioEstadoActividadResponse cambiarEstadoActividad(UUID idEstablecimiento, UUID idActividad, DTOCambioEstadoActividad dto) {
-        validarEstablecimientoNoSuspendido(idEstablecimiento);
-
         Actividad actividad = obtenerActividad(idActividad);
         EstadoActividad nuevoEstado = obtenerEstado(dto.getEstado());
 
@@ -406,7 +400,6 @@ public class ActividadService {
 
     @Transactional
     public DTOBajaActividadResponse darBajaActividad(UUID idEstablecimiento, UUID idActividad){
-        validarEstablecimientoNoSuspendido(idEstablecimiento);
         Actividad actividad = obtenerActividad(idActividad);
 
         LocalDateTime ahora = LocalDateTime.now();
@@ -598,7 +591,6 @@ public class ActividadService {
     //US-ACT-11: Agregar un actividadDia
     @Transactional
     public DTOActividadDiaResponse agregarUnActividadDia(UUID idEstablecimiento, UUID idActividad, DTOActividadDiaAlta dto) {
-        validarEstablecimientoNoSuspendido(idEstablecimiento);
         Actividad actividad = obtenerActividad(idActividad);
         LocalDateTime ahora = LocalDateTime.now();
 
@@ -631,7 +623,6 @@ public class ActividadService {
     //US-ACT-11: Agregar días por lote y generar log de altas
     @Transactional
     public DTOPrevisualizacionLoteResponse agregarLoteActividadDias(UUID idEstablecimiento, UUID idActividad, DTOActividadDiasLote dto) {
-        validarEstablecimientoNoSuspendido(idEstablecimiento);
         Actividad actividad = obtenerActividad(idActividad);
         LocalDateTime ahora = LocalDateTime.now();
 
@@ -690,7 +681,6 @@ public class ActividadService {
     //US-ACT-11: Modificar el cupo máximo de un día
     @Transactional
     public DTOActividadDiaResponse modificarCupoDia(UUID idEstablecimiento, UUID idActividad, UUID idActividadDia, DTOActividadDiaUpdateCupo dto) {
-        validarEstablecimientoNoSuspendido(idEstablecimiento);
         ActividadDia dia = obtenerDiaDeActividad(idActividad, idActividadDia);
 
         if (!ESTADOS_ACTIVIDAD_DIA_OCUPADO.contains(dia.getEstadoActual().getEstado().getNombre())) {
@@ -1282,12 +1272,6 @@ public class ActividadService {
                 parametrosService.getInstance().getDiasMinReembolso());
     }
 
-    void validarEstablecimientoNoSuspendido(UUID establecimientoId) {
-        if (this.establecimientoRepository.establecimientoSuspendido(establecimientoId)) {
-            throw new AppException(EstablecimientoError.ESTABLECIMIENTO_SUSPENDIDO);
-        }
-
-    }
     private void cancelarDiasFuturos(UUID idActividad, LocalDateTime ahora) {
         EstadoActividadDia cancelada = obtenerEstadoDia(EstadoActividadDiaNombre.CANCELADA);
 

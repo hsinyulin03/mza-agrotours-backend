@@ -1,17 +1,13 @@
 package com.mza_agrotours.backend.services;
 
-import com.mza_agrotours.backend.dtos.actividad.DTOActividadAlta;
-import com.mza_agrotours.backend.dtos.actividad.DTOActividadUpdate;
+import com.mza_agrotours.backend.dtos.actividad.DTOCambioEstadoActividad;
 import com.mza_agrotours.backend.dtos.administrador_sistemas.EstablecimientoSuspenderReq;
 import com.mza_agrotours.backend.dtos.reservas.RealizarReservaDTO;
 import com.mza_agrotours.backend.entities.AdministradorSistemas;
 import com.mza_agrotours.backend.entities.Visitante;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
-import com.mza_agrotours.backend.exceptions.AppException;
-import com.mza_agrotours.backend.exceptions.EntityNotFoundException;
-import com.mza_agrotours.backend.exceptions.EstablecimientoError;
-import com.mza_agrotours.backend.exceptions.ResourceNotFoundException;
+import com.mza_agrotours.backend.enums.EstadoActividadNombre;
 import com.mza_agrotours.backend.exceptions.actividad.ActividadNotActiveException;
 import com.mza_agrotours.backend.support.AbstractIntegrationTest;
 import com.mza_agrotours.backend.support.FixtureActividad;
@@ -28,9 +24,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Suspending an establecimiento is an invariant that lives across modules: the state changes in
- * AdministradorSistemasService and every other module has to stop serving it. These tests drive
- * the real services against a real database, which is the only place that contract is visible.
+ * Suspending an establecimiento only cuts new reservations and removes it from the general catalogs
+ * (covered in EstablecimientoCatalogoVisitanteIT and LandingDestacadosIT). Its detail pages stay
+ * reachable and the productor keeps operating its activities. These tests drive the real services
+ * against a real database, which is the only place that cross-module contract is visible.
  */
 @Transactional
 class EstablecimientoSuspensionIT extends AbstractIntegrationTest {
@@ -68,48 +65,45 @@ class EstablecimientoSuspensionIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void dadoUnEstablecimiento_cuandoSeSuspende_entoncesNoPuedeCrearActividad() {
+    void dadoUnEstablecimiento_cuandoSeSuspende_entoncesPuedeCambiarElEstadoDeSusActividades() {
+        Actividad actividad = actividades.actividadBorradorEn(establecimiento);
         suspender();
 
-        assertThatThrownBy(() -> actividadService.altaActividad(
-                establecimiento.getId(), new DTOActividadAlta()))
-                .isInstanceOf(AppException.class)
-                .hasFieldOrPropertyWithValue("errorCode", EstablecimientoError.ESTABLECIMIENTO_SUSPENDIDO);
+        DTOCambioEstadoActividad dto = new DTOCambioEstadoActividad();
+        dto.setEstado(EstadoActividadNombre.PUBLICADO.name());
+
+        assertThat(actividadService.cambiarEstadoActividad(establecimiento.getId(), actividad.getId(), dto)
+                .getEstadoNuevo())
+                .isEqualTo(EstadoActividadNombre.PUBLICADO);
     }
 
     @Test
-    void dadoUnEstablecimiento_cuandoSeSuspende_entoncesNoPuedeModificarActividad() {
+    void dadoUnEstablecimiento_cuandoSeSuspende_entoncesPuedeDarDeBajaSusActividades() {
         Actividad actividad = actividades.actividadPublicadaEn(establecimiento);
         suspender();
 
-        assertThatThrownBy(() -> actividadService.modificarActividad(
-                establecimiento.getId(), actividad.getId(), new DTOActividadUpdate()))
-                .isInstanceOf(AppException.class)
-                .hasFieldOrPropertyWithValue("errorCode", EstablecimientoError.ESTABLECIMIENTO_SUSPENDIDO);
+        actividadService.darBajaActividad(establecimiento.getId(), actividad.getId());
+
+        assertThat(actividad.getFechaHoraBaja()).isNotNull();
     }
 
     @Test
-    void dadoUnEstablecimiento_cuandoSeSuspende_entoncesNoEsVisibleSuDetalle() {
+    void dadoUnEstablecimiento_cuandoSeSuspende_entoncesSuDetalleSigueVisible() {
+        suspender();
+
         assertThat(establecimientoService.obtenerDetalleEstablecimientoVisitante(establecimiento.getId()))
                 .isNotNull();
-
-        suspender();
-
-        assertThatThrownBy(() -> establecimientoService
-                .obtenerDetalleEstablecimientoVisitante(establecimiento.getId()))
-                .isInstanceOf(EntityNotFoundException.class);
     }
 
     @Test
-    void dadoUnEstablecimiento_cuandoSeSuspende_entoncesNoEsVisibleSuListaDeActividades() {
+    void dadoUnEstablecimiento_cuandoSeSuspende_entoncesElDetalleDeSusActividadesNoAdmiteReservas() {
         Actividad actividad = actividades.actividadPublicadaEn(establecimiento);
 
-        assertThat(actividadService.obtenerDetallePorId(actividad.getId())).isNotNull();
+        assertThat(actividadService.obtenerDetallePorId(actividad.getId()).isAdmiteReservas()).isTrue();
 
         suspender();
 
-        assertThatThrownBy(() -> actividadService.obtenerDetallePorId(actividad.getId()))
-                .isInstanceOf(ResourceNotFoundException.class);
+        assertThat(actividadService.obtenerDetallePorId(actividad.getId()).isAdmiteReservas()).isFalse();
     }
 
     @Test
@@ -133,26 +127,16 @@ class EstablecimientoSuspensionIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void dadoUnEstablecimientoSuspendido_cuandoSeReactiva_entoncesVuelveATodosLosModulos() {
+    void dadoUnEstablecimientoSuspendido_cuandoSeReactiva_entoncesVuelveAAdmitirReservas() {
         Actividad actividad = actividades.actividadPublicadaEn(establecimiento);
 
         suspender();
 
-        assertThatThrownBy(() -> establecimientoService
-                .obtenerDetalleEstablecimientoVisitante(establecimiento.getId()))
-                .isInstanceOf(EntityNotFoundException.class);
-        assertThatThrownBy(() -> actividadService.obtenerDetallePorId(actividad.getId()))
-                .isInstanceOf(ResourceNotFoundException.class);
+        assertThat(actividadService.obtenerDetallePorId(actividad.getId()).isAdmiteReservas()).isFalse();
 
         reactivar();
 
-        assertThat(establecimientoService.obtenerDetalleEstablecimientoVisitante(establecimiento.getId()))
-                .isNotNull();
-        assertThat(actividadService.obtenerDetallePorId(actividad.getId())).isNotNull();
-        // Ya no corta por suspension: ahora falla en la validacion del DTO vacio, que es otra cosa.
-        assertThatThrownBy(() -> actividadService.altaActividad(
-                establecimiento.getId(), new DTOActividadAlta()))
-                .isNotInstanceOf(AppException.class);
+        assertThat(actividadService.obtenerDetallePorId(actividad.getId()).isAdmiteReservas()).isTrue();
     }
 
     private void suspender() {
