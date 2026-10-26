@@ -115,7 +115,7 @@ public class CalificacionService {
     @Transactional(readOnly = true)
     public Page<ReseniaCardDTO> obtenerResenias(UUID idActividad, Integer puntaje, String orden, Pageable pageable) {
 
-        actividadRepository.findByIdVigenteConEstablecimientoActivo(idActividad)
+        actividadRepository.findByIdVigente(idActividad)
                 .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
 
         return calificacionRepository.findReseniasByActividad(idActividad, puntaje, orden, pageable);
@@ -124,7 +124,7 @@ public class CalificacionService {
     //US-ACT-01: Filtro de puntajes del modal de reseñas (con la cantidad de reseñas de cada uno)
     @Transactional(readOnly = true)
     public List<DTOFiltro> obtenerFiltroPuntajes(UUID idActividad) {
-        actividadRepository.findByIdVigenteConEstablecimientoActivo(idActividad)
+        actividadRepository.findByIdVigente(idActividad)
                 .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
 
         // La query solo trae los puntajes que tienen reseñas
@@ -145,7 +145,7 @@ public class CalificacionService {
     //Las dos opciones muestran el total de reseñas, porque ordenar no filtra
     @Transactional(readOnly = true)
     public List<DTOFiltro> obtenerFiltroOrden(UUID idActividad) {
-        actividadRepository.findByIdVigenteConEstablecimientoActivo(idActividad)
+        actividadRepository.findByIdVigente(idActividad)
                 .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
 
         long totalResenias = 0;

@@ -176,7 +176,7 @@ public class ActividadService {
     //US-ACT-02:  Consultar detalle de una actividad
     @Transactional(readOnly = true)
     public DTOActividadDetalleResponse obtenerDetallePorId(UUID idActividad) {
-        Actividad actividad = this.actividadRepository.findByIdVigenteConEstablecimientoActivo(idActividad)
+        Actividad actividad = this.actividadRepository.findByIdVigente(idActividad)
                 .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada con ID: " + idActividad));
         DTOActividadDetalleResponse response = actividadMapper.actividadToDTOActividadDetalle(actividad);
         response.setFotos(obtenerUrlsDeDescarga(response.getFotos()));
