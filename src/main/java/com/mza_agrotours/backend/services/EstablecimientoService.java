@@ -231,7 +231,7 @@ public class EstablecimientoService  {
 
    //// US-EST-02 consulta de un establecimiento (vista pública / visitante)
     public DTODetalleEstablecimientoVisitantes obtenerDetalleEstablecimientoVisitante(UUID id) {
-        Establecimiento establecimiento = this.establecimientoRepository.obtenerEstablecimientoActivoById(id)
+        Establecimiento establecimiento = this.establecimientoRepository.obtenerEstablecimientoVigenteById(id)
                 .orElseThrow(() -> new EntityNotFoundException("No se encuentra el establecimiento indicado"));
         return mapearADetalleVisitante(establecimiento);
     }

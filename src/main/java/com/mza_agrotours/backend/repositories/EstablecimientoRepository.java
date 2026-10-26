@@ -1,8 +1,8 @@
 package com.mza_agrotours.backend.repositories;
 
+import com.mza_agrotours.backend.dtos.PanelSistema.EstablecimientoAdminDto;
 import com.mza_agrotours.backend.dtos.establecimiento.DTOFiltroCultivoEstablecimiento;
 import com.mza_agrotours.backend.dtos.establecimiento.DTOFiltroDepartamentoEstablecimiento;
-import com.mza_agrotours.backend.dtos.PanelSistema.EstablecimientoAdminDto;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
 import org.springframework.data.domain.Page;
@@ -34,9 +34,8 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
 
     @Query("SELECT e FROM Establecimiento e " +
             "WHERE e.id = :establecimientoId " +
-            "AND e.fechaHoraBaja IS NULL " +
-            "AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO")
-    Optional<Establecimiento> obtenerEstablecimientoActivoById(@Param("establecimientoId") UUID establecimientoId);
+            "AND e.fechaHoraBaja IS NULL")
+    Optional<Establecimiento> obtenerEstablecimientoVigenteById(@Param("establecimientoId") UUID establecimientoId);
 
     List<Establecimiento> findByFechaHoraBajaIsNull();
 
