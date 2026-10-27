@@ -66,8 +66,10 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
                                                   @Param("precioHasta") Double precioHasta,
                                                   Pageable pageable);
 
-    // Landing: actividades publicadas de establecimientos que admiten reservas (ver Establecimiento.admiteReservas)
+    // Landing: actividades publicadas de establecimientos que admiten reservas (ver Establecimiento.admiteReservas),
+    // ordenadas por promedio bayesiano: cada actividad suma :reseniasPrevias reseñas ficticias de :promedioGlobal
     @Query("SELECT a FROM Actividad a " +
+            "LEFT JOIN a.calificaciones cal " +
             "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
             "AND a.fechaHoraBaja IS NULL " +
             "AND a.establecimiento.fechaHoraBaja IS NULL " +
@@ -76,8 +78,13 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
             "WHERE c.establecimiento = a.establecimiento " +
             "AND c.fechaHoraBaja IS NULL " +
             "AND c.fechaHoraExpiracionToken > :ahora) " +
-            "ORDER BY a.calificacionPromedio DESC NULLS LAST, a.nombre, a.id")
-    List<Actividad> obtenerActividadesDestacadas(@Param("ahora") LocalDateTime ahora, Pageable pageable);
+            "GROUP BY a " +
+            "ORDER BY (:reseniasPrevias * :promedioGlobal + COALESCE(SUM(cal.puntaje), 0)) / (:reseniasPrevias + COUNT(cal)) DESC, " +
+            "a.nombre, a.id")
+    List<Actividad> obtenerActividadesDestacadas(@Param("ahora") LocalDateTime ahora,
+                                                 @Param("promedioGlobal") double promedioGlobal,
+                                                 @Param("reseniasPrevias") double reseniasPrevias,
+                                                 Pageable pageable);
 
     @Query("SELECT MAX(ad.fechaHoraInicio) FROM Actividad a JOIN a.actividadesDias ad WHERE a.id = :actividadId")
     Optional<LocalDateTime> findUltimaFechaByActividadId(@Param("actividadId") UUID actividadId);

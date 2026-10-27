@@ -47,6 +47,9 @@ public interface CalificacionRepository extends BaseEntityRepository<Calificacio
                                                  @Param("orden") String orden,
                                                  Pageable pageable);
 
+    @Query("SELECT AVG(c.puntaje) FROM Calificacion c")
+    Double promedioGlobal();
+
     @Query("SELECT AVG(c.puntaje) FROM Reserva r JOIN r.calificacion c " +
             "WHERE r.actividad.establecimiento.id = :establecimientoId")
     Double promedioPuntajeByEstablecimiento(@Param("establecimientoId") UUID establecimientoId);
