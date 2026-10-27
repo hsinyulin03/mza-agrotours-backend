@@ -1,7 +1,7 @@
 package com.mza_agrotours.backend.mappers;
 
-import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import com.mza_agrotours.backend.dtos.actividad.*;
+import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
 import com.mza_agrotours.backend.entities.ActividadFoto;
 import com.mza_agrotours.backend.entities.actividad.*;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
@@ -81,6 +81,7 @@ public interface ActividadMapper {
     @Mapping(target = "nombreEstablecimiento", source="establecimiento.nombre")
     @Mapping(target = "nombreDepartamento", source="establecimiento.departamento.nombre")
     @Mapping(target = "fotoPortada", ignore = true)
+    @Mapping(target = "cantidadResenias", ignore = true)
     DTOListadoActividadVisitanteResponse actividadToDTOListadoActividadVisitante(Actividad actividad);
 
     //US-ACT-04

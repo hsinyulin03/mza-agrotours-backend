@@ -284,6 +284,7 @@ public class ActividadService {
     private DTOListadoActividadVisitanteResponse mapearListadoVisitante(Actividad actividad) {
         DTOListadoActividadVisitanteResponse dto = actividadMapper.actividadToDTOListadoActividadVisitante(actividad);
         dto.setFotoPortada(archivoService.mapearFoto(actividad.archivoPortada()));
+        dto.setCantidadResenias(actividad.getCalificaciones().size());
         return dto;
     }
 
