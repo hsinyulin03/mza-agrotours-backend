@@ -102,10 +102,13 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
             @Param("departamentoId") UUID departamentoId,
             Pageable pageable
     );
-    // Landing: establecimientos que admiten reservas (ver Establecimiento.admiteReservas)
+    // Landing: establecimientos que admiten reservas (ver Establecimiento.admiteReservas), ordenados por promedio
+    // bayesiano de las reseñas de sus actividades: suman :reseniasPrevias reseñas ficticias de :promedioGlobal
     @Query("""
         SELECT e FROM Establecimiento e
-        JOIN FETCH e.departamento
+        JOIN FETCH e.departamento d
+        LEFT JOIN e.actividades a
+        LEFT JOIN a.calificaciones cal
         WHERE e.fechaHoraBaja IS NULL
         AND e.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO
         AND EXISTS (
@@ -114,9 +117,14 @@ public interface EstablecimientoRepository extends BaseEntityRepository<Establec
             AND c.fechaHoraBaja IS NULL
             AND c.fechaHoraExpiracionToken > :ahora
         )
-        ORDER BY e.fechaHoraAlta DESC, e.id
+        GROUP BY e, d
+        ORDER BY (:reseniasPrevias * :promedioGlobal + COALESCE(SUM(cal.puntaje), 0)) / (:reseniasPrevias + COUNT(cal)) DESC,
+        e.fechaHoraAlta DESC, e.id
     """)
-    List<Establecimiento> obtenerEstablecimientosDestacados(@Param("ahora") LocalDateTime ahora, Pageable pageable);
+    List<Establecimiento> obtenerEstablecimientosDestacados(@Param("ahora") LocalDateTime ahora,
+                                                           @Param("promedioGlobal") double promedioGlobal,
+                                                           @Param("reseniasPrevias") double reseniasPrevias,
+                                                           Pageable pageable);
 
     @Query("""
     SELECT new com.mza_agrotours.backend.dtos.establecimiento.DTOFiltroCultivoEstablecimiento(c.id, c.nombre, COUNT(DISTINCT e))

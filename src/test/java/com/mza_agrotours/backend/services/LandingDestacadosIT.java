@@ -7,6 +7,7 @@ import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
 import com.mza_agrotours.backend.repositories.CalificacionRepository;
+import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.support.AbstractIntegrationTest;
 import com.mza_agrotours.backend.support.FixtureActividad;
@@ -32,6 +33,7 @@ class LandingDestacadosIT extends AbstractIntegrationTest {
     @Autowired private EstablecimientoService establecimientoService;
     @Autowired private ActividadRepository actividadRepository;
     @Autowired private CalificacionRepository calificacionRepository;
+    @Autowired private EstablecimientoRepository establecimientoRepository;
     @Autowired private FixtureEstablecimiento establecimientos;
     @Autowired private FixtureActividad actividades;
 
@@ -94,6 +96,26 @@ class LandingDestacadosIT extends AbstractIntegrationTest {
 
         assertThat(orden).containsExactly(diezDeCinco.getId(), diezDeCuatroYMedio.getId(), unaDeCinco.getId(),
                 veinteDeUno.getId(), cincuentaYUnaDeUno.getId());
+    }
+
+    @Test
+    void dadoPromedioBayesiano_entoncesLosEstablecimientosSumanLasReseniasDeTodasSusActividades() {
+        Establecimiento unaDeCinco = establecimientos.establecimientoQueAdmiteReservas();
+        conResenias(actividades.actividadPublicadaEn(unaDeCinco), 1, 5);
+        Establecimiento diezDeCincoEnDosActividades = establecimientos.establecimientoQueAdmiteReservas();
+        conResenias(actividades.actividadPublicadaEn(diezDeCincoEnDosActividades), 5, 5);
+        conResenias(actividades.actividadPublicadaEn(diezDeCincoEnDosActividades), 5, 5);
+        Establecimiento veinteDeUno = establecimientos.establecimientoQueAdmiteReservas();
+        conResenias(actividades.actividadPublicadaEn(veinteDeUno), 20, 1);
+
+        List<UUID> orden = establecimientoRepository
+                .obtenerEstablecimientosDestacados(LocalDateTime.now(), 3.5, 5, PageRequest.of(0, Integer.MAX_VALUE))
+                .stream()
+                .map(Establecimiento::getId)
+                .filter(List.of(unaDeCinco.getId(), diezDeCincoEnDosActividades.getId(), veinteDeUno.getId())::contains)
+                .toList();
+
+        assertThat(orden).containsExactly(diezDeCincoEnDosActividades.getId(), unaDeCinco.getId(), veinteDeUno.getId());
     }
 
     private Actividad actividadQueAdmiteReservas() {
