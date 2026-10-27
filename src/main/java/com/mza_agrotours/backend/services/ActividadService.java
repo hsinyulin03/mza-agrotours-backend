@@ -25,6 +25,7 @@ import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadDiaRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
 import com.mza_agrotours.backend.services.outbox.OutboxService;
+import com.mza_agrotours.backend.utils.CuartilesHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -35,12 +36,15 @@ import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Period;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 
 @Service
@@ -382,17 +386,65 @@ public class ActividadService {
                 .toList();
 
     }
-    @Transactional(readOnly = true)
-    public List<DTOFiltro> obtenerFiltroDepartamentos(String busqueda,  List<UUID> cultivosIds) {
-        String texto = (busqueda == null || busqueda.isBlank()) ? null : busqueda.trim();
-        List<UUID> cultivos = (cultivosIds == null || cultivosIds.isEmpty()) ? null : cultivosIds;
-        return actividadRepository.obtenerFiltroDepartamentos(texto, cultivos);
-    }
 
     @Transactional(readOnly = true)
-    public List<DTOFiltro> obtenerFiltroCultivos(String busqueda, UUID departamentoId) {
+    public FiltroActividadResponse obtenerFiltrosActividad(FiltroActividadRequest filtro) {
+        String busqueda = filtro.busqueda();
         String texto = (busqueda == null || busqueda.isBlank()) ? null : busqueda.trim();
-        return actividadRepository.obtenerFiltroCultivos(texto, departamentoId);
+        List<UUID> cultivosIds = filtro.cultivosIds();
+        List<UUID> cultivos = (cultivosIds == null || cultivosIds.isEmpty()) ? null : cultivosIds;
+
+        // Cada faceta aplica todos los filtros menos el suyo
+        List<DTOFiltro> departamentos = actividadRepository.obtenerFiltroDepartamentos(
+                texto, cultivos, filtro.calificacionMin(), filtro.precioDesde(), filtro.precioHasta());
+        List<DTOFiltro> cultivosFiltro = actividadRepository.obtenerFiltroCultivos(
+                texto, filtro.departamentoId(), filtro.calificacionMin(), filtro.precioDesde(), filtro.precioHasta());
+
+        List<BigDecimal> preciosTodos = actividadRepository.obtenerPreciosBase(null, null, null, null);
+        List<BigDecimal> preciosFiltrados = actividadRepository.obtenerPreciosBase(
+                texto, cultivos, filtro.departamentoId(), filtro.calificacionMin());
+        List<FiltroRangoPrecio> precios = armarFiltroPrecios(preciosTodos, preciosFiltrados);
+
+        List<Float> calificacionesFiltradas = actividadRepository.obtenerCalificacionesPromedio(
+                texto, cultivos, filtro.departamentoId(), filtro.precioDesde(), filtro.precioHasta());
+        List<DTOFiltro> calificaciones = armarFiltroCalificaciones(calificacionesFiltradas);
+
+        return new FiltroActividadResponse(departamentos, cultivosFiltro, precios, calificaciones);
+    }
+
+    private List<FiltroRangoPrecio> armarFiltroPrecios(List<BigDecimal> preciosTodos, List<BigDecimal> preciosFiltrados) {
+        if (preciosTodos.isEmpty()) {
+            return List.of();
+        }
+        BigDecimal minimo = Collections.min(preciosTodos);
+
+        // Los cortes iguales al mínimo dejarían un primer rango vacío
+        List<BigDecimal> cortes = CuartilesHelper.cuartiles(preciosTodos).stream()
+                .map(corte -> corte.setScale(0, RoundingMode.HALF_UP))
+                .filter(corte -> corte.compareTo(minimo) > 0)
+                .distinct()
+                .toList();
+
+        List<FiltroRangoPrecio> rangos = new ArrayList<>();
+        for (int i = 0; i <= cortes.size(); i++) {
+            BigDecimal desde = i == 0 ? null : cortes.get(i - 1);
+            BigDecimal hasta = i == cortes.size() ? null : cortes.get(i);
+            long cantidad = preciosFiltrados.stream()
+                    .filter(precio -> desde == null || precio.compareTo(desde) >= 0)
+                    .filter(precio -> hasta == null || precio.compareTo(hasta) < 0)
+                    .count();
+            rangos.add(new FiltroRangoPrecio(desde, hasta, cantidad));
+        }
+        return rangos;
+    }
+
+    private List<DTOFiltro> armarFiltroCalificaciones(List<Float> calificaciones) {
+        return IntStream.iterate(4, minimo -> minimo >= 1, minimo -> minimo - 1)
+                .mapToObj(minimo -> new DTOFiltro(
+                        String.valueOf(minimo),
+                        minimo + " o más",
+                        calificaciones.stream().filter(c -> c >= minimo).count()))
+                .toList();
     }
 
     @Transactional
