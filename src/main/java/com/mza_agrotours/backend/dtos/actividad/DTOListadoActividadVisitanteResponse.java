@@ -18,7 +18,6 @@ public class DTOListadoActividadVisitanteResponse {
         private DTOFotosResponse fotoPortada;
         private String nombreEstablecimiento;
         private String nombreDepartamento;
-
-        //TODO: Valoraciones,  cant de reseñas
-
+        private Integer cantidadResenias;
+        private Float calificacionPromedio;
 }

@@ -1,9 +1,9 @@
 package com.mza_agrotours.backend.mappers;
 
 import com.mza_agrotours.backend.dtos.establecimiento.*;
+import com.mza_agrotours.backend.entities.Departamento;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
-import com.mza_agrotours.backend.entities.Departamento;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -33,7 +33,8 @@ public interface EstablecimientoMapper {
 
     @Mapping(target = "cultivos", ignore = true)
     @Mapping(target = "precioDesde", ignore = true)
-    @Mapping(target = "puntuacion", ignore = true)
+    @Mapping(target = "calificacionPromedio", ignore = true)
+    @Mapping(target = "cantidadResenias", ignore = true)
     @Mapping(target = "fotoPortada", ignore = true)
     DTODetalleEstablecimientoActividad actividadToDtoDetalle(Actividad actividad);
 }

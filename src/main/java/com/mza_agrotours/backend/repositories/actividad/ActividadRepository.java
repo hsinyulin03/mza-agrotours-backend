@@ -15,6 +15,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -45,17 +46,24 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
     );
 
     @Query("SELECT a FROM Actividad a " +
+            "LEFT JOIN a.actividadRangoEtarios tb ON tb.esTarifaBase = true AND tb.fechaHoraBaja IS NULL " +
             "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
             "AND a.fechaHoraBaja IS NULL " +
             "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO " +
             "AND (CAST(:busqueda AS string) IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) " +
             "AND (:departamentoId IS NULL OR a.establecimiento.departamento.id = :departamentoId) " +
+            "AND (:precioDesde IS NULL OR tb.precio >= :precioDesde) " +
+            "AND (:precioHasta IS NULL OR tb.precio < :precioHasta) " +
+            "AND (:calificacionMin IS NULL OR a.calificacionPromedio >= :calificacionMin) " +
             "AND (:cultivosIds IS NULL OR EXISTS (" +
             "SELECT 1 FROM a.cultivos c WHERE c.id IN :cultivosIds" +
             "))")
     Page<Actividad> explorarActividadesPublicadas(@Param("busqueda") String busqueda,
                                                   @Param("cultivosIds") List <UUID> cultivosIds,
                                                   @Param("departamentoId") UUID departamentoId,
+                                                  @Param("calificacionMin") Integer calificacionMin,
+                                                  @Param("precioDesde") Double precioDesde,
+                                                  @Param("precioHasta") Double precioHasta,
                                                   Pageable pageable);
 
     // Landing: actividades publicadas de establecimientos que admiten reservas (ver Establecimiento.admiteReservas)
@@ -101,29 +109,76 @@ public interface ActividadRepository extends BaseEntityRepository<Actividad, UUI
     @Query("SELECT NEW com.mza_agrotours.backend.dtos.actividad.DTOFiltro(d.id, d.nombre, " +
             "SUM(CASE WHEN (CAST(:busqueda AS string) IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) " +
             "AND (:cultivosIds IS NULL OR EXISTS (SELECT 1 FROM a.cultivos cf WHERE cf.id IN :cultivosIds)) " +
+            "AND (:calificacionMin IS NULL OR a.calificacionPromedio >= :calificacionMin) " +
+            "AND (:precioDesde IS NULL OR tb.precio >= :precioDesde) " +
+            "AND (:precioHasta IS NULL OR tb.precio < :precioHasta) " +
             "THEN 1 ELSE 0 END)) " +
             "FROM Actividad a JOIN a.establecimiento.departamento d " +
+            "LEFT JOIN a.actividadRangoEtarios tb ON tb.esTarifaBase = true AND tb.fechaHoraBaja IS NULL " +
             "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
             "AND a.fechaHoraBaja IS NULL " +
             "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO " +
             "GROUP BY d.id, d.nombre " +
             "ORDER BY d.nombre ASC")
     List<DTOFiltro> obtenerFiltroDepartamentos(@Param("busqueda") String busqueda,
-                                               @Param("cultivosIds") List<UUID> cultivosIds);
+                                               @Param("cultivosIds") List<UUID> cultivosIds,
+                                               @Param("calificacionMin") Integer calificacionMin,
+                                               @Param("precioDesde") Double precioDesde,
+                                               @Param("precioHasta") Double precioHasta);
 
     // Filtro de Cultivos
     @Query("SELECT NEW com.mza_agrotours.backend.dtos.actividad.DTOFiltro(c.id, c.nombre, " +
             "SUM(CASE WHEN (CAST(:busqueda AS string) IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) " +
             "AND (:departamentoId IS NULL OR a.establecimiento.departamento.id = :departamentoId) " +
+            "AND (:calificacionMin IS NULL OR a.calificacionPromedio >= :calificacionMin) " +
+            "AND (:precioDesde IS NULL OR tb.precio >= :precioDesde) " +
+            "AND (:precioHasta IS NULL OR tb.precio < :precioHasta) " +
             "THEN 1 ELSE 0 END)) " +
             "FROM Actividad a JOIN a.cultivos c " +
+            "LEFT JOIN a.actividadRangoEtarios tb ON tb.esTarifaBase = true AND tb.fechaHoraBaja IS NULL " +
             "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
             "AND a.fechaHoraBaja IS NULL " +
             "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO " +
             "GROUP BY c.id, c.nombre " +
             "ORDER BY c.nombre ASC")
     List<DTOFiltro> obtenerFiltroCultivos(@Param("busqueda") String busqueda,
-                                          @Param("departamentoId") UUID departamentoId);
+                                          @Param("departamentoId") UUID departamentoId,
+                                          @Param("calificacionMin") Integer calificacionMin,
+                                          @Param("precioDesde") Double precioDesde,
+                                          @Param("precioHasta") Double precioHasta);
+
+    // Filtro de Precios: tarifas base de las actividades que pasan los demás filtros
+    @Query("SELECT tb.precio FROM Actividad a " +
+            "JOIN a.actividadRangoEtarios tb ON tb.esTarifaBase = true AND tb.fechaHoraBaja IS NULL " +
+            "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
+            "AND a.fechaHoraBaja IS NULL " +
+            "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO " +
+            "AND (CAST(:busqueda AS string) IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) " +
+            "AND (:departamentoId IS NULL OR a.establecimiento.departamento.id = :departamentoId) " +
+            "AND (:calificacionMin IS NULL OR a.calificacionPromedio >= :calificacionMin) " +
+            "AND (:cultivosIds IS NULL OR EXISTS (SELECT 1 FROM a.cultivos cf WHERE cf.id IN :cultivosIds))")
+    List<BigDecimal> obtenerPreciosBase(@Param("busqueda") String busqueda,
+                                        @Param("cultivosIds") List<UUID> cultivosIds,
+                                        @Param("departamentoId") UUID departamentoId,
+                                        @Param("calificacionMin") Integer calificacionMin);
+
+    // Filtro de Calificaciones: promedios de las actividades que pasan los demás filtros
+    @Query("SELECT a.calificacionPromedio FROM Actividad a " +
+            "LEFT JOIN a.actividadRangoEtarios tb ON tb.esTarifaBase = true AND tb.fechaHoraBaja IS NULL " +
+            "WHERE a.estado.nombre = com.mza_agrotours.backend.enums.EstadoActividadNombre.PUBLICADO " +
+            "AND a.fechaHoraBaja IS NULL " +
+            "AND a.establecimiento.estadoActual.estadoEstablecimiento.nombre = com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre.ACTIVO " +
+            "AND a.calificacionPromedio IS NOT NULL " +
+            "AND (CAST(:busqueda AS string) IS NULL OR LOWER(a.nombre) LIKE LOWER(CONCAT('%', CAST(:busqueda AS string), '%'))) " +
+            "AND (:departamentoId IS NULL OR a.establecimiento.departamento.id = :departamentoId) " +
+            "AND (:precioDesde IS NULL OR tb.precio >= :precioDesde) " +
+            "AND (:precioHasta IS NULL OR tb.precio < :precioHasta) " +
+            "AND (:cultivosIds IS NULL OR EXISTS (SELECT 1 FROM a.cultivos cf WHERE cf.id IN :cultivosIds))")
+    List<Float> obtenerCalificacionesPromedio(@Param("busqueda") String busqueda,
+                                              @Param("cultivosIds") List<UUID> cultivosIds,
+                                              @Param("departamentoId") UUID departamentoId,
+                                              @Param("precioDesde") Double precioDesde,
+                                              @Param("precioHasta") Double precioHasta);
 
     boolean existsByIdAndEstablecimientoId(UUID idActividad, UUID establecimientoId);
 

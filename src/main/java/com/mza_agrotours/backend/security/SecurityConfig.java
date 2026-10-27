@@ -93,6 +93,7 @@ public class SecurityConfig {
                         .requestMatchers("/recetas/**").permitAll()
 
                         .requestMatchers("/admin/faq/**").hasAuthority(PermisoCodigo.GESTIONAR_FAQ.name())
+                        .requestMatchers("/faq/**").permitAll()
 
                         .requestMatchers(HttpMethod.GET,"/admin/incidencias/**").hasAuthority(PermisoCodigo.LEER_INCIDENCIAS.name())
                         .requestMatchers("/admin/incidencias/**").hasAuthority(PermisoCodigo.GESTIONAR_INCIDENCIAS.name())

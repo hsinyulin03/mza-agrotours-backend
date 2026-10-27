@@ -407,9 +407,8 @@ public class EstablecimientoService  {
         dto.setPrecioDesde(precioBase);
         dto.setFotoPortada(mapearFoto(actividad.archivoPortada()));
 
-        // TODO: implementar cálculo real del promedio de Calificacion.puntuacion
-        // dto.setPuntuacion(calcularCalificacionPromedio(actividad));
-
+        dto.setCalificacionPromedio(actividad.getCalificacionPromedio());
+        dto.setCantidadResenias(actividad.getCalificaciones().size());
         return dto;
     }
 
