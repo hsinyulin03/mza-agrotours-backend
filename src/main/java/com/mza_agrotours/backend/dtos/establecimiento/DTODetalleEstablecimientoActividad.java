@@ -17,7 +17,8 @@ public class DTODetalleEstablecimientoActividad {
 
     private BigDecimal precioDesde;
 
-    private Double puntuacion;
+    private Float calificacionPromedio;
+    private Integer cantidadResenias;
 
     private DTOFotosResponse fotoPortada;
 }
