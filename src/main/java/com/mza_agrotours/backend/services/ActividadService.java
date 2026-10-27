@@ -30,6 +30,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -233,11 +235,34 @@ public class ActividadService {
 
     //US-ACT-12: Listado de actividades de la plataforma - vista del visitante
     @Transactional(readOnly = true)
-    public Page<DTOListadoActividadVisitanteResponse> explorarActividades(String busqueda, List<UUID> cultivoIds, UUID departamentoId, Pageable pageable) {
-
+    public Page<DTOListadoActividadVisitanteResponse> explorarActividades(FiltroActividadRequest filtro, Pageable pageable) {
+        String busqueda = filtro.busqueda();
         String texto = (busqueda == null || busqueda.isBlank()) ? null : busqueda.trim();
+
+        List<Sort.Order> orders = new ArrayList<>();
+        if (filtro.ascByCalificacion() != null) {
+            Sort.Direction direction = filtro.ascByCalificacion() ? Sort.Direction.ASC : Sort.Direction.DESC;
+            orders.add(new Sort.Order(direction, "calificacionPromedio").nullsLast());
+        }
+        orders.add(Sort.Order.asc("id"));
+
+        Sort sort = Sort.by(orders);
+        if (filtro.ascByPrecio() != null) {
+            Sort.Direction direction = filtro.ascByPrecio() ? Sort.Direction.ASC : Sort.Direction.DESC;
+            sort = JpaSort.unsafe(direction, "tb.precio").and(sort);
+        }
+
+        Pageable paginado = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+
+        List<UUID> cultivoIds = filtro.cultivosIds();
         List<UUID> cultivosId = (cultivoIds == null || cultivoIds.isEmpty()) ? null : cultivoIds;
-        Page<Actividad> actividadesPage = actividadRepository.explorarActividadesPublicadas(texto, cultivosId, departamentoId, pageable);
+        Page<Actividad> actividadesPage = actividadRepository.explorarActividadesPublicadas(texto,
+                        cultivosId,
+                        filtro.departamentoId(),
+                        filtro.calificacionMin(),
+                        filtro.precioDesde(),
+                        filtro.precioHasta(),
+                        paginado);
 
         return actividadesPage.map(this::mapearListadoVisitante);
 

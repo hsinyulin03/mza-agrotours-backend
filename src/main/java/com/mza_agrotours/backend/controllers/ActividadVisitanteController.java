@@ -2,10 +2,7 @@ package com.mza_agrotours.backend.controllers;
 
 import com.mza_agrotours.backend.dtos.ApiResponse;
 import com.mza_agrotours.backend.dtos.UsuarioAuthDetails;
-import com.mza_agrotours.backend.dtos.actividad.DTOActividadDetalleResponse;
-import com.mza_agrotours.backend.dtos.actividad.DTOFiltro;
-import com.mza_agrotours.backend.dtos.actividad.DTOListadoActividadVisitanteResponse;
-import com.mza_agrotours.backend.dtos.actividad.InfoParaReservarDTO;
+import com.mza_agrotours.backend.dtos.actividad.*;
 import com.mza_agrotours.backend.dtos.calificacion.ReseniaCardDTO;
 import com.mza_agrotours.backend.services.ActividadService;
 import com.mza_agrotours.backend.services.CalificacionService;
@@ -67,11 +64,9 @@ public class ActividadVisitanteController {
     //US-ACT-12: Listado de actividades de la plataforma - vista del visitante
     @GetMapping("/explorar")
     public ResponseEntity<ApiResponse<Page<DTOListadoActividadVisitanteResponse>>> explorarActividades(
-                                                 @RequestParam(required = false) String busqueda,
-                                                 @RequestParam(required = false) List<UUID> cultivosIds,
-                                                 @RequestParam(required = false) UUID departamentoId,
+                                                 FiltroActividadRequest filtro,
                                                  @PageableDefault(page = 0, size = 10, sort = {"nombre", "id"}, direction = Sort.Direction.ASC) Pageable pageable) throws Exception {
-        Page<DTOListadoActividadVisitanteResponse> listado = servicio.explorarActividades(busqueda, cultivosIds, departamentoId, pageable);
+        Page<DTOListadoActividadVisitanteResponse> listado = servicio.explorarActividades(filtro, pageable);
         return ResponseEntity.ok(ApiResponse.ok(listado));
     }
     //Landing: actividades destacadas
