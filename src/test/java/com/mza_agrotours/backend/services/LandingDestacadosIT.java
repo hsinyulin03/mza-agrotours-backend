@@ -2,15 +2,19 @@ package com.mza_agrotours.backend.services;
 
 import com.mza_agrotours.backend.dtos.actividad.DTOListadoActividadVisitanteResponse;
 import com.mza_agrotours.backend.dtos.establecimiento.DTOCatalogoEstablecimientoVisitante;
+import com.mza_agrotours.backend.entities.Calificacion;
 import com.mza_agrotours.backend.entities.actividad.Actividad;
 import com.mza_agrotours.backend.entities.establecimiento.Establecimiento;
 import com.mza_agrotours.backend.enums.EstadoEstablecimientoNombre;
+import com.mza_agrotours.backend.repositories.CalificacionRepository;
+import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.support.AbstractIntegrationTest;
 import com.mza_agrotours.backend.support.FixtureActividad;
 import com.mza_agrotours.backend.support.FixtureEstablecimiento;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -28,6 +32,8 @@ class LandingDestacadosIT extends AbstractIntegrationTest {
     @Autowired private ActividadService actividadService;
     @Autowired private EstablecimientoService establecimientoService;
     @Autowired private ActividadRepository actividadRepository;
+    @Autowired private CalificacionRepository calificacionRepository;
+    @Autowired private EstablecimientoRepository establecimientoRepository;
     @Autowired private FixtureEstablecimiento establecimientos;
     @Autowired private FixtureActividad actividades;
 
@@ -72,9 +78,61 @@ class LandingDestacadosIT extends AbstractIntegrationTest {
         assertThat(actividadService.obtenerActividadesDestacadas()).hasSize(6);
     }
 
+    @Test
+    void dadoPromedioBayesiano_entoncesLaCantidadDeReseniasPesaComoConfianzaYNoComoVolumen() {
+        Actividad unaDeCinco = conResenias(actividadQueAdmiteReservas(), 1, 5);
+        Actividad diezDeCuatroYMedio = conResenias(conResenias(actividadQueAdmiteReservas(), 5, 5), 5, 4);
+        Actividad veinteDeUno = conResenias(actividadQueAdmiteReservas(), 20, 1);
+        Actividad diezDeCinco = conResenias(actividadQueAdmiteReservas(), 10, 5);
+        Actividad cincuentaYUnaDeUno = conResenias(actividadQueAdmiteReservas(), 51, 1);
+
+        List<UUID> orden = actividadRepository
+                .obtenerActividadesDestacadas(LocalDateTime.now(), 3.5, 5, PageRequest.of(0, Integer.MAX_VALUE))
+                .stream()
+                .map(Actividad::getId)
+                .filter(List.of(unaDeCinco.getId(), diezDeCuatroYMedio.getId(), veinteDeUno.getId(),
+                        diezDeCinco.getId(), cincuentaYUnaDeUno.getId())::contains)
+                .toList();
+
+        assertThat(orden).containsExactly(diezDeCinco.getId(), diezDeCuatroYMedio.getId(), unaDeCinco.getId(),
+                veinteDeUno.getId(), cincuentaYUnaDeUno.getId());
+    }
+
+    @Test
+    void dadoPromedioBayesiano_entoncesLosEstablecimientosSumanLasReseniasDeTodasSusActividades() {
+        Establecimiento unaDeCinco = establecimientos.establecimientoQueAdmiteReservas();
+        conResenias(actividades.actividadPublicadaEn(unaDeCinco), 1, 5);
+        Establecimiento diezDeCincoEnDosActividades = establecimientos.establecimientoQueAdmiteReservas();
+        conResenias(actividades.actividadPublicadaEn(diezDeCincoEnDosActividades), 5, 5);
+        conResenias(actividades.actividadPublicadaEn(diezDeCincoEnDosActividades), 5, 5);
+        Establecimiento veinteDeUno = establecimientos.establecimientoQueAdmiteReservas();
+        conResenias(actividades.actividadPublicadaEn(veinteDeUno), 20, 1);
+
+        List<UUID> orden = establecimientoRepository
+                .obtenerEstablecimientosDestacados(LocalDateTime.now(), 3.5, 5, PageRequest.of(0, Integer.MAX_VALUE))
+                .stream()
+                .map(Establecimiento::getId)
+                .filter(List.of(unaDeCinco.getId(), diezDeCincoEnDosActividades.getId(), veinteDeUno.getId())::contains)
+                .toList();
+
+        assertThat(orden).containsExactly(diezDeCincoEnDosActividades.getId(), unaDeCinco.getId(), veinteDeUno.getId());
+    }
+
+    private Actividad actividadQueAdmiteReservas() {
+        return actividades.actividadPublicadaEn(establecimientos.establecimientoQueAdmiteReservas());
+    }
+
     private Actividad conCalificacionMaxima(Actividad actividad) {
         // Las destacadas se ordenan por calificación: así no quedan afuera por otros datos de la base
-        actividad.setCalificacionPromedio(5f);
+        return conResenias(actividad, 50, 5);
+    }
+
+    private Actividad conResenias(Actividad actividad, int cantidad, int puntaje) {
+        for (int i = 0; i < cantidad; i++) {
+            Calificacion calificacion = new Calificacion(puntaje, null, LocalDateTime.now());
+            actividad.getCalificaciones().add(calificacion);
+            calificacionRepository.save(calificacion);
+        }
         return actividadRepository.save(actividad);
     }
 

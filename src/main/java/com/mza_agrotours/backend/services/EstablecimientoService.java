@@ -45,9 +45,13 @@ import java.util.*;
 @Service
 public class EstablecimientoService  {
     private static final int CANTIDAD_DESTACADOS = 6;
+    private static final double RESENIAS_PREVIAS_DESTACADOS = 5;
 
     @Autowired
     private EstablecimientoRepository establecimientoRepository;
+
+    @Autowired
+    private CalificacionRepository calificacionRepository;
 
     @Autowired
     private EstadoEstablecimientoRepository estadoEstablecimientoRepository;
@@ -212,10 +216,14 @@ public class EstablecimientoService  {
         return establecimientosPage.map(this::mapearACatalogoVisitante);
     }
 
-    // Landing: establecimientos destacados. Por ahora, los que admiten reservas
+    // Landing: establecimientos destacados. Los que admiten reservas, por promedio bayesiano
     public List<DTOCatalogoEstablecimientoVisitante> obtenerEstablecimientosDestacados() {
+        Double promedioGlobal = calificacionRepository.promedioGlobal();
         return establecimientoRepository
-                .obtenerEstablecimientosDestacados(LocalDateTime.now(), PageRequest.of(0, CANTIDAD_DESTACADOS))
+                .obtenerEstablecimientosDestacados(LocalDateTime.now(),
+                        promedioGlobal == null ? 0 : promedioGlobal,
+                        RESENIAS_PREVIAS_DESTACADOS,
+                        PageRequest.of(0, CANTIDAD_DESTACADOS))
                 .stream()
                 .map(this::mapearACatalogoVisitante)
                 .toList();

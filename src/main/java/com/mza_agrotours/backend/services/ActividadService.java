@@ -16,6 +16,7 @@ import com.mza_agrotours.backend.enums.outbox.TipoOperacion;
 import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.exceptions.actividad.*;
 import com.mza_agrotours.backend.mappers.ActividadMapper;
+import com.mza_agrotours.backend.repositories.CalificacionRepository;
 import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
 import com.mza_agrotours.backend.repositories.ReservaRepository;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
@@ -70,9 +71,13 @@ public class ActividadService {
             EstadoActividadDiaNombre.REPROGRAMADA);
 
     private static final int CANTIDAD_DESTACADOS = 6;
+    private static final double RESENIAS_PREVIAS_DESTACADAS = 5;
 
     @Autowired
     private ActividadRepository actividadRepository;
+
+    @Autowired
+    private CalificacionRepository calificacionRepository;
 
     @Autowired
     private ActividadValidaciones actividadValidaciones;
@@ -272,10 +277,14 @@ public class ActividadService {
 
     }
 
-    // Landing: actividades destacadas. Por ahora, las publicadas de establecimientos que admiten reservas
+    // Landing: actividades destacadas. Las publicadas de establecimientos que admiten reservas, por promedio bayesiano
     @Transactional(readOnly = true)
     public List<DTOListadoActividadVisitanteResponse> obtenerActividadesDestacadas() {
-        return actividadRepository.obtenerActividadesDestacadas(LocalDateTime.now(), PageRequest.of(0, CANTIDAD_DESTACADOS))
+        Double promedioGlobal = calificacionRepository.promedioGlobal();
+        return actividadRepository.obtenerActividadesDestacadas(LocalDateTime.now(),
+                        promedioGlobal == null ? 0 : promedioGlobal,
+                        RESENIAS_PREVIAS_DESTACADAS,
+                        PageRequest.of(0, CANTIDAD_DESTACADOS))
                 .stream()
                 .map(this::mapearListadoVisitante)
                 .toList();
