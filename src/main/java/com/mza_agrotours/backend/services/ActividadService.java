@@ -60,9 +60,6 @@ public class ActividadService {
             EstadoReservaNombre.CANCELADA_SIN_REEMBOLSO,
             EstadoReservaNombre.FINALIZADA);
 
-    //TODO: Debería buscarlo en los parámetros globales
-    private static final int VENTANA_MAXIMA_DIAS = 120;
-
     private static final List<EstadoActividadDiaNombre> ESTADOS_ACTIVIDAD_DIA_OCUPADO = List.of(
             EstadoActividadDiaNombre.ACTIVA,
             EstadoActividadDiaNombre.REPROGRAMADA);
@@ -618,7 +615,7 @@ public class ActividadService {
         validarHorario(horaInicio, actividadReprogramarRequest.getHoraFinReprogramada());
 
         LocalDate fechaHoy = LocalDate.now();
-        validarFechaEnVentana(fechaHoy.plusDays(120), fechaHoy);
+        validarFechaEnVentana(actividadReprogramarRequest.getFechaHoraInicioReprogramada().toLocalDate(), fechaHoy);
 
         LocalDateTime fechaHoraInicioAnterior = dia.getFechaHoraInicio();
         if (actividadReprogramarRequest.getFechaHoraInicioReprogramada()
@@ -631,7 +628,7 @@ public class ActividadService {
         if (!reservasPagadas.isEmpty()) {
             Reserva reservaPagadaMasAntigua = reservasPagadas.get(0);
             if (!actividadReprogramarRequest.getFechaHoraInicioReprogramada()
-                    .isBefore(reservaPagadaMasAntigua.getPago().getFechaHoraPago().plusDays(120))) {
+                    .isBefore(reservaPagadaMasAntigua.getPago().getFechaHoraPago().plusDays(this.obtenerDiasMaxCrearActividad()))) {
                 throw new AppException(ActividadError.DIA_NO_REPROGRAMABLE);
             }
         }
@@ -750,8 +747,10 @@ public class ActividadService {
         LocalDate hoy = LocalDate.now();
 
         DTOConfiguracionDiasResponse dto = new DTOConfiguracionDiasResponse();
-        dto.setFechaMaxima(hoy.plusDays(VENTANA_MAXIMA_DIAS));
-        dto.setVentanaMaximaDias(VENTANA_MAXIMA_DIAS);
+
+        Integer diasMaxCrearActividad = this.obtenerDiasMaxCrearActividad();
+        dto.setFechaMaxima(hoy.plusDays(diasMaxCrearActividad));
+        dto.setVentanaMaximaDias(diasMaxCrearActividad);
         List<RangoEtarioReservaDTO> tarifas = actividad.getActividadRangoEtarios().stream()
                 .filter(are -> are.getFechaHoraBaja() == null)
                 .map(actividadMapper::actividadRangoEtarioToDTO)
@@ -843,7 +842,7 @@ public class ActividadService {
             throw new AppException(ActividadError.CALENDARIO_ANIO_INVALIDO, "El año no puede ser menor al año actual (" + anioActual + ")", null);
         }
 
-        LocalDate limiteVentana = LocalDate.now().plusDays(VENTANA_MAXIMA_DIAS);
+        LocalDate limiteVentana = LocalDate.now().plusDays(this.obtenerDiasMaxCrearActividad());
         int anioMaximoPermitido = actividadRepository.findUltimaFechaByActividadId(idActividad)
                 .map(ultima -> Math.max(ultima.getYear(), limiteVentana.getYear()))
                 .orElse(limiteVentana.getYear());
@@ -948,10 +947,12 @@ public class ActividadService {
         if (fecha.isBefore(hoy)) {
             throw new AppException(ActividadError.FECHA_ANTERIOR_A_HOY, "La fecha " + fecha + " no puede ser anterior a hoy.", null);
         }
-        LocalDate limite = hoy.plusDays(VENTANA_MAXIMA_DIAS);
+
+        Integer diasMaxCrearActividad = this.obtenerDiasMaxCrearActividad();
+        LocalDate limite = hoy.plusDays(diasMaxCrearActividad);
         if (fecha.isAfter(limite)) {
             throw new AppException(ActividadError.FECHA_FUERA_DE_VENTANA,
-                    "Fuera de ventana: la fecha " + fecha + " supera los " + VENTANA_MAXIMA_DIAS +
+                    "Fuera de ventana: la fecha " + fecha + " supera los " + diasMaxCrearActividad +
                             " días permitidos (máximo " + limite + ").", null);
         }
     }
@@ -1448,6 +1449,9 @@ public class ActividadService {
         return List.of(estado);  // con filtro: solo el estado que selecciona el usuario
     }
 
+    private Integer obtenerDiasMaxCrearActividad() {
+        return parametrosService.getParametros().diasMaxCrearActividad();
+    }
 
 }
 
