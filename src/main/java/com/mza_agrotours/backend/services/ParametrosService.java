@@ -47,6 +47,11 @@ public class ParametrosService {
         instancia.setPorcentajeComision(dto.porcentajeComision());
         instancia.setTtlReserva(dto.ttlReserva());
 
+        // Parametros para el sistema de calificaciones
+        instancia.setCantidadCalificacionesFicticias(dto.cantidadCalifiacionesFicticias());
+        instancia.setPuntajeCalificacionFicticia(dto.puntajeCalificacionFicticia());
+        instancia.setUsarCalificacionGlobalComoPuntaje(dto.usarCalificacionGlobalComoPuntaje());
+
         // Guardamos en la bd y actualizamos la instancia en memoria
         instance = parametrosRepository.save(instancia);
 

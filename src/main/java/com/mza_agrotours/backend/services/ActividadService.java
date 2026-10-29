@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.dtos.actividad.*;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
 import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
+import com.mza_agrotours.backend.dtos.calificacion.CalificacionPromedioParams;
 import com.mza_agrotours.backend.entities.ActividadFoto;
 import com.mza_agrotours.backend.entities.Archivo;
 import com.mza_agrotours.backend.entities.Usuario;
@@ -16,12 +17,8 @@ import com.mza_agrotours.backend.enums.outbox.TipoOperacion;
 import com.mza_agrotours.backend.exceptions.*;
 import com.mza_agrotours.backend.exceptions.actividad.*;
 import com.mza_agrotours.backend.mappers.ActividadMapper;
-import com.mza_agrotours.backend.repositories.CalificacionRepository;
-import com.mza_agrotours.backend.repositories.EstablecimientoRepository;
-import com.mza_agrotours.backend.repositories.ReservaRepository;
+import com.mza_agrotours.backend.repositories.*;
 import com.mza_agrotours.backend.repositories.TipoCultivo.TipoCultivoRepository;
-import com.mza_agrotours.backend.repositories.UsuarioRepository;
-import com.mza_agrotours.backend.repositories.VisitanteRepository;
 import com.mza_agrotours.backend.repositories.actividad.ActividadRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadDiaRepository;
 import com.mza_agrotours.backend.repositories.actividad.EstadoActividadRepository;
@@ -280,10 +277,10 @@ public class ActividadService {
     // Landing: actividades destacadas. Las publicadas de establecimientos que admiten reservas, por promedio bayesiano
     @Transactional(readOnly = true)
     public List<DTOListadoActividadVisitanteResponse> obtenerActividadesDestacadas() {
-        Double promedioGlobal = calificacionRepository.promedioGlobal();
+        CalificacionPromedioParams calificacionPromedioParams = calificacionService.obtenerPuntajeCalificacion();
         return actividadRepository.obtenerActividadesDestacadas(LocalDateTime.now(),
-                        promedioGlobal == null ? 0 : promedioGlobal,
-                        RESENIAS_PREVIAS_DESTACADAS,
+                        calificacionPromedioParams.getPuntajeCalificacionFicticia(),
+                        calificacionPromedioParams.getCantidadCalificacionesFicticias(),
                         PageRequest.of(0, CANTIDAD_DESTACADOS))
                 .stream()
                 .map(this::mapearListadoVisitante)
