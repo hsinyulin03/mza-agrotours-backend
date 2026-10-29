@@ -18,6 +18,8 @@ public class ActividadValidaciones {
 
     @Autowired
     private ActividadRepository actividadRepository;
+    @Autowired
+    private ParametrosService parametrosService;
 
     public List<String> obtenerErroresValidacionActividad(UUID establecimientoId, DTOActividadAlta dto){
 
@@ -68,8 +70,9 @@ public class ActividadValidaciones {
     private List<String> validarFechas(DTOActividadAlta dto) {
         List<String> errores = new ArrayList<>();
 
+        Integer diasMaxCrearActividad = parametrosService.getParametros().diasMaxCrearActividad();
         LocalDate fechaDesdeMin = LocalDate.now();
-        LocalDate fechaHastaMax = fechaDesdeMin.plusDays(120);
+        LocalDate fechaHastaMax = fechaDesdeMin.plusDays(diasMaxCrearActividad);
 
         if (dto.getFechaDesde().isBefore(fechaDesdeMin)) {
             errores.add("La fecha 'desde' debe ser igual o posterior a la fecha actual.");
@@ -80,7 +83,7 @@ public class ActividadValidaciones {
         }
 
         if (fechaHastaMax.isBefore(dto.getFechaHasta())) {
-            errores.add("La fecha 'hasta' no puede superar los 120 días desde la fecha actual");
+            errores.add("La fecha 'hasta' no puede superar los " + diasMaxCrearActividad + " días desde la fecha actual");
         }
         return errores;
     }
