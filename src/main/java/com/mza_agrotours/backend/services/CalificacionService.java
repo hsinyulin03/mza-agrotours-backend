@@ -1,5 +1,6 @@
 package com.mza_agrotours.backend.services;
 
+import com.mza_agrotours.backend.dtos.ParametrosDTO;
 import com.mza_agrotours.backend.dtos.actividad.DTOFiltro;
 import com.mza_agrotours.backend.dtos.calificacion.*;
 import com.mza_agrotours.backend.entities.Calificacion;
@@ -28,11 +29,17 @@ public class CalificacionService {
     private final ReservaRepository reservaRepository;
     private final CalificacionRepository calificacionRepository;
     private final ActividadRepository actividadRepository;
+    private final ParametrosService parametrosService;
 
-    public CalificacionService(ReservaRepository reservaRepository, CalificacionRepository calificacionRepository, ActividadRepository actividadRepository) {
+
+    public CalificacionService(ReservaRepository reservaRepository,
+                               CalificacionRepository calificacionRepository,
+                               ActividadRepository actividadRepository,
+                               ParametrosService parametrosService) {
         this.reservaRepository = reservaRepository;
         this.calificacionRepository = calificacionRepository;
         this.actividadRepository = actividadRepository;
+        this.parametrosService = parametrosService;
     }
 
     @Transactional
@@ -158,6 +165,26 @@ public class CalificacionService {
         filtros.add(new DTOFiltro("DESC", "Más recientes a más antiguas", totalResenias));
         filtros.add(new DTOFiltro("ASC", "Más antiguas a más recientes", totalResenias));
         return filtros;
+    }
+
+    @Transactional(readOnly = true)
+    public CalificacionPromedioParams obtenerPuntajeCalificacion() {
+        ParametrosDTO parametros = parametrosService.getParametros();
+
+        CalificacionPromedioParams calificacionPromedioParams = new CalificacionPromedioParams();
+
+        Integer cantidadCalifiacionesFicticias = parametros.cantidadCalifiacionesFicticias();
+        calificacionPromedioParams.setCantidadCalificacionesFicticias(cantidadCalifiacionesFicticias);
+
+        if (parametros.usarCalificacionGlobalComoPuntaje()) {
+            Double promedioGlobal = calificacionRepository.promedioGlobal();
+            calificacionPromedioParams.setPuntajeCalificacionFicticia(promedioGlobal == null ? 0 : promedioGlobal);
+            return calificacionPromedioParams;
+        }
+
+        Double puntajeCalificacionFicticia = parametros.puntajeCalificacionFicticia();
+        calificacionPromedioParams.setPuntajeCalificacionFicticia(puntajeCalificacionFicticia);
+        return calificacionPromedioParams;
     }
 
 }
