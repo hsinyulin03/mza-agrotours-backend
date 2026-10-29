@@ -3,6 +3,7 @@ package com.mza_agrotours.backend.services;
 import com.mza_agrotours.backend.dtos.CondicionDTO;
 import com.mza_agrotours.backend.dtos.archivo.ArchivoClaimRequest;
 import com.mza_agrotours.backend.dtos.archivo.DTOFotosResponse;
+import com.mza_agrotours.backend.dtos.calificacion.CalificacionPromedioParams;
 import com.mza_agrotours.backend.dtos.chat.ChatInfoEstablecimientoDTO;
 import com.mza_agrotours.backend.dtos.chat.ChatInfoRequest;
 import com.mza_agrotours.backend.dtos.establecimiento.*;
@@ -45,7 +46,6 @@ import java.util.*;
 @Service
 public class EstablecimientoService  {
     private static final int CANTIDAD_DESTACADOS = 6;
-    private static final double RESENIAS_PREVIAS_DESTACADOS = 5;
 
     @Autowired
     private EstablecimientoRepository establecimientoRepository;
@@ -89,7 +89,10 @@ public class EstablecimientoService  {
     @Autowired
     private ChatService chatService;
 
-// ALTA ESTABLECIMIENTO
+    @Autowired
+    private CalificacionService calificacionService;
+
+    // ALTA ESTABLECIMIENTO
     @Transactional
     public DTODatosEstablecimiento altaAuxEstablecimiento(DTOEstablecimientoAlta dto){
         validarCuitDisponible(dto.getCuit());
@@ -218,11 +221,11 @@ public class EstablecimientoService  {
 
     // Landing: establecimientos destacados. Los que admiten reservas, por promedio bayesiano
     public List<DTOCatalogoEstablecimientoVisitante> obtenerEstablecimientosDestacados() {
-        Double promedioGlobal = calificacionRepository.promedioGlobal();
+        CalificacionPromedioParams calificacionPromedioParams = calificacionService.obtenerPuntajeCalificacion();
         return establecimientoRepository
                 .obtenerEstablecimientosDestacados(LocalDateTime.now(),
-                        promedioGlobal == null ? 0 : promedioGlobal,
-                        RESENIAS_PREVIAS_DESTACADOS,
+                        calificacionPromedioParams.getPuntajeCalificacionFicticia(),
+                        calificacionPromedioParams.getCantidadCalificacionesFicticias(),
                         PageRequest.of(0, CANTIDAD_DESTACADOS))
                 .stream()
                 .map(this::mapearACatalogoVisitante)

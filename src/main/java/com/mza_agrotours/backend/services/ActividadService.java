@@ -68,7 +68,6 @@ public class ActividadService {
             EstadoActividadDiaNombre.REPROGRAMADA);
 
     private static final int CANTIDAD_DESTACADOS = 6;
-    private static final double RESENIAS_PREVIAS_DESTACADAS = 5;
 
     @Autowired
     private ActividadRepository actividadRepository;
