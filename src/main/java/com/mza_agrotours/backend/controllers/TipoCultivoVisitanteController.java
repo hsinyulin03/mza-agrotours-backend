@@ -20,6 +20,7 @@ import java.util.UUID;
 public class TipoCultivoVisitanteController {
     @Autowired
     private TipoCultivoService tipoCultivoService;
+
     @GetMapping
     public ResponseEntity<ApiResponse<Page<DTOTipoCultivoVisitante>>> consultarCultivosVisitantes(
             @RequestParam(required = false) Boolean enTemporada,

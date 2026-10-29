@@ -14,5 +14,7 @@ public class DTOActividadResumenCultivo {
     private String nombreDepartamento;
     private BigDecimal precioRegular;
     private DTOFotosResponse fotoPortada;
+    private Float calificacionPromedio;
+    private Integer cantidadResenias;
 
 }
