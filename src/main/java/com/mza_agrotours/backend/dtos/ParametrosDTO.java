@@ -27,7 +27,19 @@ public record ParametrosDTO(
 
         @NotNull
         @Positive
-        Integer diasImpagoReserva // Días que pasan hasta que una reserva que el productor debe pagar pase a impaga y sea pagada por un administrador de sistemas
+        Integer diasImpagoReserva, // Días que pasan hasta que una reserva que el productor debe pagar pase a impaga y sea pagada por un administrador de sistemas
+
+        @NotNull
+        @Positive
+        Integer cantidadCalifiacionesFicticias,
+
+        @NotNull
+        @Positive
+        @Max(5)
+        Double puntajeCalificacionFicticia,
+
+        @NotNull
+        Boolean usarCalificacionGlobalComoPuntaje
 ) {
     public static ParametrosDTO from(Parametros parametros) {
         return new ParametrosDTO(
@@ -35,7 +47,10 @@ public record ParametrosDTO(
                 parametros.getDiasMinReembolso(),
                 parametros.getTtlReserva(),
                 parametros.getPorcentajeComision(),
-                parametros.getDiasImpagoReserva()
+                parametros.getDiasImpagoReserva(),
+                parametros.getCantidadCalificacionesFicticias(),
+                parametros.getPuntajeCalificacionFicticia(),
+                parametros.getUsarCalificacionGlobalComoPuntaje()
         );
     }
 }
