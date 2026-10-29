@@ -584,6 +584,8 @@ public class TipoCultivoService {
         dto.setNombreDepartamento(actividad.getEstablecimiento().getDepartamento().getNombre());
         dto.setPrecioRegular(obtenerPrecioBaseVigente(actividad));
         dto.setFotoPortada(mapearFoto(actividad.archivoPortada()));
+        dto.setCalificacionPromedio(actividad.getCalificacionPromedio());
+        dto.setCantidadResenias(actividad.getCalificaciones().size());
         return dto;
     }
     private BigDecimal obtenerPrecioBaseVigente(Actividad actividad) {
