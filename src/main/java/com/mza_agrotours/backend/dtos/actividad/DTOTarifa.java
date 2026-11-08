@@ -16,7 +16,7 @@ public class DTOTarifa {
     private String nombre;
 
     @NotNull(message = "Este campo es requerido")
-    @DecimalMin(value = "0.1" ,message = "El precio debe ser mayor a 0")
+    @DecimalMin(value = "0" ,message = "El precio no puede ser menor a 0")
     private BigDecimal precio;
 
     @NotNull(message = "Este campo es obligatorio")
