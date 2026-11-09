@@ -267,6 +267,8 @@ public class ReservaService {
         }
 
         reservaRepository.save(nuevaReserva);
+        log.info("Reserva {} iniciada por el visitante {} para el día {} ({} personas, {})", nuevaReserva.getId(),
+                visitante.getId(), actividadDia.getId(), reservaDetalles.size(), pagada ? "pagada" : "pendiente de pago");
 
         // Avisar al visitante: la reserva confirmada o el plazo que tiene para pagarla. A los productores solo la confirmada
         if (pagada) {
@@ -626,6 +628,7 @@ public class ReservaService {
         Reembolso reembolso = cancelarReservaCancelable(reserva, correspondeReembolso(reserva, ahora), ahora);
 
         if (reembolso == null) {
+            log.info("Reserva {} cancelada por el visitante {}, sin reembolso", reserva.getId(), visitante.getId());
             reservaNotificador.notificarVisitante(reserva, TipoNotificacionNombre.RESERVA_CANCELADA_SIN_REEMBOLSO,
                     parametrosService.getInstance().getDiasMinReembolso());
             reservaNotificador.notificarProductores(reserva, PermisoCodigo.GESTIONAR_ACTIVIDAD, TipoNotificacionNombre.RESERVA_CANCELADA_PRODUCTOR,
@@ -634,6 +637,7 @@ public class ReservaService {
         }
 
         String monto = reembolso.getMontoReembolso().toPlainString();
+        log.info("Reserva {} cancelada por el visitante {}, reembolso {} de {}", reserva.getId(), visitante.getId(), reembolso.getId(), monto);
         reservaNotificador.notificarVisitante(reserva, TipoNotificacionNombre.RESERVA_CANCELADA_REEMBOLSO_EN_PROCESO, monto);
         reservaNotificador.notificarProductores(reserva, PermisoCodigo.GESTIONAR_ACTIVIDAD, TipoNotificacionNombre.RESERVA_CANCELADA_REEMBOLSO_PRODUCTOR,
                 reservaNotificador.enlaceReservasEstablecimiento(reserva), reserva.getReservaDetalles().size(), monto);

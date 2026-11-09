@@ -1,6 +1,7 @@
 package com.mza_agrotours.backend.security;
 
 
+import com.google.firebase.auth.AuthErrorCode;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
@@ -11,6 +12,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
@@ -22,6 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Component
 public class FirebaseTokenFilter extends OncePerRequestFilter {
     private final RolService rolService;
@@ -52,6 +55,11 @@ public class FirebaseTokenFilter extends OncePerRequestFilter {
                 SecurityContextHolder.setContext(context);
             } catch (FirebaseAuthException e) {
                 SecurityContextHolder.clearContext();
+                AuthErrorCode codigo = e.getAuthErrorCode();
+                if (codigo == null || codigo == AuthErrorCode.CERTIFICATE_FETCH_FAILED)
+                    log.error("No se pudo validar el token con Firebase Authentication", e);
+                else
+                    log.debug("Token de Firebase rechazado: {}", codigo);
             }
         }
         filterChain.doFilter(request, response);
