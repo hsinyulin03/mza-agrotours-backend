@@ -206,7 +206,7 @@ public interface ReservaRepository extends BaseEntityRepository<Reserva, UUID> {
     long contarReservasDelDia(@Param("actividadDiaId") UUID actividadDiaId,
                               @Param("estados") List<EstadoReservaNombre> estados);
 
-    @Query("SELECT COALESCE(SUM(r.totalReserva), 0) FROM Reserva r " +
+    @Query("SELECT COALESCE(SUM(r.subTotalProductor), 0) FROM Reserva r " +
             "WHERE r.actividadDia.id = :actividadDiaId " +
             "AND r.estadoActual.estadoReserva.nombre IN :estados")
     BigDecimal sumarIngresoDelDia(@Param("actividadDiaId") UUID actividadDiaId,
