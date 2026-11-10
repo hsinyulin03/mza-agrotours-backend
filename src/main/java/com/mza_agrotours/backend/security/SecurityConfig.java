@@ -108,6 +108,10 @@ public class SecurityConfig {
                         .requestMatchers("/admin/parametros").hasAuthority(PermisoCodigo.GESTIONAR_PARAMETROS.name())
                         .requestMatchers("/visitantes/parametros/**").permitAll()
 
+                        //Manual de usuario
+                        .requestMatchers("/admin/manual-usuario/**").hasAuthority(PermisoCodigo.GESTIONAR_PARAMETROS.name())
+                        .requestMatchers("/admin/manual-usuario").hasAuthority(PermisoCodigo.GESTIONAR_PARAMETROS.name())
+
                         //Permisos
                         .requestMatchers( "/permisos/grupos-permisos/admin").hasAuthority(PermisoCodigo.LEER_ADMIN.name())
                         .requestMatchers("/permisos/grupos-permisos/productor").authenticated()
