@@ -22,7 +22,8 @@ public enum CarpetaArchivo {
     ESTABLECIMIENTOS("establecimientos", List.of("jpg", "jpeg", "png"), 5L * 1024 * 1024, true),
     CULTIVOS("cultivos", List.of("jpg", "jpeg", "png"), 5L * 1024 * 1024, true),
     RECETAS("recetas", List.of("jpg", "jpeg", "png"), 5L * 1024 * 1024, true),
-    SOLICITUDES_ESTABLECIMIENTO("solicitudes-establecimiento", List.of("pdf", "jpg", "jpeg", "png"), 10L * 1024 * 1024, false);
+    SOLICITUDES_ESTABLECIMIENTO("solicitudes-establecimiento", List.of("pdf", "jpg", "jpeg", "png"), 10L * 1024 * 1024, false),
+    MANUALES("manuales", List.of("pdf"), 55L * 1024 * 1024, false);
 
     private final String prefijo;
     private final List<String> extensionesPermitidas;
