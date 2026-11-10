@@ -113,6 +113,9 @@ public interface ActividadMapper {
 
     @Mapping(target = "estadoReserva", source = "estadoActual.estadoReserva.nombre")
     @Mapping(target = "montoTotalReserva", source = "totalReserva")
+    @Mapping(target = "subtotalComisionSistema", source = "subTotalComisionPropia")
+    @Mapping(target = "subtotalComisionTransaccion", source = "subTotalComisionTransaccion")
+    @Mapping(target = "subtotalProductor", source = "subTotalProductor")
     @Mapping(target = "cantidadTotalPersona", ignore = true)
     @Mapping(target = "resumenRangoEtario", ignore = true)
     @Mapping(target = "visitantes", ignore = true)

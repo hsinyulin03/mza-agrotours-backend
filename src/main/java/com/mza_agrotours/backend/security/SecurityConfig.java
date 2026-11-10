@@ -106,6 +106,7 @@ public class SecurityConfig {
 
                         .requestMatchers(HttpMethod.GET, "/admin/parametros").hasAuthority(PermisoCodigo.LEER_PARAMETROS.name())
                         .requestMatchers("/admin/parametros").hasAuthority(PermisoCodigo.GESTIONAR_PARAMETROS.name())
+                        .requestMatchers("/visitantes/parametros/**").permitAll()
 
                         //Permisos
                         .requestMatchers( "/permisos/grupos-permisos/admin").hasAuthority(PermisoCodigo.LEER_ADMIN.name())

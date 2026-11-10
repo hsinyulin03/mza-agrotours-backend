@@ -9,11 +9,11 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/admin/parametros")
-public class ParametrosController {
+public class AdminParametrosController {
 
     private final ParametrosService parametrosService;
 
-    public ParametrosController(ParametrosService parametrosService) {
+    public AdminParametrosController(ParametrosService parametrosService) {
         this.parametrosService = parametrosService;
     }
 

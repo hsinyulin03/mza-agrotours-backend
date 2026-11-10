@@ -14,4 +14,7 @@ public class DTODetalleReservaCard {
     private List<DTOResumenRangoEtario> resumenRangoEtario;
     private List<DTODetalleVisitantesCard> visitantes;
     private BigDecimal montoTotalReserva;
+    private BigDecimal subtotalComisionSistema;
+    private BigDecimal subtotalComisionTransaccion;
+    private BigDecimal subtotalProductor;
 }

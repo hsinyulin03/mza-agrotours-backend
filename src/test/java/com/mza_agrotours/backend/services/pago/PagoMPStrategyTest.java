@@ -220,7 +220,7 @@ class PagoMPStrategyTest {
 
         assertEquals(0, new BigDecimal("1000.00").compareTo(reserva.getSubTotalComisionPropia()));
         assertEquals(0, new BigDecimal("9000.00").compareTo(reserva.getSubTotalProductor()));
-        assertEquals(0, BigDecimal.ZERO.compareTo(reserva.getSubTotalComisionTransaccion()));
+        assertNull(reserva.getSubTotalComisionTransaccion());
     }
 
     @Test

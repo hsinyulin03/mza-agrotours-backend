@@ -168,7 +168,7 @@ public class PagoMPStrategy implements EstrategiaPago{
             pago.cambiarEstado(estadoPendiente, ahora);
 
             // Info del pago
-            reserva.setSubTotalComisionTransaccion(BigDecimal.valueOf(0)); // TODO comisión de MP: se conoce recién con el pago aprobado (fee_details)
+            reserva.setSubTotalComisionTransaccion(null); // La comisión de MP: se conoce recién con el pago aprobado (fee_details)
             reserva.setSubTotalComisionPropia(comisionPropia);
             reserva.setSubTotalProductor(
                     reserva.getTotalReserva().subtract(
